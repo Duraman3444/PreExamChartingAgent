@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
-import { CssBaseline } from '@mui/material';
+import { CssBaseline, Box, Typography, Card, CardContent } from '@mui/material';
 import { Layout } from '@/components/layout/Layout';
 import { Login } from '@/pages/Login';
 import { Dashboard } from '@/pages/Dashboard';
@@ -9,14 +9,111 @@ import { useAuthStore } from '@/stores/authStore';
 import { ROUTES } from '@/constants';
 import { theme } from '@/theme/theme';
 
-// Placeholder components for other routes
-const Patients = () => <div>Patients Page</div>;
-const Visits = () => <div>Visits Page</div>;
-const VisitDetail = () => <div>Visit Detail Page</div>;
-const TranscriptUpload = () => <div>Transcript Upload Page</div>;
-const AIAnalysis = () => <div>AI Analysis Page</div>;
-const VisitNotes = () => <div>Visit Notes Page</div>;
-const Settings = () => <div>Settings Page</div>;
+// Proper page components with visible content
+const Patients = () => (
+  <Box sx={{ p: 3 }}>
+    <Typography variant="h4" component="h1" gutterBottom>
+      Patients
+    </Typography>
+    <Card>
+      <CardContent>
+        <Typography variant="body1">
+          Patient management system - Coming soon!
+        </Typography>
+      </CardContent>
+    </Card>
+  </Box>
+);
+
+const Visits = () => (
+  <Box sx={{ p: 3 }}>
+    <Typography variant="h4" component="h1" gutterBottom>
+      Visits
+    </Typography>
+    <Card>
+      <CardContent>
+        <Typography variant="body1">
+          Visit management and transcript analysis - Coming soon!
+        </Typography>
+      </CardContent>
+    </Card>
+  </Box>
+);
+
+const VisitDetail = () => (
+  <Box sx={{ p: 3 }}>
+    <Typography variant="h4" component="h1" gutterBottom>
+      Visit Detail
+    </Typography>
+    <Card>
+      <CardContent>
+        <Typography variant="body1">
+          Detailed visit information - Coming soon!
+        </Typography>
+      </CardContent>
+    </Card>
+  </Box>
+);
+
+const TranscriptUpload = () => (
+  <Box sx={{ p: 3 }}>
+    <Typography variant="h4" component="h1" gutterBottom>
+      Transcript Upload
+    </Typography>
+    <Card>
+      <CardContent>
+        <Typography variant="body1">
+          Upload and process visit transcripts - Coming soon!
+        </Typography>
+      </CardContent>
+    </Card>
+  </Box>
+);
+
+const AIAnalysis = () => (
+  <Box sx={{ p: 3 }}>
+    <Typography variant="h4" component="h1" gutterBottom>
+      AI Analysis
+    </Typography>
+    <Card>
+      <CardContent>
+        <Typography variant="body1">
+          AI-powered visit analysis and insights - Coming soon!
+        </Typography>
+      </CardContent>
+    </Card>
+  </Box>
+);
+
+const VisitNotes = () => (
+  <Box sx={{ p: 3 }}>
+    <Typography variant="h4" component="h1" gutterBottom>
+      Visit Notes
+    </Typography>
+    <Card>
+      <CardContent>
+        <Typography variant="body1">
+          Generated visit notes and documentation - Coming soon!
+        </Typography>
+      </CardContent>
+    </Card>
+  </Box>
+);
+
+const Settings = () => (
+  <Box sx={{ p: 3 }}>
+    <Typography variant="h4" component="h1" gutterBottom>
+      Settings
+    </Typography>
+    <Card>
+      <CardContent>
+        <Typography variant="body1">
+          Application settings and preferences - Coming soon!
+        </Typography>
+      </CardContent>
+    </Card>
+  </Box>
+);
 
 interface ProtectedRouteProps {
   children: React.ReactNode;

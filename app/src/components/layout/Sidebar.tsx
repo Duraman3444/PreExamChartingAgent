@@ -45,7 +45,7 @@ const navigationItems = [
   {
     text: 'AI Analysis',
     icon: <Psychology />,
-    path: ROUTES.VISITS, // Will show visits with analysis status
+    path: ROUTES.AI_ANALYSIS,
   },
 ];
 

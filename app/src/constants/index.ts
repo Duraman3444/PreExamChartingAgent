@@ -8,7 +8,7 @@ export const ROUTES = {
   VISITS: '/visits',
   VISIT_DETAIL: '/visits/:id',
   TRANSCRIPT_UPLOAD: '/visits/:id/transcript',
-  AI_ANALYSIS: '/visits/:id/analysis',
+  AI_ANALYSIS: '/ai-analysis',
   VISIT_NOTES: '/visits/:id/notes',
   SETTINGS: '/settings',
 } as const;
