@@ -1,905 +1,838 @@
-# Frontend Setup Prompts 🎨
+# Frontend Setup Prompts for AI-Powered Visit Transcript Analysis 🎯
 
-*Copy-paste these prompts into your AI assistant to scaffold the entire Pre-Examination Charting Agent frontend.*
+*Comprehensive collection of prompts for building the Visit Transcript Analysis & Diagnosis Assistance platform frontend using React, TypeScript, and modern development practices.*
 
 ---
 
-## 1. Project Structure & Dependencies
+## Project Overview Prompts
+
+### 1. Initial Project Setup
 
 ```
-Create a React TypeScript project structure for a medical charting application with the following requirements:
+Create a React TypeScript application for an AI-powered visit transcript analysis platform that helps healthcare providers analyze patient visit recordings, extract symptoms, generate differential diagnoses, and provide treatment recommendations. The system should:
 
-- Use Vite as the build tool
-- TypeScript with strict mode
-- Material-UI v5 for components
-- Firebase v9 for auth and Firestore
-- React Router v6 for navigation
+- Process audio/text files of patient visits
+- Use AI to extract symptoms and medical history
+- Generate differential diagnoses with confidence scores
+- Provide evidence-based treatment recommendations
+- Flag potential risks and red flags
+- Generate visit documentation
+- Maintain HIPAA compliance
+
+Tech Stack:
+- React 18 with TypeScript
+- Vite for build tooling
+- Material-UI (MUI) for components
+- React Query for state management
 - React Hook Form for form handling
-- React Diff Viewer for note comparison
-- React Hotkeys Hook for keyboard shortcuts
-- Zustand for state management
-- Date-fns for date handling
+- Firebase for backend (Auth, Firestore, Storage)
+- OpenAI API for AI analysis
+- Tailwind CSS for styling
 
-Set up the folder structure:
-```
-app/
-├── src/
-│   ├── components/
-│   │   ├── common/
-│   │   ├── screening/
-│   │   ├── vitals/
-│   │   ├── verification/
-│   │   ├── automation/
-│   │   └── layout/
-│   ├── pages/
-│   ├── hooks/
-│   ├── services/
-│   │   ├── auth.ts
-│   │   ├── firebase.ts
-│   │   ├── automation.ts
-│   │   └── ehr-integration.ts
-│   ├── stores/
-│   │   ├── authStore.ts
-│   │   ├── appStore.ts
-│   │   └── automationStore.ts
-│   ├── types/
-│   ├── utils/
-│   └── constants/
-├── public/
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
-└── tailwind.config.js
+Set up the project structure with proper TypeScript configuration, ESLint, Prettier, and include necessary dependencies.
 ```
 
-Include all necessary dependencies in package.json and create the basic configuration files.
+### 2. Core Architecture Setup
 
----
+```
+Set up the core architecture for the AI-powered visit transcript analysis platform:
 
-## Figma Design System Prompts
+1. Configure React Router for these main routes:
+   - /login - Authentication
+   - /dashboard - Main dashboard with analytics
+   - /visits - Visit management
+   - /visit/:id - Individual visit details
+   - /transcript-upload - Upload audio/text files
+   - /ai-analysis/:id - AI analysis results
+   - /visit-notes/:id - Generated documentation
 
-Use these prompts with Figma to create a comprehensive design system for the medical charting application. Create component libraries, design tokens, and user interface mockups that can be implemented in React TypeScript.
+2. Create a proper folder structure:
+   - components/ (ui components)
+   - pages/ (route components)
+   - hooks/ (custom hooks)
+   - services/ (API services)
+   - stores/ (state management)
+   - types/ (TypeScript types)
+   - utils/ (utility functions)
 
-### Authentication Components
-
-#### Login Page Design
-```
-Design a modern medical charting application login page in Figma with the following specifications:
-- Split-screen layout with medical imagery on the left panel
-- Login form on the right with email and password input fields
-- Toggle component for "Sign In" and "Create Account" modes
-- Role selection dropdown component for new accounts (Doctor, Nurse, Admin)
-- Healthcare-appropriate color palette with primary blues and clean whites
-- Responsive design variants for desktop (1920px) and tablet (768px)
-- Loading states and error message components
-- Clean, professional medical aesthetic with proper typography hierarchy
-- Include component variants for different states (default, hover, focus, error)
-```
-
-#### User Profile Design
-```
-Design a user profile management interface in Figma for healthcare providers:
-- User avatar component with upload functionality and placeholder states
-- Editable profile form fields (name, email, role, department)
-- Security settings section with password change and 2FA toggle components
-- Notification preferences panel with toggle switches
-- Theme selection component (light/dark mode variants)
-- Professional medical styling with consistent spacing and typography
-- Form validation states and save confirmation modal components
-- Component library with all form elements and their states
-```
-
-### Patient Management Components
-
-#### Patient Search & List Design
-```
-Design a comprehensive patient search and list interface in Figma:
-- Advanced search bar component with filter dropdowns (name, DOB, MRN, phone)
-- Patient list table with pagination controls and sorting indicators
-- Quick filter chips (Recent, Favorites, Assigned to Me)
-- Patient status badge components (Active, Discharged, Critical) with color coding
-- Patient preview card components with hover and selected states
-- Responsive grid/list view toggle switch
-- Table components with sorting arrows and filtering options
-- Healthcare professional color palette with accessible contrast ratios
-- Typography system for medical data display
-```
-
-#### Patient Profile Card Design
-```
-Design a detailed patient information card in Figma:
-- Patient photo placeholder component with upload state variants
-- Key demographics section with typography hierarchy (name, age, DOB, gender, MRN)
-- Emergency contact information display with proper spacing
-- Medical alerts and allergies badge components with color coding
-- Insurance information section with collapsible design
-- Recent visit history timeline component with date/time styling
-- Quick action button components (Edit, Add Note, View Charts)
-- Professional medical card layout with consistent margins and padding
-- Expandable sections with accordion-style interaction states
-- Component variants for different data states (complete, incomplete, loading)
-```
-
-#### Patient Registration Form
-```
-Create a comprehensive patient registration form:
-- Multi-step wizard with progress indicator
-- Personal information (name, DOB, gender, contact info)
-- Emergency contacts section
-- Medical history and allergies
-- Insurance information
-- Photo upload component
-- Form validation with real-time feedback
-- Save draft functionality
-- Material-UI form components with medical styling
-- Responsive design for tablet use
-```
-
-### Screening Module Components
-
-#### Screening Questionnaire Builder
-```
-Design a dynamic questionnaire builder interface:
-- Drag-and-drop question ordering
-- Question type selector (Yes/No, Text, Multiple Choice, Scale)
-- Conditional logic builder (show/hide based on answers)
-- Question preview panel
-- Template library sidebar
-- Scoring configuration interface
-- Material-UI with modern, intuitive design
-- Medical questionnaire styling
-- Real-time preview functionality
-```
-
-#### Screening Assessment Interface
-```
-Create a patient screening assessment form:
-- Question display with various input types
-- Progress bar showing completion status
-- Previous/Next navigation with validation
-- Auto-save functionality indicator
-- Question numbering and categorization
-- Score calculation display
-- Submit for review button
-- Clean, distraction-free design for patient use
-- Large touch targets for tablet interaction
-```
-
-#### Screening Results Dashboard
-```
-Design a screening results review interface:
-- Assessment summary cards with scores
-- Risk indicator badges (Low, Medium, High)
-- Detailed answer review with expandable sections
-- Provider notes and comments section
-- Approval workflow buttons
-- Print/export functionality
-- Data visualization for scores and trends
-- Professional medical dashboard styling
-```
-
-### Vitals Recording Components
-
-#### Vitals Entry Form Design
-```
-Design a comprehensive vitals recording interface in Figma:
-- Grid layout system for vital sign input fields (BP, HR, Temp, RR, O2 Sat)
-- Normal range indicator components with color-coded backgrounds
-- Timestamp and provider attribution text components
-- Device integration placeholder components with connection states
-- Quick entry template buttons for common scenarios
-- Trend comparison chart components with previous readings
-- Alert notification components for abnormal values
-- Medical device aesthetic with large, touch-friendly input fields
-- Validation states and error message components
-- Component library with all input field variants and states
-```
-
-#### Vitals Monitoring Dashboard
-```
-Design a patient vitals monitoring dashboard:
-- Real-time vitals display with large, clear numbers
-- Trend charts for each vital sign over time
-- Alert status indicators with color coding
-- Normal range overlays on charts
-- Time range selector (1hr, 6hr, 24hr, week)
-- Print and export functionality
-- Multiple patient view for nurses
-- Professional medical monitoring interface
-- Responsive layout for different screen sizes
-```
-
-#### Vitals History Timeline
-```
-Create a chronological vitals history component:
-- Timeline view with date/time stamps
-- Expandable entries showing all vitals
-- Provider attribution for each entry
-- Search and filter by date range
-- Trend indicators (improving, stable, declining)
-- Export to PDF functionality
-- Comparison mode for multiple dates
-- Clean, medical record styling
-- Efficient data visualization
-```
-
-### Chart Notes & Documentation Components
-
-#### Rich Text Medical Editor
-```
-Design a specialized medical note editor:
-- Rich text formatting toolbar
-- Medical template insertion
-- Auto-complete for medical terms
-- Voice-to-text integration placeholder
-- Real-time character count
-- Auto-save with visual indicator
-- Spell check for medical terminology
-- Insert vital signs and assessment data
-- Professional medical documentation styling
-- Distraction-free writing interface
-```
-
-#### Note Review and Approval Interface
-```
-Create a medical note review system:
-- Side-by-side note comparison (original vs edited)
-- Comment and annotation system
-- Approval/rejection workflow
-- Review history timeline
-- Co-signature requirements display
-- Print preview functionality
-- Version control indicators
-- Professional review interface styling
-- Efficient navigation between notes
-```
-
-#### Chart Notes Dashboard
-```
-Design a comprehensive chart notes overview:
-- Filterable note list by category and date
-- Quick preview cards with note excerpts
-- Search functionality across all notes
-- Status indicators (Draft, Pending Review, Approved)
-- Provider attribution and timestamps
-- Export and print batch functionality
-- Categories sidebar (Assessment, Progress, Discharge)
-- Professional medical documentation interface
-- Responsive grid layout
-```
-
-### Dashboard & Analytics Components
-
-#### Medical Dashboard Overview
-```
-Create a comprehensive medical dashboard:
-- Key performance metrics cards
-- Patient census overview
-- Pending tasks and alerts
-- Quick action buttons for common workflows
-- Recent activity feed
-- Vital statistics summary
-- Schedule and appointment preview
-- Weather-style layout with medical metrics
-- Role-based customization
-- Modern healthcare dashboard aesthetic
-```
-
-#### Patient Analytics Component
-```
-Design a patient analytics and trends interface:
-- Interactive charts for patient outcomes
-- Filterable data by date range and demographics
-- Key performance indicators
-- Population health metrics
-- Quality measure tracking
-- Export functionality for reports
-- Drill-down capabilities
-- Professional healthcare analytics styling
-- Responsive chart layouts
-```
-
-### Navigation & Layout Components
-
-#### Medical App Sidebar Navigation
-```
-Create a professional medical application sidebar:
-- Hierarchical navigation menu
-- Role-based menu items
-- Active state indicators
-- Collapsible subsections
-- User profile section at bottom
-- Notification badges for pending items
-- Search functionality within navigation
-- Professional medical application styling
-- Smooth animations and transitions
-- Responsive behavior
-```
-
-#### Medical App Header
-```
-Design a comprehensive medical application header:
-- Application logo and branding
-- Global search functionality
-- Notification bell with badge count
-- User profile dropdown menu
-- Quick action buttons
-- Breadcrumb navigation
-- Emergency alert area
-- Professional medical styling
-- Responsive design for all devices
-- Sticky header behavior
-```
-
-### Form Components
-
-#### Medical Form Components Library
-```
-Create a set of reusable medical form components:
-- Validated input fields with medical formatting
-- Date/time pickers for medical use
-- Dropdown selectors for medical codes
-- Multi-select for medications and allergies
-- File upload for medical documents
-- Signature capture component
-- Medical checkbox and radio groups
-- Progress indicators for multi-step forms
-- Consistent medical styling across all components
-- Accessibility compliance
-```
-
-### Data Visualization Components
-
-#### Medical Chart Visualization
-```
-Design medical data visualization components:
-- Vital signs trend charts
-- Pain scale visual indicators
-- Medication timeline displays
-- Assessment score gauges
-- Progress tracking charts
-- Interactive tooltip displays
-- Export to PDF/image functionality
-- Colorblind-friendly color schemes
-- Professional medical chart styling
-- Responsive and touch-friendly
-```
-
-### Automation Workflow Components
-
-#### Workflow Status Dashboard Design
-```
-Design an automation workflow monitoring dashboard in Figma:
-- Real-time workflow execution status cards with live indicators
-- Success/failure rate visualization components (charts, meters)
-- Processing time metric displays with trend indicators
-- Error log display components with filtering dropdowns
-- Workflow trigger history timeline components
-- EHR integration status indicator badges with color coding
-- Slack notification queue status components
-- n8n workflow performance chart components (line charts, bar charts)
-- Manual override control buttons with confirmation states
-- System health monitoring widgets with alert states
-- Professional operations dashboard layout with proper information hierarchy
-- Dark mode variant for 24/7 monitoring environments
-```
-
-#### EHR Integration Panel
-```
-Design an EHR integration management interface:
-- Connection status indicators for each EHR system
-- API endpoint configuration panel
-- Data mapping visualization
-- Sync status and last update timestamps
-- Error handling and retry mechanisms
-- Test connection functionality
-- Data format validation tools
-- Integration logs with search and filtering
-- Manual sync trigger controls
-- Professional system integration styling
-```
-
-#### Automation Settings Interface
-```
-Create an automation configuration interface:
-- Workflow enable/disable toggles
-- Confidence threshold sliders for AI processing
-- Notification preferences configuration
-- Webhook endpoint management
-- API key and credential management
-- Retry policy configuration
-- Error escalation rules
-- Audit trail settings
-- Performance optimization controls
-- Professional settings interface styling
-```
-
-#### Notification Management Console
-```
-Design a notification management system:
-- Real-time notification feed
-- Notification categorization and filtering
-- Slack channel configuration
-- Alert severity level settings
-- Notification templates editor
-- Delivery status tracking
-- Escalation rule configuration
-- Notification history and analytics
-- Manual notification triggers
-- Professional communication interface styling
-```
-
-### Usage Instructions
-
-1. **Create design system in Figma**: Use each prompt to design comprehensive component libraries
-2. **Establish design tokens**: Define colors, typography, spacing, and component variants
-3. **Create component variants**: Design all states (default, hover, focus, disabled, error)
-4. **Build responsive layouts**: Create desktop, tablet, and mobile variants
-5. **Document components**: Add descriptions, usage guidelines, and specifications
-6. **Export for development**: Use Figma's Dev Mode to generate CSS and component specs
-
-### Design System Guidelines
-
-- Create a master component library with all reusable elements
-- Use consistent naming conventions for components and variants
-- Apply healthcare-appropriate color palettes with accessibility compliance
-- Maintain consistent spacing and typography scales
-- Design for touch interfaces and accessibility requirements
-- Create prototypes for complex user flows and interactions
-- Test designs with medical professionals for workflow validation
+3. Set up Firebase configuration with proper environment variables
+4. Configure authentication with Firebase Auth
+5. Set up Firestore collections for patients, visits, ai-analysis, visit-notes
+6. Configure error boundaries and loading states
 ```
 
 ---
 
-## 2. Automation Services & Integration
+## Authentication & Security Prompts
+
+### 3. Authentication System
 
 ```
-Create automation service integration for the medical charting application:
+Create a secure authentication system for healthcare providers:
 
-1. Create automation.ts service with:
-   - Workflow status monitoring
-   - EHR integration management
-   - Notification system controls
-   - Error handling and recovery
-   - Performance metrics tracking
+1. Login page with email/password authentication
+2. Role-based access control (doctor, nurse, admin)
+3. Session management with automatic logout
+4. Password reset functionality
+5. Multi-factor authentication support
+6. HIPAA-compliant security measures
 
-2. Create ehr-integration.ts service with:
-   - RESTful API connections to EHR systems
-   - Data synchronization functions
-   - Webhook endpoint management
-   - Data format validation
-   - Authentication and security
+Components needed:
+- LoginForm with validation
+- ProtectedRoute wrapper
+- AuthProvider context
+- UserProfile component
+- PasswordReset component
 
-3. Create TypeScript types for:
-   - Workflow execution status
-   - EHR integration configurations
-   - Notification preferences
-   - Automation settings
+Include proper error handling, loading states, and accessibility features.
+```
+
+### 4. Security Implementation
+
+```
+Implement comprehensive security measures for the healthcare application:
+
+1. Input validation and sanitization
+2. XSS protection
+3. CSRF protection
+4. Secure API communication
+5. PHI data encryption
+6. Audit logging for all user actions
+7. IP allowlisting for sensitive operations
+8. Session timeout management
+
+Create security utilities, validation schemas, and audit logging hooks.
+```
+
+---
+
+## File Upload & Processing Prompts
+
+### 5. File Upload Interface
+
+```
+Create a sophisticated file upload interface for visit transcripts:
+
+1. Drag-and-drop file upload with progress tracking
+2. Support for multiple file types:
+   - Audio: MP3, WAV, M4A, MP4, AAC
+   - Text: TXT, DOCX, PDF
+3. File validation (size, type, format)
+4. Preview functionality for uploaded files
+5. Batch upload capability
+6. Upload queue management
+7. Error handling and retry logic
+
+Components:
+- FileUploadZone (drag-and-drop)
+- FilePreview (file details)
+- UploadProgress (progress tracking)
+- FileValidator (validation logic)
+- UploadQueue (batch management)
+
+Include proper TypeScript types, error states, and accessibility features.
+```
+
+### 6. Audio Player Component
+
+```
+Build a medical-grade audio player for transcript analysis:
+
+1. Custom audio player with medical-specific features:
+   - Playback speed control (0.5x to 2x)
+   - Skip forward/backward by 10-30 seconds
+   - Waveform visualization
+   - Timestamp markers
+   - Speaker identification highlights
+   - Confidence score indicators
+
+2. Integration with transcript text:
+   - Synchronized highlighting
+   - Click-to-seek functionality
+   - Bookmark important sections
+   - Add notes/annotations
+
+3. Keyboard shortcuts for efficiency:
+   - Spacebar: play/pause
+   - Arrow keys: seek
+   - Number keys: speed control
+
+Create AudioPlayer, WaveformDisplay, and TranscriptSync components.
+```
+
+---
+
+## AI Analysis Interface Prompts
+
+### 7. AI Analysis Dashboard
+
+```
+Create a comprehensive AI analysis dashboard that displays:
+
+1. Analysis Status Panel:
+   - Processing stages (transcription, symptom extraction, diagnosis)
+   - Progress indicators with estimated completion times
+   - Real-time updates using WebSocket or polling
+   - Error states and retry options
+
+2. Symptom Extraction Results:
+   - Structured symptom list with confidence scores
+   - Severity indicators (mild, moderate, severe)
+   - Duration and frequency information
+   - Source text highlighting
+
+3. Differential Diagnosis Display:
+   - Ranked list of potential diagnoses
+   - Probability scores with visual indicators
+   - ICD-10 codes
+   - Supporting/contradicting evidence
+   - Expandable details for each diagnosis
+
+4. Treatment Recommendations:
+   - Evidence-based treatment options
+   - Priority levels (urgent, high, medium, low)
+   - Contraindications and warnings
+   - Alternative treatments
+   - Monitoring requirements
+
+Components: AnalysisStatus, SymptomExtraction, DiagnosisList, TreatmentRecommendations
+```
+
+### 8. Interactive Diagnosis Interface
+
+```
+Build an interactive interface for reviewing and refining AI diagnoses:
+
+1. Diagnosis Cards:
+   - Expandable cards for each potential diagnosis
+   - Confidence meters with color coding
+   - Supporting evidence bullets
+   - Clickable medical terms with definitions
+   - Ability to accept/reject/modify diagnoses
+
+2. Comparison View:
+   - Side-by-side comparison of top diagnoses
+   - Differential diagnosis table
+   - Symptom matrix view
+   - Evidence strength indicators
+
+3. Provider Input Panel:
+   - Add clinical notes
+   - Adjust confidence scores
+   - Add additional diagnoses
+   - Flag for second opinion
+   - Save draft vs final analysis
+
+4. Reference Integration:
+   - Links to medical literature
+   - Guidelines and protocols
+   - Drug interaction checker
+   - Allergy cross-reference
+
+Create DiagnosisCard, ComparisonView, ProviderInput, and ReferencePanel components.
+```
+
+---
+
+## Data Visualization Prompts
+
+### 9. Analytics Dashboard
+
+```
+Create a comprehensive analytics dashboard for the AI analysis platform:
+
+1. Key Performance Indicators:
+   - Total analyses completed
+   - Average processing time
+   - AI accuracy metrics
+   - Provider satisfaction scores
+   - Cost savings from AI assistance
+
+2. Trend Analysis:
+   - Analysis volume over time
+   - Diagnostic accuracy trends
+   - Processing time improvements
+   - Common symptoms/diagnoses
+   - Provider usage patterns
+
+3. Quality Metrics:
+   - Confidence score distributions
+   - Provider override rates
+   - Second opinion requests
+   - Diagnosis change frequency
+   - Follow-up outcome tracking
+
+4. Interactive Charts:
+   - Line charts for trends
+   - Bar charts for comparisons
+   - Pie charts for distributions
+   - Heatmaps for patterns
+   - Scatter plots for correlations
+
+Use Chart.js or D3.js for visualizations. Include filtering, date range selection, and export functionality.
+```
+
+### 10. Patient History Visualization
+
+```
+Build a patient history visualization component:
+
+1. Timeline View:
+   - Chronological visit history
+   - Symptom progression over time
+   - Treatment effectiveness tracking
+   - Key events and milestones
+   - Medication changes
+
+2. Symptom Tracker:
+   - Symptom severity over time
+   - Frequency patterns
+   - Trigger identification
+   - Correlation analysis
+   - Visual symptom mapping
+
+3. Treatment Response:
+   - Treatment timeline
+   - Outcome measurements
+   - Side effect tracking
+   - Adherence monitoring
+   - Cost effectiveness
+
+Components: PatientTimeline, SymptomTracker, TreatmentResponse, HistoryFilter
+```
+
+---
+
+## Advanced Features Prompts
+
+### 11. Real-time Collaboration
+
+```
+Implement real-time collaboration features for healthcare teams:
+
+1. Live Analysis Sharing:
+   - Share analysis results in real-time
+   - Multi-provider review sessions
+   - Synchronized cursor/highlighting
+   - Live comments and annotations
+   - Voice/video integration
+
+2. Consultation Features:
+   - Request second opinions
+   - Specialist referral integration
+   - Case discussion threads
+   - File sharing and attachments
+   - Meeting scheduler integration
+
+3. Notification System:
+   - Real-time alerts for urgent cases
+   - Assignment notifications
+   - Deadline reminders
+   - Analysis completion alerts
+   - System status updates
+
+Use WebSocket or Firebase real-time features. Create CollaborationPanel, NotificationCenter, and ConsultationView components.
+```
+
+### 12. Mobile-Responsive Design
+
+```
+Create a mobile-responsive version of the AI analysis platform:
+
+1. Responsive Layout:
+   - Adaptive navigation (hamburger menu)
+   - Touch-friendly interfaces
+   - Optimized for tablet/phone screens
+   - Swipe gestures for navigation
+   - Collapsible sections
+
+2. Mobile-Specific Features:
+   - Voice recording capability
+   - Camera integration for document capture
+   - Offline mode for viewing analyses
+   - Push notifications
+   - Biometric authentication
+
+3. Performance Optimization:
+   - Lazy loading for mobile
+   - Image compression
+   - Efficient data loading
+   - Caching strategies
+   - Progressive web app features
+
+Use CSS Grid, Flexbox, and media queries. Implement touch events and mobile-specific UX patterns.
+```
+
+---
+
+## Integration Prompts
+
+### 13. EHR Integration Interface
+
+```
+Build an interface for EHR system integration:
+
+1. EHR Connection Panel:
+   - Configure EHR system endpoints
+   - Authentication setup
+   - Data mapping configuration
+   - Sync status monitoring
+   - Error handling and retry logic
+
+2. Data Import/Export:
+   - Import patient data from EHR
+   - Export analysis results to EHR
+   - Bi-directional sync configuration
+   - Conflict resolution interface
+   - Data validation and cleansing
+
+3. Integration Dashboard:
+   - Connection status indicators
+   - Sync statistics
+   - Error logs and alerts
    - Performance metrics
+   - Configuration management
 
-4. Create automationStore.ts with Zustand:
-   - Workflow state management
-   - EHR connection status
-   - Notification queue management
-   - Error tracking and logging
-   - Performance monitoring data
+Components: EHRConnector, DataSync, IntegrationStatus, ConfigurationPanel
+```
 
-5. Include proper error handling and TypeScript interfaces for all automation operations.
+### 14. API Integration Components
+
+```
+Create reusable components for API integrations:
+
+1. OpenAI Integration:
+   - API key management
+   - Usage monitoring
+   - Rate limit handling
+   - Error recovery
+   - Response streaming
+
+2. Speech-to-Text Integration:
+   - Multiple provider support (Google, Azure, AWS)
+   - Real-time transcription
+   - Speaker identification
+   - Confidence scoring
+   - Language detection
+
+3. Firebase Integration:
+   - Authentication management
+   - Firestore operations
+   - File storage handling
+   - Real-time updates
+   - Offline capabilities
+
+Create service classes, hooks, and utility functions for each integration.
 ```
 
 ---
 
-## 3. Firebase Configuration & Types
+## Testing & Quality Prompts
+
+### 15. Testing Strategy
 
 ```
-Set up Firebase configuration for a medical charting application with the following features:
+Implement comprehensive testing for the AI analysis platform:
 
-1. Create firebase.ts with:
-   - Firebase app initialization
-   - Auth, Firestore, and Functions exports
-   - Environment variable configuration
+1. Unit Tests:
+   - Component testing with React Testing Library
+   - Hook testing
+   - Utility function testing
+   - API service testing
+   - State management testing
 
-2. Create TypeScript types for:
-   - Patient screening data (PMH, medications, allergies, social/family history)
-   - Vitals data with normal ranges
-   - Generated notes with confidence scores
-   - User roles (nurse, doctor, admin)
-   - Visit workflow states
+2. Integration Tests:
+   - API integration testing
+   - Firebase integration testing
+   - Authentication flow testing
+   - File upload testing
+   - Real-time features testing
 
-3. Create Firestore security rules for:
-   - Role-based access (nurses can read/write their assigned patients)
-   - Doctors can read all, write notes
-   - Audit logging for all changes
-   - PHI protection rules
+3. E2E Tests:
+   - Critical user journeys
+   - Cross-browser testing
+   - Mobile testing
+   - Performance testing
+   - Accessibility testing
 
-4. Set up Firebase Auth with:
-   - Email/password authentication
-   - Role-based claims
-   - Session management
-   - Protected route wrapper component
+4. AI-Specific Tests:
+   - Mock AI responses
+   - Error handling scenarios
+   - Confidence score validation
+   - Edge case handling
+   - Performance benchmarks
 
-Include proper error handling and TypeScript interfaces for all Firebase operations.
+Set up Jest, React Testing Library, Cypress, and testing utilities.
 ```
 
----
-
-## 4. Patient Screening Interface
+### 16. Performance Optimization
 
 ```
-Create a comprehensive patient screening interface with the following requirements:
+Optimize the AI analysis platform for performance:
 
-1. Multi-step form with progress indicator:
-   - Step 1: Basic demographics (name, DOB, MRN)
-   - Step 2: Past Medical History (searchable conditions)
-   - Step 3: Current medications (drug name, dosage, frequency)
-   - Step 4: Allergies (drug/food/environmental with severity)
-   - Step 5: Social history (smoking, alcohol, occupation)
-   - Step 6: Family history (conditions with relationships)
-   - Step 7: Review and submit
+1. Code Splitting:
+   - Route-based code splitting
+   - Component lazy loading
+   - Dynamic imports
+   - Bundle analysis
+   - Tree shaking optimization
 
-2. Features needed:
-   - Auto-save to localStorage on each step
-   - Form validation with medical-specific rules
-   - Searchable medication database integration
-   - Allergy severity indicators with color coding
-   - Progress bar showing completion percentage
-   - Back/Next navigation with validation
-   - Mobile-responsive design for tablet kiosks
+2. Data Optimization:
+   - Efficient data fetching
+   - Caching strategies
+   - Pagination implementation
+   - Virtual scrolling
+   - Memoization techniques
 
-3. Components to create:
-   - ScreeningWizard (main container)
-   - StepIndicator (progress visualization)
-   - MedicationSearch (with autocomplete)
-   - AllergyEntry (with severity selection)
-   - ConditionSearch (ICD-10 integration ready)
-   - ReviewSummary (final review before submit)
+3. AI Processing Optimization:
+   - Streaming responses
+   - Progressive loading
+   - Background processing
+   - Parallel processing
+   - Queue management
 
-4. State management:
-   - Form data persistence
-   - Validation state tracking
-   - Step navigation logic
-   - Auto-save functionality
-
-Use React Hook Form for form handling, Material-UI for components, and ensure accessibility compliance.
-```
-
----
-
-## 5. Vitals Capture Interface
-
-```
-Create a vitals capture interface for nurses with the following specifications:
-
-1. Vitals input form with:
-   - Blood pressure (systolic/diastolic with validation)
-   - Heart rate (with rhythm notes)
-   - Temperature (Celsius/Fahrenheit toggle)
-   - Respiratory rate
-   - Oxygen saturation
-   - Weight and height (metric/imperial toggle)
-   - Pain scale (0-10 with visual indicators)
-   - BMI auto-calculation
-
-2. Real-time validation features:
-   - Color-coded ranges (green=normal, yellow=borderline, red=critical)
-   - Heat map visualization for out-of-range values
-   - Automatic BMI calculation and categorization
-   - Age-appropriate normal ranges
-   - Input validation with medical constraints
-
-3. Components needed:
-   - VitalsForm (main container)
-   - VitalInput (reusable input with range validation)
-   - RangeIndicator (visual range display)
-   - VitalsHeatMap (overview of all vitals with colors)
-   - VitalsTrends (if historical data available)
-
-4. Features:
-   - Quick-entry keyboard shortcuts
-   - Voice input integration (Web Speech API)
-   - Barcode scanner for patient ID
-   - Print vitals summary
-   - Integration with screening data context
-
-5. State management:
-   - Real-time validation
-   - Range calculations
-   - Historical data comparison
-   - Auto-save functionality
-
-Use Material-UI components, implement proper error handling, and ensure the interface works well on tablets.
-```
-
----
-
-## 6. AI Draft Verification Interface
-
-```
-Create a sophisticated note verification interface with the following requirements:
-
-1. Split-view layout:
-   - Left panel: Generated HPI/ROS draft
-   - Right panel: Source data (screening + vitals) with highlights
-   - Bottom panel: Confidence scores and AI reasoning
-
-2. Diff viewer functionality:
-   - Side-by-side comparison when nurse makes edits
-   - Line-by-line highlighting of changes
-   - Accept/reject individual changes
-   - Undo/redo functionality
-   - Change tracking with timestamps
-
-3. Source tracing:
-   - Click any sentence in draft → highlights source data
-   - Hover over generated text → shows confidence score
-   - Color-coded confidence levels (high=green, medium=yellow, low=red)
-   - Expandable reasoning tooltips
-
-4. Components needed:
-   - VerificationLayout (main split view)
-   - DraftEditor (rich text editor with medical formatting)
-   - SourcePanel (highlighted source data)
-   - ConfidenceIndicator (visual confidence display)
-   - ChangeTracker (diff visualization)
-   - ReasoningTooltip (AI explanation popup)
-
-5. Editing features:
-   - Rich text formatting (bold, italic, lists)
-   - Medical templates and shortcuts
-   - Spell check with medical dictionary
-   - Auto-save with conflict resolution
-   - Version history
-
-6. Keyboard shortcuts:
-   - Ctrl+M: Generate Mermaid workflow diagram
-   - Ctrl+S: Save draft
-   - Ctrl+Z/Y: Undo/redo
-   - Ctrl+F: Find in text
-   - Tab: Accept AI suggestion
-
-Use react-diff-viewer, Draft.js or similar rich text editor, and implement proper change tracking.
-```
-
----
-
-## 7. Autonomy Control & Settings
-
-```
-Create an autonomy control interface with the following features:
-
-1. Autonomy slider with three modes:
-   - OFF: AI generates draft, nurse must review everything
-   - ASSIST: AI generates draft, auto-approves high-confidence sections
-   - AUTO: AI generates and submits notes above confidence threshold
-
-2. Settings panel:
-   - Confidence threshold slider (0-100%)
-   - Auto-approval rules configuration
-   - Notification preferences
-   - Review timeout settings
-   - Template customization
-
-3. Components needed:
-   - AutonomySlider (main mode selector)
-   - ConfidenceThreshold (threshold configuration)
-   - AutoApprovalRules (rule builder interface)
-   - NotificationSettings (alert preferences)
-   - TemplateEditor (note template customization)
-
-4. Safety features:
-   - Always require human review for critical values
-   - Audit trail for all autonomy decisions
-   - Emergency override capabilities
-   - Compliance mode enforcement
-
-5. Visual indicators:
-   - Current autonomy level display
-   - Pending review queue counter
-   - Auto-approved items log
-   - System confidence dashboard
-
-Implement with proper safeguards and clear visual feedback about what the AI is doing automatically.
-```
-
----
-
-## 8. Layout & Navigation
-
-```
-Create a comprehensive layout and navigation system with:
-
-1. Main application shell:
-   - Top navigation bar with user info and logout
-   - Side navigation with role-based menu items
-   - Breadcrumb navigation for multi-step processes
-   - Status indicators (pending reviews, alerts)
-
-2. Navigation structure:
-   - Dashboard (overview of pending items)
-   - Screening (patient intake)
-   - Vitals (nurse workflow)
-   - Verification (note review)
-   - Settings (autonomy controls)
-   - Audit (compliance tracking)
-
-3. Components needed:
-   - AppShell (main layout container)
-   - TopNavigation (header with user controls)
-   - SideNavigation (menu with role-based items)
-   - Breadcrumbs (navigation trail)
-   - StatusIndicators (alerts and counters)
-   - UserMenu (profile and logout)
-
-4. Responsive design:
-   - Mobile-first approach
-   - Tablet optimization for kiosk mode
-   - Desktop layout for nurse stations
-   - Print-friendly views
-
-5. Accessibility features:
-   - Screen reader support
-   - Keyboard navigation
-   - High contrast mode
-   - Font size controls
-
-6. Role-based features:
-   - Nurse view: screening, vitals, verification
-   - Doctor view: review, approval, settings
-   - Admin view: all features plus audit logs
-
-Use Material-UI's layout components and implement proper role-based access control.
-```
-
----
-
-## 9. State Management & API Integration
-
-```
-Set up comprehensive state management and API integration:
-
-1. Zustand stores for:
-   - Authentication state (user, role, permissions)
-   - Patient data (screening, vitals, notes)
-   - UI state (current step, loading states)
-   - Settings (autonomy level, preferences)
-   - Notifications (alerts, pending items)
-   - Automation workflows (n8n status, EHR integration, processing metrics)
-
-2. API service layer:
-   - Firebase Firestore operations
-   - Real-time subscriptions
-   - Optimistic updates
-   - Error handling and retries
+4. User Experience:
+   - Loading states
+   - Skeleton screens
+   - Error boundaries
+   - Retry mechanisms
    - Offline support
 
-3. Custom hooks:
-   - useAuth (authentication state)
-   - usePatientData (patient CRUD operations)
-   - useVitals (vitals management)
-   - useAIDraft (note generation)
-   - useSettings (configuration)
-   - useAutomation (workflow status and control)
-   - useEHRIntegration (EHR system connectivity)
-   - useNotifications (automated alert management)
-
-4. Components needed:
-   - AuthProvider (authentication context)
-   - DataProvider (patient data context)
-   - NotificationProvider (alerts and messages)
-   - OfflineIndicator (connection status)
-   - LoadingSpinner (loading states)
-
-5. Features:
-   - Real-time updates across components
-   - Optimistic UI updates
-   - Conflict resolution
-   - Offline queue management
-   - Error boundary handling
-
-6. Integration points:
-   - Firebase Auth for user management
-   - Firestore for data persistence
-   - Cloud Functions for AI processing
-   - Pub/Sub for real-time notifications
-   - n8n webhook endpoints for workflow automation
-   - EHR system APIs for bidirectional data sync
-   - Slack API for nursing team notifications
-   - OpenAI API for transcript summarization
-
-Include proper TypeScript types, error handling, and loading states for all operations.
+Implement performance monitoring, bundle analysis, and optimization techniques.
 ```
 
 ---
 
-## 10. Data Integration & API Layer
+## Deployment & DevOps Prompts
+
+### 17. CI/CD Pipeline
 
 ```
-Set up data integration and API communication for the medical charting application:
+Set up a comprehensive CI/CD pipeline for the AI analysis platform:
 
-1. API service layer:
-   - Firebase Firestore client configuration
-   - Real-time data subscriptions
-   - Optimistic UI updates
-   - Error handling and retry logic
-   - Connection state management
-
-2. Data synchronization:
-   - Patient data caching strategies
-   - Offline data storage
-   - Conflict resolution for concurrent edits
-   - Data validation and sanitization
-   - Background sync processes
-
-3. Integration points:
-   - EHR system API connections
-   - Visit transcript processing
-   - Automated workflow triggers
-   - Notification service integration
-   - File upload and storage
-
-4. State management:
-   - Zustand store configuration
-   - Data normalization patterns
-   - Loading and error states
-   - Cache invalidation strategies
-   - Real-time update handling
-
-5. Security considerations:
-   - Authentication token management
-   - PHI data encryption
-   - Secure API communication
-   - Role-based data access
-   - Audit trail implementation
-
-Focus on robust data handling and visit workflow management without external test system dependencies.
-```
-
----
-
-## 11. Deployment & DevOps
-
-```
-Set up deployment and development operations:
-
-1. Development environment:
-   - Docker Compose for local development
-   - Firebase emulator suite
-   - Hot reloading and fast refresh
-   - Environment variable management
-
-2. Build and deployment:
-   - Vite build optimization
-   - Firebase Hosting deployment
-   - Environment-specific configurations
-   - Asset optimization and compression
-
-3. CI/CD pipeline:
-   - GitHub Actions workflow
-   - Automated testing and linting
-   - Build and deployment automation
+1. GitHub Actions Workflow:
+   - Automated testing on pull requests
+   - Code quality checks (ESLint, Prettier)
+   - Type checking with TypeScript
+   - Build optimization
    - Security scanning
 
-4. Monitoring and logging:
-   - Error tracking with Sentry
+2. Environment Management:
+   - Development environment setup
+   - Staging environment configuration
+   - Production deployment process
+   - Environment variable management
+   - Feature flag implementation
+
+3. Deployment Strategy:
+   - Blue-green deployment
+   - Rolling updates
+   - Rollback procedures
+   - Health checks
+   - Monitoring and alerting
+
+4. Docker Configuration:
+   - Multi-stage builds
+   - Production optimization
+   - Security hardening
+   - Health check endpoints
+   - Resource management
+
+Create GitHub Actions workflows, Docker files, and deployment scripts.
+```
+
+### 18. Production Monitoring
+
+```
+Implement comprehensive monitoring for the production AI analysis platform:
+
+1. Application Monitoring:
+   - Error tracking (Sentry or similar)
    - Performance monitoring
-   - User analytics with PostHog
-   - Firebase Analytics integration
+   - User analytics
+   - Feature usage tracking
+   - Conversion funnel analysis
 
-5. Configuration files needed:
-   - docker-compose.yml (local development)
-   - .github/workflows/deploy.yml (CI/CD)
-   - firebase.json (Firebase configuration)
-   - .env.example (environment variables)
+2. Infrastructure Monitoring:
+   - Server metrics
+   - Database performance
+   - API response times
+   - CDN performance
+   - Third-party service health
 
-6. Scripts and utilities:
-   - Development startup script
-   - Database seeding script
-   - Deployment script
-   - Backup and restore utilities
+3. AI-Specific Monitoring:
+   - AI processing times
+   - Confidence score distributions
+   - Error rates by analysis type
+   - Provider feedback metrics
+   - Cost monitoring
 
-Include proper environment separation and security best practices.
+4. Alerting System:
+   - Real-time alerts for critical issues
+   - Escalation procedures
+   - On-call rotation management
+   - Incident response playbooks
+   - Post-incident analysis
+
+Set up monitoring dashboards, alerting rules, and incident response procedures.
 ```
 
 ---
 
-Copy each prompt above into your AI assistant to generate the complete frontend codebase. Start with prompt #1 (Project Structure) and work through them sequentially for best results.
+## Documentation & Training Prompts
+
+### 19. User Documentation
+
+```
+Create comprehensive user documentation for the AI analysis platform:
+
+1. User Guides:
+   - Getting started guide
+   - Feature walkthroughs
+   - Best practices guide
+   - Troubleshooting guide
+   - FAQ section
+
+2. Video Tutorials:
+   - Platform overview
+   - File upload process
+   - AI analysis review
+   - Collaboration features
+   - Advanced features
+
+3. API Documentation:
+   - Integration guides
+   - Code examples
+   - SDK documentation
+   - Webhook documentation
+   - Authentication guides
+
+4. Training Materials:
+   - Onboarding checklist
+   - Feature training modules
+   - Certification program
+   - Webinar series
+   - Knowledge base
+
+Create interactive documentation with search, filtering, and feedback mechanisms.
+```
+
+### 20. Developer Documentation
+
+```
+Create technical documentation for developers:
+
+1. Architecture Documentation:
+   - System architecture overview
+   - Component hierarchy
+   - Data flow diagrams
+   - API architecture
+   - Security architecture
+
+2. Code Documentation:
+   - TypeScript interfaces
+   - Component API documentation
+   - Hook usage examples
+   - Utility function docs
+   - Testing guidelines
+
+3. Development Guides:
+   - Setup instructions
+   - Coding standards
+   - Git workflow
+   - Testing strategies
+   - Deployment procedures
+
+4. Contribution Guidelines:
+   - Code review process
+   - Pull request templates
+   - Issue templates
+   - Feature request process
+   - Bug reporting guidelines
+
+Use tools like Storybook, TypeDoc, and documentation generators.
+```
+
+---
+
+## Accessibility & Compliance Prompts
+
+### 21. Accessibility Implementation
+
+```
+Implement comprehensive accessibility features:
+
+1. WCAG 2.1 AA Compliance:
+   - Keyboard navigation
+   - Screen reader support
+   - Color contrast compliance
+   - Focus management
+   - Alternative text for images
+
+2. Healthcare-Specific Accessibility:
+   - Large font options
+   - High contrast mode
+   - Voice control support
+   - Gesture navigation
+   - Assistive technology integration
+
+3. Accessibility Testing:
+   - Automated accessibility testing
+   - Manual testing procedures
+   - Screen reader testing
+   - Keyboard testing
+   - User testing with disabilities
+
+4. Accessibility Components:
+   - Accessible form controls
+   - ARIA labels and roles
+   - Focus indicators
+   - Skip navigation links
+   - Error announcements
+
+Create accessibility utilities, testing tools, and compliance documentation.
+```
+
+### 22. HIPAA Compliance
+
+```
+Ensure HIPAA compliance throughout the application:
+
+1. Data Protection:
+   - PHI encryption at rest and in transit
+   - Access controls and authentication
+   - Audit logging for all PHI access
+   - Data retention policies
+   - Secure data disposal
+
+2. User Interface Compliance:
+   - Privacy notices
+   - Consent management
+   - Data access controls
+   - Session management
+   - Screen protection
+
+3. Technical Safeguards:
+   - Unique user identification
+   - Automatic logoff
+   - Encryption standards
+   - Access monitoring
+   - Integrity controls
+
+4. Administrative Safeguards:
+   - Security officer designation
+   - Workforce training
+   - Incident response procedures
+   - Risk assessment
+   - Business associate agreements
+
+Implement HIPAA compliance checks, privacy controls, and audit mechanisms.
+```
+
+---
+
+## Maintenance & Updates Prompts
+
+### 23. Version Management
+
+```
+Implement a robust version management system:
+
+1. Feature Flags:
+   - Gradual feature rollout
+   - A/B testing capabilities
+   - User segment targeting
+   - Kill switches for problematic features
+   - Performance impact monitoring
+
+2. Update Management:
+   - Automatic update notifications
+   - Version compatibility checks
+   - Migration scripts
+   - Rollback procedures
+   - Update scheduling
+
+3. Configuration Management:
+   - Environment-specific configurations
+   - Feature toggles
+   - API endpoint management
+   - Third-party service configuration
+   - Security policy updates
+
+4. Change Management:
+   - Change approval workflows
+   - Impact assessment
+   - User communication
+   - Training updates
+   - Documentation updates
+
+Create version control utilities, feature flag management, and update procedures.
+```
+
+### 24. Long-term Maintenance
+
+```
+Plan for long-term maintenance and evolution:
+
+1. Code Maintenance:
+   - Regular dependency updates
+   - Security vulnerability patches
+   - Performance optimizations
+   - Code refactoring
+   - Technical debt management
+
+2. Feature Evolution:
+   - User feedback integration
+   - Market trend analysis
+   - Competitive feature analysis
+   - Innovation roadmap
+   - Deprecation planning
+
+3. Scalability Planning:
+   - Load testing
+   - Performance benchmarking
+   - Infrastructure scaling
+   - Database optimization
+   - CDN optimization
+
+4. Support Systems:
+   - Help desk integration
+   - Bug reporting system
+   - Feature request tracking
+   - User feedback collection
+   - Community forums
+
+Establish maintenance schedules, monitoring systems, and evolution planning processes.
+```
+
+---
+
+## Usage Guidelines
+
+### How to Use These Prompts
+
+1. **Sequential Development**: Use prompts in order for systematic development
+2. **Customization**: Adapt prompts to your specific requirements
+3. **Integration**: Combine multiple prompts for complex features
+4. **Iteration**: Refine implementations based on feedback
+5. **Documentation**: Keep track of implemented features
+
+### Best Practices
+
+1. **Start with Core Features**: Begin with authentication and basic functionality
+2. **Iterate Quickly**: Build MVPs and gather feedback
+3. **Test Thoroughly**: Implement testing at each stage
+4. **Monitor Performance**: Track metrics and optimize continuously
+5. **Stay Compliant**: Ensure HIPAA compliance throughout development
+
+### Prompt Customization
+
+- Replace placeholder values with your specific requirements
+- Adjust technical specifications based on your stack
+- Modify UI/UX requirements for your brand
+- Update compliance requirements for your jurisdiction
+- Scale complexity based on your timeline and resources
+
+---
+
+This comprehensive collection of prompts provides a structured approach to building a sophisticated AI-powered visit transcript analysis platform while maintaining high standards for security, accessibility, and healthcare compliance.

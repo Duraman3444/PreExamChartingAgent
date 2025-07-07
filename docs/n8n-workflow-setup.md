@@ -1,27 +1,28 @@
-# n8n Workflow Setup Guide 🔧
+# n8n AI Analysis Workflow Setup Guide 🤖
 
-*Complete setup and configuration guide for n8n workflow automation in the Pre-Examination Charting Agent.*
+*Complete setup and configuration guide for n8n AI analysis workflows in the Visit Transcript Analysis & Diagnosis Assistance platform.*
 
 ---
 
 ## Overview
 
-This guide provides step-by-step instructions for setting up, configuring, and managing n8n workflows for automated visit transcript processing and EHR integration in the medical charting application.
+This guide provides step-by-step instructions for setting up, configuring, and managing n8n workflows for automated AI-powered visit transcript analysis, symptom extraction, differential diagnosis, and treatment recommendations.
 
 ## Prerequisites
 
 ### System Requirements
 - **n8n Version**: 1.0.0 or higher
 - **Node.js**: 18.x or higher
-- **Memory**: Minimum 2GB RAM
-- **Storage**: 5GB free space
-- **Network**: Stable internet connection for API calls
+- **Memory**: Minimum 4GB RAM (for AI processing)
+- **Storage**: 10GB free space (for transcript files)
+- **Network**: Stable internet connection for AI API calls
 
 ### Required API Keys and Credentials
-- **OpenAI API Key**: For GPT-4o-mini integration
-- **EHR System API**: Authentication credentials for your EHR system
-- **Slack Bot Token**: For notification integration
-- **Firebase Admin SDK**: For database operations (optional)
+- **OpenAI API Key**: For GPT-4 medical analysis
+- **Firebase Admin SDK**: For database operations and file storage
+- **Speech-to-Text API**: Google Cloud or Azure (for audio transcription)
+- **Slack Bot Token**: For provider notifications (optional)
+- **Email Service**: SendGrid or similar for alerts
 
 ---
 
@@ -29,13 +30,13 @@ This guide provides step-by-step instructions for setting up, configuring, and m
 
 ### 1. Install n8n
 
-#### Option A: Docker (Recommended)
+#### Option A: Docker (Recommended for AI Workflows)
 ```bash
-# Create n8n directory
-mkdir n8n-medical-workflows
-cd n8n-medical-workflows
+# Create n8n AI analysis directory
+mkdir n8n-ai-medical-analysis
+cd n8n-ai-medical-analysis
 
-# Create docker-compose.yml
+# Create docker-compose.yml with increased resources
 cat > docker-compose.yml << 'EOF'
 version: '3.8'
 
@@ -54,8 +55,17 @@ services:
       - N8N_PROTOCOL=http
       - WEBHOOK_URL=http://localhost:5678/
       - N8N_METRICS=true
+      - N8N_DEFAULT_EXECUTION_TIMEOUT=1800
+      - N8N_MAX_EXECUTION_TIMEOUT=3600
     volumes:
       - n8n_data:/home/node/.n8n
+      - ./transcript-files:/tmp/transcripts
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
 
 volumes:
   n8n_data:
@@ -71,6 +81,10 @@ docker-compose up -d
 # Install n8n globally
 npm install -g n8n
 
+# Set environment variables for AI processing
+export N8N_DEFAULT_EXECUTION_TIMEOUT=1800
+export N8N_MAX_EXECUTION_TIMEOUT=3600
+
 # Start n8n
 n8n start
 
@@ -81,10 +95,11 @@ n8n start
 
 1. **Access n8n Interface**: Open http://localhost:5678
 2. **Create Admin Account**: Set up your admin credentials
-3. **Configure Basic Settings**:
+3. **Configure AI Settings**:
    - Set timezone to your healthcare facility's timezone
    - Configure webhook base URL
-   - Set up execution timeout (300 seconds recommended)
+   - Set up execution timeout (1800 seconds for AI processing)
+   - Enable error workflows for failed AI analyses
 
 ---
 
@@ -96,174 +111,369 @@ n8n start
 2. Click **Add Credential**
 3. Select **OpenAI**
 4. Enter your OpenAI API key
-5. Test the connection
-6. Save as "OpenAI-Medical"
+5. Test the connection with a simple prompt
+6. Save as "OpenAI-Medical-AI"
 
-### 2. HTTP Authentication (EHR System)
-
-1. Add new credential
-2. Select **HTTP Header Auth** or **HTTP Basic Auth**
-3. Configure based on your EHR system:
-   - **Header Auth**: Authorization: Bearer {your-token}
-   - **Basic Auth**: Username and password
-4. Save as "EHR-System-Auth"
-
-### 3. Slack Integration
+### 2. Firebase Admin SDK
 
 1. Add new credential
-2. Select **Slack**
-3. Enter your Slack Bot Token
-4. Select the workspace
-5. Test the connection
-6. Save as "Slack-Medical-Notifications"
+2. Select **Google Service Account**
+3. Upload your Firebase Admin SDK JSON file
+4. Configure project settings
+5. Test database connection
+6. Save as "Firebase-Medical-DB"
+
+### 3. Google Cloud Speech-to-Text
+
+1. Add new credential
+2. Select **Google Cloud**
+3. Upload service account JSON
+4. Configure speech API settings
+5. Test with sample audio
+6. Save as "Google-Speech-AI"
+
+### 4. Azure Cognitive Services (Alternative)
+
+1. Add new credential
+2. Select **HTTP Header Auth**
+3. Add header: `Ocp-Apim-Subscription-Key: {your-key}`
+4. Configure endpoint URL
+5. Save as "Azure-Speech-AI"
 
 ---
 
-## Workflow Import and Configuration
+## Core AI Analysis Workflows
 
-### 1. Import the Medical Workflow
+### 1. Transcript Processing Workflow
 
-1. **Create New Workflow**: Click the "+" button
-2. **Import Workflow**: Use the JSON provided in `docs/automation-workflows.md`
-3. **Configure Nodes**: Update each node with your specific settings
+#### Workflow Overview
+```mermaid
+flowchart TD
+    A[Webhook: File Upload] --> B[Validate File]
+    B --> C{File Type?}
+    C -->|Audio| D[Speech-to-Text]
+    C -->|Text| E[Text Validation]
+    D --> F[Speaker Identification]
+    E --> F
+    F --> G[Save to Database]
+    G --> H[Trigger AI Analysis]
+```
 
-### 2. Node Configuration Details
+#### Node Configuration
 
-#### Webhook Trigger Node
+**Webhook Trigger Node**
 ```json
 {
   "parameters": {
     "httpMethod": "POST",
-    "path": "patient-charting",
+    "path": "transcript-upload",
     "responseMode": "onReceived",
     "options": {
-      "rawBody": true
+      "rawBody": true,
+      "allowedOrigins": "https://your-app-domain.com"
     }
   }
 }
 ```
 
-**Configuration Steps:**
-1. Set the webhook path to `patient-charting`
-2. Configure authentication if needed
-3. Note the webhook URL for your EHR system
+**File Validation Node**
+```javascript
+// JavaScript code for file validation
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const ALLOWED_AUDIO_TYPES = ['audio/mp3', 'audio/wav', 'audio/m4a', 'audio/mp4'];
+const ALLOWED_TEXT_TYPES = ['text/plain', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 
-#### Get Visit Transcript Node
+const file = $input.first().json;
+const fileSize = file.size;
+const fileType = file.type;
+
+if (fileSize > MAX_FILE_SIZE) {
+  throw new Error('File size exceeds 50MB limit');
+}
+
+if (!ALLOWED_AUDIO_TYPES.includes(fileType) && !ALLOWED_TEXT_TYPES.includes(fileType)) {
+  throw new Error('Unsupported file type');
+}
+
+return [{
+  json: {
+    ...file,
+    isAudio: ALLOWED_AUDIO_TYPES.includes(fileType),
+    isText: ALLOWED_TEXT_TYPES.includes(fileType),
+    validated: true
+  }
+}];
+```
+
+**Speech-to-Text Node (Google Cloud)**
 ```json
 {
   "parameters": {
-    "authentication": "predefinedCredentialType",
-    "nodeCredentialType": "httpHeaderAuth",
-    "url": "={{ $json.ehrApiUrl }}/patients/{{$json.patientId}}/visits/{{$json.visitId}}/transcript",
+    "authentication": "serviceAccount",
+    "resource": "speech",
+    "operation": "recognize",
     "options": {
-      "timeout": 30000
+      "config": {
+        "encoding": "MP3",
+        "sampleRateHertz": 16000,
+        "languageCode": "en-US",
+        "model": "medical_conversation",
+        "useEnhanced": true,
+        "enableSpeakerDiarization": true,
+        "diarizationSpeakerCount": 2
+      },
+      "audio": {
+        "content": "={{ $json.audioBase64 }}"
+      }
     }
   }
 }
 ```
 
-**Configuration Steps:**
-1. Select your EHR system credentials
-2. Update the URL pattern to match your EHR API
-3. Set appropriate timeout values
+### 2. AI Analysis Workflow
 
-#### OpenAI Summarization Node
+#### Symptom Extraction Node
 ```json
 {
   "parameters": {
-    "model": "gpt-4o-mini",
+    "model": "gpt-4",
     "temperature": 0.2,
-    "maxTokens": 1000,
+    "maxTokens": 2000,
     "messages": [
       {
         "role": "system",
-        "content": "You are a medical assistant. Summarize the patient visit transcript and provide concise chart notes and next nursing steps. Format your response with clear sections: VISIT SUMMARY, KEY FINDINGS, NEXT STEPS."
+        "content": "You are a medical AI assistant specializing in clinical symptom analysis. Extract all symptoms mentioned by the patient from the visit transcript. For each symptom, provide: 1) Symptom name (standardized medical terminology), 2) Severity (mild/moderate/severe) if mentioned, 3) Duration (onset and how long present), 4) Frequency (constant, intermittent, specific timing), 5) Context (triggers, relieving factors, associated symptoms), 6) Source text (exact quote from transcript), 7) Confidence score (0.0-1.0) for accuracy of extraction. Format as structured JSON. Only extract symptoms explicitly mentioned by the patient."
       },
       {
         "role": "user",
-        "content": "={{$node[\"Extract Transcript\"].json.transcript}}"
+        "content": "Transcript: {{ $json.transcript }}"
       }
     ]
   }
 }
 ```
 
-**Configuration Steps:**
-1. Select your OpenAI credentials
-2. Adjust temperature and max tokens as needed
-3. Customize the system prompt for your specific needs
+#### Medical History Parsing Node
+```json
+{
+  "parameters": {
+    "model": "gpt-4",
+    "temperature": 0.2,
+    "maxTokens": 1500,
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a medical AI assistant. Extract medical history from the patient visit transcript. Identify and categorize: 1) Current medications with dosages, 2) Known allergies and reactions, 3) Past medical conditions and surgeries, 4) Family history of diseases, 5) Social history (smoking, alcohol, exercise), 6) Review of systems findings. Format as structured JSON with confidence scores for each extraction."
+      },
+      {
+        "role": "user",
+        "content": "Transcript: {{ $json.transcript }}"
+      }
+    ]
+  }
+}
+```
 
-#### EHR Update Node
+#### Differential Diagnosis Node
+```json
+{
+  "parameters": {
+    "model": "gpt-4",
+    "temperature": 0.3,
+    "maxTokens": 2500,
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are an expert clinician providing differential diagnosis based on patient presentation. Given the extracted symptoms and patient history, generate a comprehensive differential diagnosis. For each potential diagnosis provide: 1) Condition name and ICD-10 code, 2) Probability score (0.0-1.0) based on symptom fit, 3) Supporting evidence from the case, 4) Contradicting factors or missing symptoms, 5) Additional tests/workup needed, 6) Clinical reasoning (2-3 sentences). Rank diagnoses by probability and include 5-8 most likely conditions."
+      },
+      {
+        "role": "user",
+        "content": "Symptoms: {{ $node['Symptom Extraction'].json.symptoms }}\nPatient History: {{ $node['Medical History'].json.history }}"
+      }
+    ]
+  }
+}
+```
+
+#### Treatment Recommendations Node
+```json
+{
+  "parameters": {
+    "model": "gpt-4",
+    "temperature": 0.2,
+    "maxTokens": 2000,
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a clinical decision support AI providing evidence-based treatment recommendations. Based on the differential diagnosis and patient information, provide treatment recommendations for the most likely conditions. Include: 1) First-line treatments with evidence level, 2) Alternative options and their indications, 3) Contraindications based on patient history, 4) Monitoring requirements, 5) Follow-up timeline and specialist referrals, 6) Patient education points. Consider patient allergies, current medications, and comorbidities."
+      },
+      {
+        "role": "user",
+        "content": "Diagnosis: {{ $node['Differential Diagnosis'].json.primaryDiagnosis }}\nPatient Allergies: {{ $node['Medical History'].json.allergies }}\nCurrent Medications: {{ $node['Medical History'].json.medications }}"
+      }
+    ]
+  }
+}
+```
+
+#### Risk Assessment Node
+```json
+{
+  "parameters": {
+    "model": "gpt-4",
+    "temperature": 0.1,
+    "maxTokens": 1500,
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a medical safety AI assistant. Analyze the patient case for critical red flags and safety concerns. Identify: 1) Red flag symptoms requiring immediate attention, 2) Drug interactions and contraindications, 3) Allergy concerns with proposed treatments, 4) Urgent specialist referrals needed, 5) Critical monitoring requirements. For each concern, provide: severity level (low/medium/high/critical), immediate action required, and clinical reasoning. Prioritize patient safety above all."
+      },
+      {
+        "role": "user",
+        "content": "Symptoms: {{ $node['Symptom Extraction'].json.symptoms }}\nDiagnosis: {{ $node['Differential Diagnosis'].json.diagnoses }}\nTreatments: {{ $node['Treatment Recommendations'].json.treatments }}\nHistory: {{ $node['Medical History'].json.history }}"
+      }
+    ]
+  }
+}
+```
+
+### 3. Data Storage and Notification Workflow
+
+#### Save Analysis Results Node (Firebase)
+```javascript
+// JavaScript code to save analysis results
+const analysisData = {
+  visitId: $json.visitId,
+  patientId: $json.patientId,
+  timestamp: new Date().toISOString(),
+  extractedSymptoms: $node['Symptom Extraction'].json.symptoms,
+  medicalHistory: $node['Medical History'].json.history,
+  differentialDiagnosis: $node['Differential Diagnosis'].json.diagnoses,
+  treatmentRecommendations: $node['Treatment Recommendations'].json.treatments,
+  riskAssessment: $node['Risk Assessment'].json.risks,
+  status: 'completed',
+  aiModel: 'gpt-4',
+  processingTime: Date.now() - $json.startTime,
+  confidenceScore: calculateOverallConfidence($node['Symptom Extraction'].json, $node['Differential Diagnosis'].json)
+};
+
+// Save to Firestore
+const docRef = await $firebase.firestore().collection('ai-analysis').add(analysisData);
+
+return [{
+  json: {
+    ...analysisData,
+    analysisId: docRef.id,
+    success: true
+  }
+}];
+
+function calculateOverallConfidence(symptoms, diagnoses) {
+  const symptomConfidence = symptoms.reduce((sum, s) => sum + s.confidence, 0) / symptoms.length;
+  const diagnosisConfidence = diagnoses.reduce((sum, d) => sum + d.probability, 0) / diagnoses.length;
+  return (symptomConfidence + diagnosisConfidence) / 2;
+}
+```
+
+#### Provider Notification Node
 ```json
 {
   "parameters": {
     "authentication": "predefinedCredentialType",
-    "nodeCredentialType": "httpHeaderAuth",
-    "url": "={{ $json.ehrApiUrl }}/patients/{{$json.patientId}}/visits/{{$json.visitId}}/chart",
-    "method": "PATCH",
-    "sendBody": true,
-    "bodyContentType": "json",
-    "jsonBody": "={{ { \"chartNotes\": $json.chartSummary, \"nursingInstructions\": $json.nextSteps, \"processedAt\": new Date().toISOString() } }}"
+    "nodeCredentialType": "slackApi",
+    "resource": "message",
+    "operation": "post",
+    "channel": "#provider-notifications",
+    "text": "🔬 AI Analysis Complete\n\n📋 Patient: {{ $json.patientId }}\n🎯 Top Diagnosis: {{ $node['Differential Diagnosis'].json.primaryDiagnosis }}\n📊 Confidence: {{ Math.round($json.confidenceScore * 100) }}%\n⚠️ Risk Flags: {{ $node['Risk Assessment'].json.criticalFlags.length }}\n\n👉 Review at: https://your-app.com/analysis/{{ $json.analysisId }}"
   }
 }
 ```
-
-**Configuration Steps:**
-1. Configure EHR system authentication
-2. Update API endpoints to match your EHR
-3. Adjust payload structure as needed
-
-#### Slack Notification Node
-```json
-{
-  "parameters": {
-    "authentication": "oAuth2",
-    "channel": "#nursing-updates",
-    "text": "📋 Patient {{$json.patientId}} visit {{$json.visitId}} chart updated.\n\n*Next nursing steps:*\n{{$json.nextSteps}}\n\n_Processed automatically at {{new Date().toLocaleString()}}_",
-    "otherOptions": {
-      "includeLinkToWorkflow": true
-    }
-  }
-}
-```
-
-**Configuration Steps:**
-1. Select your Slack credentials
-2. Configure the target channel
-3. Customize message templates
 
 ---
 
-## Testing and Validation
+## Error Handling and Monitoring
 
-### 1. Test Webhook Endpoint
+### 1. Error Workflow Setup
 
-```bash
-# Test webhook trigger
-curl -X POST http://localhost:5678/webhook/patient-charting \
-  -H "Content-Type: application/json" \
-  -d '{
-    "patientId": "12345",
-    "visitId": "67890",
-    "ehrApiUrl": "https://your-ehr-system.com/api"
-  }'
+Create a separate error handling workflow:
+
+```javascript
+// Error categorization and handling
+const error = $json.error;
+const workflowId = $json.workflowId;
+const nodeId = $json.nodeId;
+
+let errorCategory = 'unknown';
+let retryable = false;
+let notificationLevel = 'info';
+
+if (error.message.includes('rate limit')) {
+  errorCategory = 'rate_limit';
+  retryable = true;
+  notificationLevel = 'warning';
+} else if (error.message.includes('timeout')) {
+  errorCategory = 'timeout';
+  retryable = true;
+  notificationLevel = 'warning';
+} else if (error.message.includes('OpenAI')) {
+  errorCategory = 'ai_service';
+  retryable = true;
+  notificationLevel = 'error';
+} else if (error.message.includes('Firebase')) {
+  errorCategory = 'database';
+  retryable = false;
+  notificationLevel = 'critical';
+}
+
+// Log error to database
+await $firebase.firestore().collection('error-logs').add({
+  timestamp: new Date().toISOString(),
+  workflowId,
+  nodeId,
+  errorCategory,
+  errorMessage: error.message,
+  retryable,
+  notificationLevel
+});
+
+return [{
+  json: {
+    errorCategory,
+    retryable,
+    notificationLevel,
+    errorMessage: error.message
+  }
+}];
 ```
 
-### 2. Test Individual Nodes
+### 2. Performance Monitoring
 
-1. **Manual Execution**: Use n8n's manual execution feature
-2. **Test Data**: Create sample patient data for testing
-3. **Debug Mode**: Enable debug mode to see data flow
-4. **Error Handling**: Test error scenarios
+```javascript
+// Performance metrics collection
+const metrics = {
+  timestamp: new Date().toISOString(),
+  workflowId: $json.workflowId,
+  totalProcessingTime: $json.endTime - $json.startTime,
+  nodeMetrics: {
+    speechToText: $node['Speech-to-Text'].json.processingTime,
+    symptomExtraction: $node['Symptom Extraction'].json.processingTime,
+    differentialDiagnosis: $node['Differential Diagnosis'].json.processingTime,
+    treatmentRecommendations: $node['Treatment Recommendations'].json.processingTime,
+    riskAssessment: $node['Risk Assessment'].json.processingTime
+  },
+  aiTokensUsed: calculateTotalTokens(),
+  confidenceScores: {
+    symptoms: $node['Symptom Extraction'].json.avgConfidence,
+    diagnosis: $node['Differential Diagnosis'].json.avgProbability,
+    overall: $json.overallConfidence
+  }
+};
 
-### 3. Validation Checklist
+// Save metrics for analysis
+await $firebase.firestore().collection('performance-metrics').add(metrics);
 
-- [ ] Webhook receives and processes requests
-- [ ] EHR API connections work correctly
-- [ ] OpenAI integration produces quality summaries
-- [ ] Slack notifications are delivered
-- [ ] Error handling works as expected
-- [ ] Performance meets requirements (< 60 seconds total)
+return [{ json: metrics }];
+```
 
 ---
 
@@ -271,163 +481,105 @@ curl -X POST http://localhost:5678/webhook/patient-charting \
 
 ### 1. Environment Configuration
 
-Create production environment variables:
-
 ```bash
-# .env file for production
-N8N_BASIC_AUTH_ACTIVE=true
-N8N_BASIC_AUTH_USER=admin
-N8N_BASIC_AUTH_PASSWORD=your_secure_production_password
-N8N_HOST=your-domain.com
-N8N_PORT=443
-N8N_PROTOCOL=https
-WEBHOOK_URL=https://your-domain.com/
-N8N_METRICS=true
-N8N_LOG_LEVEL=info
-N8N_EXECUTIONS_TIMEOUT=300
-N8N_EXECUTIONS_TIMEOUT_MAX=600
+# Production environment variables
+export N8N_HOST=your-domain.com
+export N8N_PROTOCOL=https
+export N8N_PORT=443
+export N8N_BASIC_AUTH_ACTIVE=false  # Use proper authentication
+export N8N_JWT_AUTH_ACTIVE=true
+export N8N_ENCRYPTION_KEY=your-secure-encryption-key
+export WEBHOOK_URL=https://your-domain.com/
+export N8N_METRICS=true
+export N8N_LOG_LEVEL=info
+export N8N_DEFAULT_EXECUTION_TIMEOUT=1800
+export N8N_MAX_EXECUTION_TIMEOUT=3600
 ```
 
-### 2. SSL/TLS Configuration
+### 2. Docker Production Setup
 
 ```yaml
-# docker-compose.prod.yml
 version: '3.8'
 
 services:
   n8n:
     image: n8nio/n8n:latest
     restart: unless-stopped
-    ports:
-      - "443:5678"
     environment:
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}
       - N8N_HOST=${N8N_HOST}
-      - N8N_PORT=5678
       - N8N_PROTOCOL=https
+      - N8N_PORT=443
       - WEBHOOK_URL=https://${N8N_HOST}/
+      - N8N_JWT_AUTH_ACTIVE=true
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       - N8N_METRICS=true
+      - N8N_LOG_LEVEL=info
+      - N8N_DEFAULT_EXECUTION_TIMEOUT=1800
     volumes:
       - n8n_data:/home/node/.n8n
-      - ./ssl:/etc/ssl:ro
-    depends_on:
-      - postgres
+      - /etc/ssl/certs:/etc/ssl/certs:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8n.rule=Host(`${N8N_HOST}`)"
+      - "traefik.http.routers.n8n.tls=true"
+      - "traefik.http.routers.n8n.tls.certresolver=letsencrypt"
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
 
-  postgres:
-    image: postgres:15
-    restart: unless-stopped
-    environment:
-      - POSTGRES_USER=n8n
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=n8n
+  traefik:
+    image: traefik:v2.9
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=your-email@domain.com"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "letsencrypt_data:/letsencrypt"
 
 volumes:
   n8n_data:
-  postgres_data:
+  letsencrypt_data:
 ```
 
-### 3. Database Configuration
+### 3. Security Configuration
 
-For production, configure PostgreSQL:
+```javascript
+// IP allowlist for webhook endpoints
+const ALLOWED_IPS = [
+  '192.168.1.0/24',    // Internal network
+  '10.0.0.0/8',        // Private network
+  'your-app-server-ip'  // Application server
+];
 
-```bash
-# Add to environment variables
-DB_TYPE=postgresdb
-DB_POSTGRESDB_HOST=postgres
-DB_POSTGRESDB_PORT=5432
-DB_POSTGRESDB_DATABASE=n8n
-DB_POSTGRESDB_USER=n8n
-DB_POSTGRESDB_PASSWORD=your_secure_db_password
-```
+const clientIP = $request.headers['x-forwarded-for'] || $request.connection.remoteAddress;
 
----
+if (!isIPAllowed(clientIP, ALLOWED_IPS)) {
+  $response.status(403).json({ error: 'Access denied' });
+  return;
+}
 
-## Monitoring and Maintenance
-
-### 1. Health Monitoring
-
-Create a health check workflow:
-
-```json
-{
-  "name": "Health Check",
-  "nodes": [
-    {
-      "parameters": {
-        "cron": "*/5 * * * *",
-        "triggerAtStartup": true
-      },
-      "name": "Every 5 minutes",
-      "type": "n8n-nodes-base.cron",
-      "position": [240, 300]
-    },
-    {
-      "parameters": {
-        "url": "http://localhost:5678/healthz",
-        "options": {}
-      },
-      "name": "Health Check",
-      "type": "n8n-nodes-base.httpRequest",
-      "position": [440, 300]
+function isIPAllowed(ip, allowedRanges) {
+  // Implementation for IP range checking
+  return allowedRanges.some(range => {
+    if (range.includes('/')) {
+      return isIPInCIDR(ip, range);
     }
-  ]
+    return ip === range;
+  });
 }
 ```
-
-### 2. Performance Monitoring
-
-Key metrics to monitor:
-- **Execution Time**: Average workflow execution time
-- **Success Rate**: Percentage of successful executions
-- **Error Rate**: Failed executions per hour
-- **API Response Times**: EHR and OpenAI API performance
-
-### 3. Alerting Setup
-
-Configure alerts for:
-- Workflow failures
-- API timeouts
-- High error rates
-- System resource usage
-
-### 4. Log Management
-
-```bash
-# View n8n logs
-docker-compose logs -f n8n
-
-# Export logs for analysis
-docker-compose logs n8n > n8n-logs.txt
-```
-
----
-
-## Security Considerations
-
-### 1. Access Control
-
-- **Authentication**: Always enable basic auth or OAuth
-- **Network Security**: Use VPN or private networks
-- **Credential Management**: Rotate API keys regularly
-- **Audit Logging**: Enable comprehensive logging
-
-### 2. Data Protection
-
-- **Encryption**: Encrypt data in transit and at rest
-- **PHI Handling**: Ensure HIPAA compliance
-- **Data Retention**: Configure appropriate retention policies
-- **Backup Security**: Secure backup storage
-
-### 3. Compliance
-
-- **HIPAA**: Ensure all data handling meets HIPAA requirements
-- **Audit Trails**: Maintain complete audit logs
-- **Data Minimization**: Process only necessary data
-- **Access Logs**: Log all access to patient data
 
 ---
 
@@ -435,260 +587,59 @@ docker-compose logs n8n > n8n-logs.txt
 
 ### Common Issues
 
-#### 1. Webhook Not Triggering
-- **Check URL**: Verify webhook URL is correct
-- **Check Authentication**: Ensure proper auth headers
-- **Check Payload**: Verify JSON structure
-- **Check Logs**: Review n8n execution logs
+1. **AI API Rate Limits**
+   - Implement exponential backoff
+   - Use multiple API keys with load balancing
+   - Monitor usage and set alerts
 
-#### 2. EHR API Connection Failures
-- **Check Credentials**: Verify API keys and tokens
-- **Check Network**: Ensure n8n can reach EHR system
-- **Check Rate Limits**: Verify API rate limit compliance
-- **Check Timeouts**: Increase timeout values if needed
+2. **Large File Processing**
+   - Chunk audio files for processing
+   - Implement streaming for real-time analysis
+   - Use compression for transcript storage
 
-#### 3. OpenAI API Errors
-- **Check API Key**: Verify OpenAI API key validity
-- **Check Usage**: Monitor API usage limits
-- **Check Model**: Ensure model availability
-- **Check Prompt**: Verify prompt length and format
+3. **Memory Issues**
+   - Increase Docker container memory
+   - Optimize JSON payload sizes
+   - Implement garbage collection
 
-#### 4. Slack Notification Failures
-- **Check Bot Token**: Verify Slack bot token
-- **Check Permissions**: Ensure bot has channel permissions
-- **Check Channel**: Verify channel exists
-- **Check Message Format**: Ensure valid message structure
+4. **Network Timeouts**
+   - Increase timeout values for AI nodes
+   - Implement retry logic with delays
+   - Use webhook responses for long-running processes
 
-### Debug Process
-
-1. **Enable Debug Mode**: Turn on detailed logging
-2. **Check Execution History**: Review past executions
-3. **Test Individual Nodes**: Isolate problematic nodes
-4. **Review Error Messages**: Analyze error details
-5. **Check External Services**: Verify third-party service status
-
----
-
-## Workflow Optimization
-
-### 1. Performance Optimization
-
-- **Parallel Processing**: Use parallel branches where possible
-- **Caching**: Implement result caching for repeated requests
-- **Batch Processing**: Process multiple items together
-- **Resource Limits**: Configure appropriate resource limits
-
-### 2. Error Handling
-
-```json
-{
-  "parameters": {
-    "rules": [
-      {
-        "type": "expression",
-        "expression": "{{ $json.error }}",
-        "output": 1
-      }
-    ]
-  },
-  "name": "Error Handling",
-  "type": "n8n-nodes-base.if",
-  "position": [640, 300]
-}
-```
-
-### 3. Retry Logic
-
-```json
-{
-  "parameters": {
-    "maxTries": 3,
-    "waitBetweenTries": 1000,
-    "errorOutput": "continue"
-  },
-  "name": "Retry on Failure",
-  "type": "n8n-nodes-base.httpRequest",
-  "position": [840, 300]
-}
-```
-
----
-
-## Advanced Configuration
-
-### 1. Custom Functions
-
-Create custom JavaScript functions for complex data processing:
+### Monitoring and Alerts
 
 ```javascript
-// Custom data transformation function
-function transformMedicalData(items) {
-  return items.map(item => ({
-    patientId: item.json.patientId,
-    visitId: item.json.visitId,
-    summary: item.json.transcript.substring(0, 500),
-    priority: calculatePriority(item.json),
-    processedAt: new Date().toISOString()
-  }));
-}
+// Health check endpoint
+const healthCheck = {
+  timestamp: new Date().toISOString(),
+  services: {
+    openai: await checkOpenAIHealth(),
+    firebase: await checkFirebaseHealth(),
+    speechToText: await checkSpeechAPIHealth()
+  },
+  metrics: {
+    activeWorkflows: await getActiveWorkflowCount(),
+    avgProcessingTime: await getAverageProcessingTime(),
+    errorRate: await getErrorRate()
+  }
+};
 
-function calculatePriority(data) {
-  // Implement priority calculation logic
-  const urgentKeywords = ['emergency', 'critical', 'urgent'];
-  const summary = data.transcript.toLowerCase();
+// Alert if any service is down or performance degrades
+if (healthCheck.services.openai === false || 
+    healthCheck.metrics.errorRate > 0.05 ||
+    healthCheck.metrics.avgProcessingTime > 300) {
   
-  return urgentKeywords.some(keyword => 
-    summary.includes(keyword)
-  ) ? 'high' : 'normal';
+  await sendAlert({
+    level: 'critical',
+    message: 'AI Analysis Pipeline Health Check Failed',
+    details: healthCheck
+  });
 }
 
-return transformMedicalData($input.all());
-```
-
-### 2. Conditional Logic
-
-```json
-{
-  "parameters": {
-    "conditions": {
-      "string": [
-        {
-          "value1": "={{$json.priority}}",
-          "operation": "equal",
-          "value2": "high"
-        }
-      ]
-    }
-  },
-  "name": "Check Priority",
-  "type": "n8n-nodes-base.if",
-  "position": [1040, 300]
-}
-```
-
-### 3. Dynamic Routing
-
-Configure dynamic routing based on patient data:
-
-```json
-{
-  "parameters": {
-    "mode": "expression",
-    "output": "={{$json.department === 'emergency' ? 0 : 1}}"
-  },
-  "name": "Route by Department",
-  "type": "n8n-nodes-base.switch",
-  "position": [1240, 300]
-}
+return [{ json: healthCheck }];
 ```
 
 ---
 
-## Backup and Recovery
-
-### 1. Workflow Backup
-
-```bash
-# Export all workflows
-curl -X GET "http://localhost:5678/api/v1/workflows" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  > workflows-backup.json
-
-# Export specific workflow
-curl -X GET "http://localhost:5678/api/v1/workflows/1" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  > workflow-1-backup.json
-```
-
-### 2. Database Backup
-
-```bash
-# PostgreSQL backup
-docker exec postgres pg_dump -U n8n n8n > n8n-backup.sql
-
-# Restore from backup
-docker exec -i postgres psql -U n8n n8n < n8n-backup.sql
-```
-
-### 3. Credential Backup
-
-**Important**: Store credentials securely and separately from workflow backups.
-
----
-
-## Integration with Medical Systems
-
-### 1. HL7 FHIR Integration
-
-```json
-{
-  "parameters": {
-    "url": "https://fhir.ehr-system.com/Patient/{{$json.patientId}}",
-    "authentication": "predefinedCredentialType",
-    "nodeCredentialType": "httpHeaderAuth",
-    "options": {
-      "headers": {
-        "Accept": "application/fhir+json",
-        "Content-Type": "application/fhir+json"
-      }
-    }
-  },
-  "name": "FHIR Patient Lookup",
-  "type": "n8n-nodes-base.httpRequest"
-}
-```
-
-### 2. Medical Device Integration
-
-```json
-{
-  "parameters": {
-    "url": "https://device-api.hospital.com/vitals/{{$json.deviceId}}",
-    "authentication": "predefinedCredentialType",
-    "options": {
-      "headers": {
-        "X-Device-Token": "{{$credentials.deviceToken}}"
-      }
-    }
-  },
-  "name": "Get Device Data",
-  "type": "n8n-nodes-base.httpRequest"
-}
-```
-
----
-
-## Compliance and Audit
-
-### 1. Audit Logging
-
-Enable comprehensive audit logging:
-
-```json
-{
-  "parameters": {
-    "functionCode": "// Log all workflow executions\nconst auditLog = {\n  workflowId: $workflow.id,\n  executionId: $execution.id,\n  patientId: $json.patientId,\n  action: 'transcript_processing',\n  timestamp: new Date().toISOString(),\n  user: $json.userId,\n  result: 'success'\n};\n\n// Send to audit system\nreturn [{json: auditLog}];"
-  },
-  "name": "Audit Logger",
-  "type": "n8n-nodes-base.function"
-}
-```
-
-### 2. Data Retention
-
-Configure automatic data cleanup:
-
-```json
-{
-  "parameters": {
-    "cron": "0 0 * * 0",
-    "triggerAtStartup": false
-  },
-  "name": "Weekly Cleanup",
-  "type": "n8n-nodes-base.cron"
-}
-```
-
----
-
-This comprehensive guide provides everything needed to set up, configure, and maintain n8n workflows for the medical charting application. Regular updates to this document will ensure it remains current with evolving requirements and best practices. 
+This comprehensive setup guide enables robust, scalable AI-powered visit transcript analysis with proper error handling, monitoring, and production deployment capabilities. 
