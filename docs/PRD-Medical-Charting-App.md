@@ -464,7 +464,6 @@ The phased development approach ensures that critical functionality is delivered
 
 **Document Control:**
 - **Created by**: PreExamChartingAgent Development Team
-- **Last Updated**: January 2025
-- **Next Review**: March 2025
+- **Last Updated**: July 2025
 - **Approved by**: [Pending]
 - **Distribution**: Development Team, Stakeholders, Healthcare Advisors 
