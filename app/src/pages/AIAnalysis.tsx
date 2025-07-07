@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -66,9 +66,11 @@ import {
   ThumbUp as ThumbUpIcon,
   ThumbDown as ThumbDownIcon,
   Schedule as ScheduleIcon,
+  Send as SendIcon,
+  Clear as ClearIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
-import type { AIAnalysis, DiagnosisOption, TreatmentRecommendation, ExtractedSymptom, ConcernFlag, FollowUpRecommendation } from '@/types';
+import type { AIAnalysis } from '@/types';
 import { openAIService } from '@/services/openai';
 
 // Mock data - in a real app, this would come from your backend
@@ -323,7 +325,7 @@ const TranscriptAnalyzer: React.FC<TranscriptAnalyzerProps> = ({ open, onClose, 
   );
 };
 
-export const AIAnalysis: React.FC = () => {
+export default function AIAnalysisPage() {
   const [analyses, setAnalyses] = useState<AIAnalysis[]>(mockAnalyses);
   const [selectedAnalysis, setSelectedAnalysis] = useState<AIAnalysis | null>(analyses[0]);
   const [analyzerOpen, setAnalyzerOpen] = useState(false);
@@ -926,4 +928,4 @@ export const AIAnalysis: React.FC = () => {
       />
     </Box>
   );
-}; 
+} 
