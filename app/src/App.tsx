@@ -5,6 +5,8 @@ import { CssBaseline, Box, Typography, Card, CardContent } from '@mui/material';
 import { Layout } from '@/components/layout/Layout';
 import { Login } from '@/pages/Login';
 import { Dashboard } from '@/pages/Dashboard';
+import { Profile } from '@/pages/Profile';
+import { Settings } from '@/pages/Settings';
 import { useAuthStore } from '@/stores/authStore';
 import { ROUTES } from '@/constants';
 import { theme } from '@/theme/theme';
@@ -106,22 +108,7 @@ const VisitNotes = () => (
   </Box>
 );
 
-const Settings = () => {
-  return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Settings
-      </Typography>
-      <Card>
-        <CardContent>
-          <Typography variant="body1">
-            Application settings and preferences - Coming soon!
-          </Typography>
-        </CardContent>
-      </Card>
-    </Box>
-  );
-};
+
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -242,6 +229,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <VisitNotes />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.PROFILE}
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Profile />
                 </Layout>
               </ProtectedRoute>
             }

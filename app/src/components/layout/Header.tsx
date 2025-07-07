@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -20,6 +21,7 @@ import {
 } from '@mui/icons-material';
 import { useAuthStore } from '@/stores/authStore';
 import { useAppStore } from '@/stores/appStore';
+import { ROUTES } from '@/constants';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -28,6 +30,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { user, signOut } = useAuthStore();
   const { notifications } = useAppStore();
+  const navigate = useNavigate();
   const theme = useTheme();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
@@ -39,6 +42,16 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
   const handleMenuClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleProfileClick = () => {
+    navigate(ROUTES.PROFILE);
+    handleMenuClose();
+  };
+
+  const handleSettingsClick = () => {
+    navigate(ROUTES.SETTINGS);
+    handleMenuClose();
   };
 
   const handleSignOut = async () => {
@@ -107,11 +120,11 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             horizontal: 'right',
           }}
         >
-          <MenuItem onClick={handleMenuClose}>
+          <MenuItem onClick={handleProfileClick}>
             <AccountCircle sx={{ mr: 2 }} />
             Profile
           </MenuItem>
-          <MenuItem onClick={handleMenuClose}>
+          <MenuItem onClick={handleSettingsClick}>
             <Settings sx={{ mr: 2 }} />
             Settings
           </MenuItem>

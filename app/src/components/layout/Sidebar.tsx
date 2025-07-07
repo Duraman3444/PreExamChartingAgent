@@ -17,6 +17,7 @@ import {
   RecordVoiceOver,
   Psychology,
   Settings,
+  Person,
 } from '@mui/icons-material';
 import { ROUTES } from '@/constants';
 import { useAuthStore } from '@/stores/authStore';
@@ -101,7 +102,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
         <Divider />
         <List>
           <ListItem disablePadding>
-            <ListItemButton onClick={() => handleNavigation(ROUTES.SETTINGS)}>
+            <ListItemButton 
+              selected={location.pathname === ROUTES.PROFILE}
+              onClick={() => handleNavigation(ROUTES.PROFILE)}
+            >
+              <ListItemIcon>
+                <Person />
+              </ListItemIcon>
+              <ListItemText primary="Profile" />
+            </ListItemButton>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButton 
+              selected={location.pathname === ROUTES.SETTINGS}
+              onClick={() => handleNavigation(ROUTES.SETTINGS)}
+            >
               <ListItemIcon>
                 <Settings />
               </ListItemIcon>

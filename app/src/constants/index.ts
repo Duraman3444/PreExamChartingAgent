@@ -10,6 +10,7 @@ export const ROUTES = {
   TRANSCRIPT_UPLOAD: '/visits/:id/transcript',
   AI_ANALYSIS: '/ai-analysis',
   VISIT_NOTES: '/visits/:id/notes',
+  PROFILE: '/profile',
   SETTINGS: '/settings',
 } as const;
 
