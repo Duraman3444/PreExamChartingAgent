@@ -11,6 +11,14 @@ import {
   Avatar,
   Box,
   useTheme,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  ListItemSecondaryAction,
+  Divider,
+  Chip,
+  Button,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -18,6 +26,13 @@ import {
   AccountCircle,
   Settings,
   Logout,
+  Check,
+  Delete,
+  AccessTime,
+  Info,
+  Warning,
+  Error,
+  CheckCircle,
 } from '@mui/icons-material';
 import { useAuthStore } from '@/stores/authStore';
 import { useAppStore } from '@/stores/appStore';
@@ -29,34 +44,84 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { user, signOut } = useAuthStore();
-  const { notifications } = useAppStore();
+  const { notifications, markNotificationAsRead, removeNotification, clearNotifications } = useAppStore();
   const navigate = useNavigate();
   const theme = useTheme();
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [profileAnchorEl, setProfileAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [notificationAnchorEl, setNotificationAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
+    setProfileAnchorEl(event.currentTarget);
   };
 
-  const handleMenuClose = () => {
-    setAnchorEl(null);
+  const handleProfileMenuClose = () => {
+    setProfileAnchorEl(null);
+  };
+
+  const handleNotificationMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setNotificationAnchorEl(event.currentTarget);
+  };
+
+  const handleNotificationMenuClose = () => {
+    setNotificationAnchorEl(null);
   };
 
   const handleProfileClick = () => {
     navigate(ROUTES.PROFILE);
-    handleMenuClose();
+    handleProfileMenuClose();
   };
 
   const handleSettingsClick = () => {
     navigate(ROUTES.SETTINGS);
-    handleMenuClose();
+    handleProfileMenuClose();
   };
 
   const handleSignOut = async () => {
     await signOut();
-    handleMenuClose();
+    handleProfileMenuClose();
+  };
+
+  const handleMarkAsRead = (notificationId: string) => {
+    markNotificationAsRead(notificationId);
+  };
+
+  const handleRemoveNotification = (notificationId: string) => {
+    removeNotification(notificationId);
+  };
+
+  const handleClearAllNotifications = () => {
+    clearNotifications();
+    handleNotificationMenuClose();
+  };
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'success':
+        return <CheckCircle color="success" />;
+      case 'warning':
+        return <Warning color="warning" />;
+      case 'error':
+        return <Error color="error" />;
+      default:
+        return <Info color="info" />;
+    }
+  };
+
+  const formatTimestamp = (timestamp: Date) => {
+    const now = new Date();
+    const diff = now.getTime() - timestamp.getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor(diff / (1000 * 60));
+    
+    if (hours > 0) {
+      return `${hours}h ago`;
+    } else if (minutes > 0) {
+      return `${minutes}m ago`;
+    } else {
+      return 'Just now';
+    }
   };
 
   return (
@@ -86,7 +151,10 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         </Typography>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconButton sx={{ color: theme.palette.text.primary }}>
+          <IconButton 
+            onClick={handleNotificationMenuOpen}
+            sx={{ color: theme.palette.text.primary }}
+          >
             <Badge badgeContent={unreadCount} color="error">
               <NotificationsIcon />
             </Badge>
@@ -107,10 +175,110 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           </IconButton>
         </Box>
 
+        {/* Notifications Menu */}
         <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={handleMenuClose}
+          anchorEl={notificationAnchorEl}
+          open={Boolean(notificationAnchorEl)}
+          onClose={handleNotificationMenuClose}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+          PaperProps={{
+            sx: { width: 350, maxHeight: 400 }
+          }}
+        >
+          <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="h6">Notifications</Typography>
+              {notifications.length > 0 && (
+                <Button size="small" onClick={handleClearAllNotifications}>
+                  Clear All
+                </Button>
+              )}
+            </Box>
+          </Box>
+          
+          {notifications.length === 0 ? (
+            <Box sx={{ p: 3, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                No notifications
+              </Typography>
+            </Box>
+          ) : (
+            <List sx={{ p: 0, maxHeight: 300, overflow: 'auto' }}>
+              {notifications.map((notification) => (
+                <ListItem
+                  key={notification.id}
+                  sx={{ 
+                    borderBottom: 1, 
+                    borderColor: 'divider',
+                    backgroundColor: !notification.read ? 'action.hover' : 'transparent'
+                  }}
+                >
+                  <ListItemIcon>
+                    {getNotificationIcon(notification.type)}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body2" fontWeight={!notification.read ? 'bold' : 'normal'}>
+                          {notification.title}
+                        </Typography>
+                        {!notification.read && (
+                          <Chip label="New" size="small" color="primary" sx={{ height: 16, fontSize: '0.6rem' }} />
+                        )}
+                      </Box>
+                    }
+                    secondary={
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">
+                          {notification.message}
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                          <AccessTime fontSize="small" sx={{ fontSize: 12 }} />
+                          <Typography variant="caption" color="text.secondary">
+                            {formatTimestamp(notification.timestamp)}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    }
+                  />
+                  <ListItemSecondaryAction>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      {!notification.read && (
+                        <IconButton 
+                          size="small" 
+                          onClick={() => handleMarkAsRead(notification.id)}
+                          title="Mark as read"
+                        >
+                          <Check fontSize="small" />
+                        </IconButton>
+                      )}
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleRemoveNotification(notification.id)}
+                        title="Remove notification"
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </ListItemSecondaryAction>
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </Menu>
+
+        {/* Profile Menu */}
+        <Menu
+          anchorEl={profileAnchorEl}
+          open={Boolean(profileAnchorEl)}
+          onClose={handleProfileMenuClose}
           anchorOrigin={{
             vertical: 'bottom',
             horizontal: 'right',
