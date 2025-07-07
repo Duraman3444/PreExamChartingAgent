@@ -37,6 +37,10 @@ import {
   Badge,
   LinearProgress,
   Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  CircularProgress,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -62,6 +66,7 @@ import {
   Warning as WarningIcon,
   Cancel as CancelIcon,
   PlayArrow as PlayIcon,
+  Save as SaveIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -487,6 +492,24 @@ export const VisitManagement: React.FC = () => {
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [selectedVisit, setSelectedVisit] = useState<VisitRecord | null>(null);
   const [visitDetailsOpen, setVisitDetailsOpen] = useState(false);
+  const [editVisit, setEditVisit] = useState<VisitRecord | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [newVisit, setNewVisit] = useState<Partial<VisitRecord>>({
+    type: 'consultation',
+    status: 'scheduled',
+    priority: 'medium',
+    department: 'General Medicine',
+    attendingProvider: '',
+    scheduledDateTime: new Date(),
+    chiefComplaint: '',
+    hasTranscript: false,
+    hasAiAnalysis: false,
+    hasVisitNotes: false,
+    transcriptProcessingStatus: 'pending',
+    aiAnalysisStatus: 'pending'
+  });
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [orderBy, setOrderBy] = useState<keyof VisitRecord>('scheduledDateTime');
@@ -550,6 +573,168 @@ export const VisitManagement: React.FC = () => {
   const handleViewDetails = (visit: VisitRecord) => {
     setSelectedVisit(visit);
     setVisitDetailsOpen(true);
+  };
+
+  const handleEditVisit = (visit: VisitRecord) => {
+    setEditVisit({ ...visit });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveVisit = async () => {
+    if (!editVisit) return;
+
+    setIsUpdating(true);
+    try {
+      // TODO: Implement Firestore update
+      // await updateVisitInFirestore(editVisit);
+      
+      // Update local state for now
+      setVisits(prev => prev.map(v => 
+        v.id === editVisit.id 
+          ? { ...editVisit, updatedAt: new Date() }
+          : v
+      ));
+      
+      setEditDialogOpen(false);
+      setEditVisit(null);
+      
+      // Show success notification (you might want to add a notification system)
+      console.log('Visit updated successfully');
+      
+    } catch (error) {
+      console.error('Error updating visit:', error);
+      // Show error notification
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditDialogOpen(false);
+    setEditVisit(null);
+  };
+
+  const handleExportVisits = () => {
+    // Convert visits to CSV format
+    const csvHeaders = [
+      'Patient Name', 'Patient ID', 'Visit Type', 'Status', 
+      'Scheduled Date', 'Provider', 'Department', 'Priority', 
+      'Chief Complaint', 'Duration', 'Has Transcript', 'Has AI Analysis'
+    ];
+    
+    const csvData = filteredVisits.map(visit => [
+      visit.patientName,
+      visit.patientId,
+      visit.type.replace('_', ' '),
+      visit.status,
+      format(visit.scheduledDateTime, 'yyyy-MM-dd HH:mm'),
+      visit.attendingProvider,
+      visit.department,
+      visit.priority,
+      visit.chiefComplaint || '',
+      visit.duration || '',
+      visit.hasTranscript ? 'Yes' : 'No',
+      visit.hasAiAnalysis ? 'Yes' : 'No'
+    ]);
+    
+    const csvContent = [csvHeaders, ...csvData]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+    
+    // Create and download CSV file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `visits_export_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleScheduleVisit = () => {
+    setScheduleDialogOpen(true);
+  };
+
+  const handleSaveNewVisit = async () => {
+    if (!newVisit.patientName || !newVisit.patientId || !newVisit.attendingProvider) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      // Create new visit record
+      const visitToAdd: VisitRecord = {
+        ...newVisit,
+        id: 'V' + Date.now(), // Generate temporary ID
+        patientName: newVisit.patientName!,
+        patientId: newVisit.patientId!,
+        patientAge: newVisit.patientAge || 0,
+        patientGender: newVisit.patientGender || 'prefer-not-to-say',
+        attendingProvider: newVisit.attendingProvider!,
+        department: newVisit.department!,
+        type: newVisit.type as VisitRecord['type'],
+        status: newVisit.status as VisitRecord['status'],
+        priority: newVisit.priority as VisitRecord['priority'],
+        scheduledDateTime: newVisit.scheduledDateTime!,
+        hasTranscript: false,
+        hasAiAnalysis: false,
+        hasVisitNotes: false,
+        transcriptProcessingStatus: 'pending',
+        aiAnalysisStatus: 'pending',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      // TODO: Save to Firestore
+      // await addVisitToFirestore(visitToAdd);
+
+      // Update local state
+      setVisits(prev => [visitToAdd, ...prev]);
+      
+      setScheduleDialogOpen(false);
+      setNewVisit({
+        type: 'consultation',
+        status: 'scheduled',
+        priority: 'medium',
+        department: 'General Medicine',
+        attendingProvider: '',
+        scheduledDateTime: new Date(),
+        chiefComplaint: '',
+        hasTranscript: false,
+        hasAiAnalysis: false,
+        hasVisitNotes: false,
+        transcriptProcessingStatus: 'pending',
+        aiAnalysisStatus: 'pending'
+      });
+
+      console.log('Visit scheduled successfully');
+    } catch (error) {
+      console.error('Error scheduling visit:', error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCancelSchedule = () => {
+    setScheduleDialogOpen(false);
+    setNewVisit({
+      type: 'consultation',
+      status: 'scheduled',
+      priority: 'medium',
+      department: 'General Medicine',
+      attendingProvider: '',
+      scheduledDateTime: new Date(),
+      chiefComplaint: '',
+      hasTranscript: false,
+      hasAiAnalysis: false,
+      hasVisitNotes: false,
+      transcriptProcessingStatus: 'pending',
+      aiAnalysisStatus: 'pending'
+    });
   };
 
   const getStatusColor = (status: string) => {
@@ -619,21 +804,24 @@ export const VisitManagement: React.FC = () => {
               sx={{ flexGrow: 1 }}
             />
             <Button
-              variant="outlined"
+              variant={selectedStatus !== 'all' || selectedType !== 'all' || selectedDepartment !== 'all' ? 'contained' : 'outlined'}
               startIcon={<FilterIcon />}
               onClick={(e) => setFilterAnchorEl(e.currentTarget)}
+              color={selectedStatus !== 'all' || selectedType !== 'all' || selectedDepartment !== 'all' ? 'primary' : 'inherit'}
             >
-              Filter
+              Filter {(selectedStatus !== 'all' || selectedType !== 'all' || selectedDepartment !== 'all') && '(Active)'}
             </Button>
             <Button
               variant="outlined"
               startIcon={<DownloadIcon />}
+              onClick={handleExportVisits}
             >
               Export
             </Button>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
+              onClick={handleScheduleVisit}
             >
               Schedule Visit
             </Button>
@@ -644,26 +832,84 @@ export const VisitManagement: React.FC = () => {
             open={Boolean(filterAnchorEl)}
             onClose={() => setFilterAnchorEl(null)}
           >
-            <MenuItem onClick={() => setSelectedStatus('all')}>All Status</MenuItem>
-            <MenuItem onClick={() => setSelectedStatus('scheduled')}>Scheduled</MenuItem>
-            <MenuItem onClick={() => setSelectedStatus('in_progress')}>In Progress</MenuItem>
-            <MenuItem onClick={() => setSelectedStatus('completed')}>Completed</MenuItem>
-            <MenuItem onClick={() => setSelectedStatus('cancelled')}>Cancelled</MenuItem>
+            <MenuItem onClick={() => { setSelectedStatus('all'); setFilterAnchorEl(null); }}>
+              All Status {selectedStatus === 'all' && '✓'}
+            </MenuItem>
+            <MenuItem onClick={() => { setSelectedStatus('scheduled'); setFilterAnchorEl(null); }}>
+              Scheduled {selectedStatus === 'scheduled' && '✓'}
+            </MenuItem>
+            <MenuItem onClick={() => { setSelectedStatus('in_progress'); setFilterAnchorEl(null); }}>
+              In Progress {selectedStatus === 'in_progress' && '✓'}
+            </MenuItem>
+            <MenuItem onClick={() => { setSelectedStatus('completed'); setFilterAnchorEl(null); }}>
+              Completed {selectedStatus === 'completed' && '✓'}
+            </MenuItem>
+            <MenuItem onClick={() => { setSelectedStatus('cancelled'); setFilterAnchorEl(null); }}>
+              Cancelled {selectedStatus === 'cancelled' && '✓'}
+            </MenuItem>
             <Divider />
-            <MenuItem onClick={() => setSelectedType('all')}>All Types</MenuItem>
+            <MenuItem onClick={() => { setSelectedType('all'); setFilterAnchorEl(null); }}>
+              All Types {selectedType === 'all' && '✓'}
+            </MenuItem>
             {uniqueTypes.map(type => (
-              <MenuItem key={type} onClick={() => setSelectedType(type)}>
-                {type.replace('_', ' ').toUpperCase()}
+              <MenuItem key={type} onClick={() => { setSelectedType(type); setFilterAnchorEl(null); }}>
+                {type.replace('_', ' ').toUpperCase()} {selectedType === type && '✓'}
               </MenuItem>
             ))}
             <Divider />
-            <MenuItem onClick={() => setSelectedDepartment('all')}>All Departments</MenuItem>
+            <MenuItem onClick={() => { setSelectedDepartment('all'); setFilterAnchorEl(null); }}>
+              All Departments {selectedDepartment === 'all' && '✓'}
+            </MenuItem>
             {uniqueDepartments.map(dept => (
-              <MenuItem key={dept} onClick={() => setSelectedDepartment(dept)}>
-                {dept}
+              <MenuItem key={dept} onClick={() => { setSelectedDepartment(dept); setFilterAnchorEl(null); }}>
+                {dept} {selectedDepartment === dept && '✓'}
               </MenuItem>
             ))}
+            <Divider />
+            <MenuItem onClick={() => { 
+              setSelectedStatus('all'); 
+              setSelectedType('all'); 
+              setSelectedDepartment('all'); 
+              setFilterAnchorEl(null); 
+            }}>
+              Clear All Filters
+            </MenuItem>
           </Menu>
+
+          {/* Active Filters */}
+          {(selectedStatus !== 'all' || selectedType !== 'all' || selectedDepartment !== 'all') && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Active Filters:
+              </Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                {selectedStatus !== 'all' && (
+                  <Chip
+                    label={`Status: ${selectedStatus.replace('_', ' ')}`}
+                    onDelete={() => setSelectedStatus('all')}
+                    size="small"
+                    color="primary"
+                  />
+                )}
+                {selectedType !== 'all' && (
+                  <Chip
+                    label={`Type: ${selectedType.replace('_', ' ')}`}
+                    onDelete={() => setSelectedType('all')}
+                    size="small"
+                    color="primary"
+                  />
+                )}
+                {selectedDepartment !== 'all' && (
+                  <Chip
+                    label={`Department: ${selectedDepartment}`}
+                    onDelete={() => setSelectedDepartment('all')}
+                    size="small"
+                    color="primary"
+                  />
+                )}
+              </Stack>
+            </Box>
+          )}
 
           <Typography variant="body2" color="text.secondary">
             Showing {paginatedVisits.length} of {filteredVisits.length} visits
@@ -844,6 +1090,7 @@ export const VisitManagement: React.FC = () => {
                       </Tooltip>
                       <Tooltip title="Edit visit">
                         <IconButton
+                          onClick={() => handleEditVisit(visit)}
                           color="secondary"
                           size="small"
                         >
@@ -890,6 +1137,418 @@ export const VisitManagement: React.FC = () => {
           visit={selectedVisit}
         />
       )}
+
+      {/* Edit Visit Dialog */}
+      {editVisit && (
+        <Dialog 
+          open={editDialogOpen} 
+          onClose={handleCancelEdit}
+          maxWidth="md" 
+          fullWidth
+        >
+          <DialogTitle>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <EditIcon />
+              Edit Visit - {editVisit.patientName}
+            </Box>
+          </DialogTitle>
+          <DialogContent dividers>
+            <Grid container spacing={3} sx={{ mt: 1 }}>
+              {/* Basic Information */}
+              <Grid item xs={12}>
+                <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+                  Visit Information
+                </Typography>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Visit Type</InputLabel>
+                  <Select
+                    value={editVisit.type}
+                    onChange={(e) => setEditVisit(prev => prev ? {
+                      ...prev,
+                      type: e.target.value as VisitRecord['type']
+                    } : null)}
+                    label="Visit Type"
+                  >
+                    <MenuItem value="consultation">Consultation</MenuItem>
+                    <MenuItem value="follow_up">Follow-up</MenuItem>
+                    <MenuItem value="urgent_care">Urgent Care</MenuItem>
+                    <MenuItem value="telemedicine">Telemedicine</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Status</InputLabel>
+                  <Select
+                    value={editVisit.status}
+                    onChange={(e) => setEditVisit(prev => prev ? {
+                      ...prev,
+                      status: e.target.value as VisitRecord['status']
+                    } : null)}
+                    label="Status"
+                  >
+                    <MenuItem value="scheduled">Scheduled</MenuItem>
+                    <MenuItem value="in_progress">In Progress</MenuItem>
+                    <MenuItem value="completed">Completed</MenuItem>
+                    <MenuItem value="cancelled">Cancelled</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Priority</InputLabel>
+                  <Select
+                    value={editVisit.priority}
+                    onChange={(e) => setEditVisit(prev => prev ? {
+                      ...prev,
+                      priority: e.target.value as VisitRecord['priority']
+                    } : null)}
+                    label="Priority"
+                  >
+                    <MenuItem value="low">Low</MenuItem>
+                    <MenuItem value="medium">Medium</MenuItem>
+                    <MenuItem value="high">High</MenuItem>
+                    <MenuItem value="urgent">Urgent</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Department"
+                  value={editVisit.department}
+                  onChange={(e) => setEditVisit(prev => prev ? {
+                    ...prev,
+                    department: e.target.value
+                  } : null)}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Attending Provider"
+                  value={editVisit.attendingProvider}
+                  onChange={(e) => setEditVisit(prev => prev ? {
+                    ...prev,
+                    attendingProvider: e.target.value
+                  } : null)}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Scheduled Date & Time"
+                  type="datetime-local"
+                  value={editVisit.scheduledDateTime.toISOString().slice(0, 16)}
+                  onChange={(e) => setEditVisit(prev => prev ? {
+                    ...prev,
+                    scheduledDateTime: new Date(e.target.value)
+                  } : null)}
+                  InputLabelProps={{
+                    shrink: true,
+                  }}
+                />
+              </Grid>
+
+              {/* Clinical Information */}
+              <Grid item xs={12}>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+                  Clinical Information
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Chief Complaint"
+                  multiline
+                  rows={2}
+                  value={editVisit.chiefComplaint || ''}
+                  onChange={(e) => setEditVisit(prev => prev ? {
+                    ...prev,
+                    chiefComplaint: e.target.value
+                  } : null)}
+                  placeholder="Patient's primary concern or reason for visit..."
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Visit Summary"
+                  multiline
+                  rows={3}
+                  value={editVisit.visitSummary || ''}
+                  onChange={(e) => setEditVisit(prev => prev ? {
+                    ...prev,
+                    visitSummary: e.target.value
+                  } : null)}
+                  placeholder="Brief summary of the visit, findings, and decisions..."
+                />
+              </Grid>
+
+              {/* Duration for completed visits */}
+              {editVisit.status === 'completed' && (
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Duration (minutes)"
+                    type="number"
+                    value={editVisit.duration || ''}
+                    onChange={(e) => setEditVisit(prev => prev ? {
+                      ...prev,
+                      duration: parseInt(e.target.value) || undefined
+                    } : null)}
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end">min</InputAdornment>,
+                    }}
+                  />
+                </Grid>
+              )}
+
+              {/* Metadata */}
+              <Grid item xs={12}>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="body2" color="text.secondary">
+                  <strong>Created:</strong> {format(editVisit.createdAt, 'PPp')}
+                  <br />
+                  <strong>Last Updated:</strong> {format(editVisit.updatedAt, 'PPp')}
+                </Typography>
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button 
+              onClick={handleCancelEdit}
+              disabled={isUpdating}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveVisit}
+              variant="contained"
+              disabled={isUpdating}
+              startIcon={isUpdating ? <CircularProgress size={20} /> : <SaveIcon />}
+            >
+              {isUpdating ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+
+      {/* Schedule Visit Dialog */}
+      <Dialog 
+        open={scheduleDialogOpen} 
+        onClose={handleCancelSchedule}
+        maxWidth="md" 
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <AddIcon />
+            Schedule New Visit
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Grid container spacing={3} sx={{ mt: 1 }}>
+            {/* Patient Information */}
+            <Grid item xs={12}>
+              <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+                Patient Information
+              </Typography>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Patient Name"
+                value={newVisit.patientName || ''}
+                onChange={(e) => setNewVisit(prev => ({
+                  ...prev,
+                  patientName: e.target.value
+                }))}
+                required
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Patient ID"
+                value={newVisit.patientId || ''}
+                onChange={(e) => setNewVisit(prev => ({
+                  ...prev,
+                  patientId: e.target.value
+                }))}
+                required
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Patient Age"
+                type="number"
+                value={newVisit.patientAge || ''}
+                onChange={(e) => setNewVisit(prev => ({
+                  ...prev,
+                  patientAge: parseInt(e.target.value) || 0
+                }))}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>Gender</InputLabel>
+                <Select
+                  value={newVisit.patientGender || 'prefer-not-to-say'}
+                  onChange={(e) => setNewVisit(prev => ({
+                    ...prev,
+                    patientGender: e.target.value as VisitRecord['patientGender']
+                  }))}
+                  label="Gender"
+                >
+                  <MenuItem value="male">Male</MenuItem>
+                  <MenuItem value="female">Female</MenuItem>
+                  <MenuItem value="other">Other</MenuItem>
+                  <MenuItem value="prefer-not-to-say">Prefer not to say</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Visit Information */}
+            <Grid item xs={12}>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="h6" sx={{ mb: 2, color: 'primary.main' }}>
+                Visit Information
+              </Typography>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>Visit Type</InputLabel>
+                <Select
+                  value={newVisit.type || 'consultation'}
+                  onChange={(e) => setNewVisit(prev => ({
+                    ...prev,
+                    type: e.target.value as VisitRecord['type']
+                  }))}
+                  label="Visit Type"
+                >
+                  <MenuItem value="consultation">Consultation</MenuItem>
+                  <MenuItem value="follow_up">Follow-up</MenuItem>
+                  <MenuItem value="urgent_care">Urgent Care</MenuItem>
+                  <MenuItem value="telemedicine">Telemedicine</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth>
+                <InputLabel>Priority</InputLabel>
+                <Select
+                  value={newVisit.priority || 'medium'}
+                  onChange={(e) => setNewVisit(prev => ({
+                    ...prev,
+                    priority: e.target.value as VisitRecord['priority']
+                  }))}
+                  label="Priority"
+                >
+                  <MenuItem value="low">Low</MenuItem>
+                  <MenuItem value="medium">Medium</MenuItem>
+                  <MenuItem value="high">High</MenuItem>
+                  <MenuItem value="urgent">Urgent</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Department"
+                value={newVisit.department || ''}
+                onChange={(e) => setNewVisit(prev => ({
+                  ...prev,
+                  department: e.target.value
+                }))}
+                required
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Attending Provider"
+                value={newVisit.attendingProvider || ''}
+                onChange={(e) => setNewVisit(prev => ({
+                  ...prev,
+                  attendingProvider: e.target.value
+                }))}
+                required
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Scheduled Date & Time"
+                type="datetime-local"
+                value={newVisit.scheduledDateTime ? 
+                  newVisit.scheduledDateTime.toISOString().slice(0, 16) : 
+                  new Date().toISOString().slice(0, 16)
+                }
+                onChange={(e) => setNewVisit(prev => ({
+                  ...prev,
+                  scheduledDateTime: new Date(e.target.value)
+                }))}
+                InputLabelProps={{
+                  shrink: true,
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Chief Complaint"
+                multiline
+                rows={3}
+                value={newVisit.chiefComplaint || ''}
+                onChange={(e) => setNewVisit(prev => ({
+                  ...prev,
+                  chiefComplaint: e.target.value
+                }))}
+                placeholder="Patient's primary concern or reason for visit..."
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button 
+            onClick={handleCancelSchedule}
+            disabled={isUpdating}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSaveNewVisit}
+            variant="contained"
+            disabled={isUpdating}
+            startIcon={isUpdating ? <CircularProgress size={20} /> : <AddIcon />}
+          >
+            {isUpdating ? 'Scheduling...' : 'Schedule Visit'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }; 

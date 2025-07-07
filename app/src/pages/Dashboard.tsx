@@ -129,11 +129,11 @@ const recentVisits = [
 
 const quickActions = [
   {
-    title: 'Upload Transcript',
-    description: 'Upload new visit transcript for AI analysis',
+    title: 'Manage Transcripts',
+    description: 'Upload and manage visit transcripts for analysis',
     icon: <RecordVoiceOver />,
     color: '#FF6000',
-    route: ROUTES.TRANSCRIPT_UPLOAD,
+    route: ROUTES.VISITS,
   },
   {
     title: 'View Patients',

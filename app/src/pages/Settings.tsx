@@ -64,6 +64,7 @@ export const Settings: React.FC = () => {
       aiAssistanceLevel: 'detailed',
     }
   );
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   const handlePreferenceChange = (key: keyof UserPreferences, value: any) => {
     setPreferences(prev => ({ ...prev, [key]: value }));
@@ -142,6 +143,40 @@ export const Settings: React.FC = () => {
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== 'DELETE') {
+      setError('Please type "DELETE" to confirm account deletion.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Simulate API call to delete account
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // TODO: Implement actual account deletion API call
+      // await deleteUserAccount(user?.id);
+      
+      // Sign out user after successful deletion
+      // Note: In a real implementation, the user would be redirected to a confirmation page
+      setSuccess('Account deletion initiated. You will be logged out shortly.');
+      
+      setTimeout(() => {
+        // signOut(); // Uncomment this line in production
+        console.log('Account would be deleted and user logged out');
+      }, 2000);
+      
+    } catch (err) {
+      setError('Failed to delete account. Please try again or contact support.');
+    } finally {
+      setIsLoading(false);
+      setShowDeleteDialog(false);
+      setDeleteConfirmText('');
+    }
   };
 
   return (
@@ -512,7 +547,13 @@ export const Settings: React.FC = () => {
       </Dialog>
 
       {/* Delete Account Dialog */}
-      <Dialog open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)}>
+      <Dialog 
+        open={showDeleteDialog} 
+        onClose={() => {
+          setShowDeleteDialog(false);
+          setDeleteConfirmText('');
+        }}
+      >
         <DialogTitle>Delete Account</DialogTitle>
         <DialogContent>
           <Typography variant="body1" sx={{ mb: 2 }}>
@@ -526,12 +567,28 @@ export const Settings: React.FC = () => {
             label="Type 'DELETE' to confirm"
             placeholder="DELETE"
             size="small"
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
-          <Button color="error" variant="contained">
-            Delete Account
+          <Button 
+            onClick={() => {
+              setShowDeleteDialog(false);
+              setDeleteConfirmText('');
+            }} 
+            disabled={isLoading}
+          >
+            Cancel
+          </Button>
+          <Button 
+            color="error" 
+            variant="contained"
+            onClick={handleDeleteAccount}
+            disabled={isLoading || deleteConfirmText !== 'DELETE'}
+            startIcon={isLoading ? <CircularProgress size={16} /> : <DeleteIcon />}
+          >
+            {isLoading ? 'Deleting...' : 'Delete Account'}
           </Button>
         </DialogActions>
       </Dialog>
