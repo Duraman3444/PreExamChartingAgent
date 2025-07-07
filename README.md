@@ -28,7 +28,8 @@ graph TD
 4. **Verification UI** – split-view: generated note ⬅️➡️ highlighted source snippets, diff modal for edits.  
 5. **Autonomy Slider** – OFF / ASSIST / AUTO (confidence-gated) modes.  
 6. **Audit Log & De-ID** – every input/output stored, PHI hashed before LLM calls.  
-7. **Mermaid Diagram Hotkey** – `Ctrl-M` autogenerates the visit workflow diagram for hand-offs.
+7. **Mermaid Diagram Hotkey** – `Ctrl-M` autogenerates the visit workflow diagram for hand-offs.  
+8. **Automated Workflows** – n8n-powered visit transcript processing with EHR integration and nursing notifications.
 
 ## 4. Technical Stack (Open Source + Free Tier)
 ### Frontend
@@ -73,7 +74,9 @@ pre-exam-charting-agent/
 ├── data/                   # synthetic sample patients
 ├── docs/                   # architecture diagrams, mermaid
 │   ├── BrainLift.md        # Knowledge hub
-│   └── frontend-setup-prompts.md  # Local dev prompts
+│   ├── frontend-setup-prompts.md  # Figma design system prompts
+│   ├── automation-workflows.md    # n8n workflows & EHR integration
+│   └── n8n-workflow-setup.md     # Complete n8n setup guide
 ├── tests/                  # pytest suite
 ├── scripts/seed_data.py    # generate test patients
 ├── .github/workflows/ci.yml
@@ -147,5 +150,5 @@ This is an open-source project welcoming contributions! See our [BrainLift knowl
 _Building the future of medical documentation, one commit at a time._ 🚀
 
 **Live Demo:** Coming soon  
-**Documentation:** [BrainLift Knowledge Hub](docs/BrainLift.md)  
+**Documentation:** [BrainLift Knowledge Hub](docs/BrainLift.md) | [Automation Workflows](docs/automation-workflows.md) | [n8n Setup Guide](docs/n8n-workflow-setup.md)  
 **Issues:** [GitHub Issues](https://github.com/Duraman3444/PreExamChartingAgent/issues)

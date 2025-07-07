@@ -2,7 +2,7 @@
 ## Medical Charting Application
 
 **Version:** 1.0  
-**Date:** January 2025  
+**Date:** July 2025  
 **Team:** PreExamChartingAgent Development Team
 
 ---
@@ -171,6 +171,29 @@ To provide healthcare professionals with an intuitive, secure, and comprehensive
 - **Random Audits**: Quality assurance sampling and review
 - **Compliance Checking**: HIPAA and regulatory compliance verification
 
+### 3.7 Automation Workflows
+
+#### 3.7.1 Visit Transcript Processing
+- **Webhook Integration**: Automated triggers from EHR systems upon visit completion
+- **Transcript Retrieval**: Secure API calls to retrieve patient visit transcripts
+- **AI Summarization**: GPT-4o-mini powered summarization of visit transcripts
+- **Chart Updates**: Automated updates to patient charts with AI-generated summaries
+- **Nursing Notifications**: Real-time alerts to nursing staff via Slack integration
+
+#### 3.7.2 Workflow Automation Engine
+- **n8n Integration**: Visual workflow automation platform
+- **Custom Workflows**: Configurable automation rules for different scenarios
+- **Error Handling**: Robust error handling and recovery mechanisms
+- **Audit Trails**: Complete logging of all automated actions
+- **Manual Overrides**: Healthcare provider ability to override automated processes
+
+#### 3.7.3 EHR Integration
+- **RESTful APIs**: Standardized API integration with existing EHR systems
+- **Data Synchronization**: Bidirectional data sync between systems
+- **Format Conversion**: Automatic conversion between different medical data formats
+- **Compliance Validation**: Ensure all automated processes maintain HIPAA compliance
+- **Real-time Updates**: Immediate updates to patient records across systems
+
 ---
 
 ## 4. Non-Functional Requirements
@@ -219,6 +242,10 @@ To provide healthcare professionals with an intuitive, secure, and comprehensive
 - **Backend**: Firebase (Auth, Firestore, Storage, Hosting)
 - **Forms**: React Hook Form for efficient form handling
 - **Testing**: Jest, React Testing Library, Cypress (Future)
+- **Automation**: n8n for workflow automation and EHR integration
+- **AI Processing**: OpenAI GPT-4o-mini for visit transcript summarization
+- **Communication**: Slack integration for nursing notifications
+- **Data Processing**: Custom JavaScript functions for EHR data formatting
 
 ### 5.2 Architecture Patterns
 - **Component-Driven Development**: Reusable, composable UI components
@@ -234,6 +261,9 @@ To provide healthcare professionals with an intuitive, secure, and comprehensive
 - **Vitals**: Measurements, timestamps, devices, trends
 - **Charts**: Notes, versions, reviews, signatures
 - **Audit Logs**: Actions, timestamps, users, data changes
+- **Workflows**: n8n workflow definitions, execution logs, error tracking
+- **Visit Transcripts**: Raw transcripts, AI summaries, processing metadata
+- **EHR Integrations**: API endpoints, data mappings, sync status
 
 ---
 
@@ -299,6 +329,13 @@ To provide healthcare professionals with an intuitive, secure, and comprehensive
 - **Compliance Reporting**: Regulatory reporting and audit preparation
 - **Population Health**: Aggregated patient data for research and quality improvement
 
+### 7.4 Workflow Automation Systems
+- **n8n Platform**: Visual workflow automation engine
+- **OpenAI API**: AI-powered transcript summarization and processing
+- **Slack Integration**: Team communication and notification system
+- **Webhook Endpoints**: Real-time triggering of automated workflows
+- **EHR APIs**: Bidirectional data exchange with existing healthcare systems
+
 ---
 
 ## 8. Development Phases
@@ -359,7 +396,17 @@ To provide healthcare professionals with an intuitive, secure, and comprehensive
 - Compliance reporting tools
 - Quality metrics dashboard
 
-### 8.7 Phase 7: Advanced Features
+### 8.7 Phase 7: Automation Workflows
+**Timeline**: 4 weeks  
+**Priority**: HIGH
+- n8n workflow engine setup and configuration
+- Visit transcript processing automation
+- EHR integration with webhook triggers
+- AI-powered summarization implementation
+- Slack notification system integration
+- Error handling and recovery mechanisms
+
+### 8.8 Phase 8: Advanced Features
 **Timeline**: 6 weeks  
 **Priority**: LOW
 - Offline functionality
