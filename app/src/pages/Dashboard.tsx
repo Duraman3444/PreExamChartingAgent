@@ -13,8 +13,8 @@ import {
 } from '@mui/material';
 import {
   People,
-  Assignment,
-  LocalHospital,
+  RecordVoiceOver,
+  Psychology,
   TrendingUp,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -23,36 +23,36 @@ import { useAuthStore } from '@/stores/authStore';
 
 const statsCards = [
   {
-    title: 'Total Patients',
-    value: '1,234',
+    title: 'Active Patients',
+    value: '156',
     icon: <People />,
     color: '#1976d2',
   },
   {
-    title: 'Pending Charts',
-    value: '45',
-    icon: <Assignment />,
+    title: 'Pending Transcripts',
+    value: '12',
+    icon: <RecordVoiceOver />,
     color: '#dc004e',
   },
   {
-    title: 'Vitals Today',
-    value: '89',
-    icon: <LocalHospital />,
+    title: 'AI Analysis Complete',
+    value: '34',
+    icon: <Psychology />,
     color: '#2e7d32',
   },
   {
-    title: 'Completion Rate',
-    value: '94%',
+    title: 'Analysis Accuracy',
+    value: '92%',
     icon: <TrendingUp />,
     color: '#ed6c02',
   },
 ];
 
 const recentActivities = [
-  { id: '1', action: 'Chart completed for John Doe', time: '2 hours ago', status: 'completed' },
-  { id: '2', action: 'Vitals recorded for Jane Smith', time: '4 hours ago', status: 'completed' },
-  { id: '3', action: 'Screening started for Mike Johnson', time: '6 hours ago', status: 'pending' },
-  { id: '4', action: 'Chart updated for Sarah Wilson', time: '8 hours ago', status: 'completed' },
+  { id: '1', action: 'AI analysis completed for John Doe visit', time: '2 hours ago', status: 'completed' },
+  { id: '2', action: 'Transcript uploaded for Jane Smith consultation', time: '4 hours ago', status: 'processing' },
+  { id: '3', action: 'Visit notes generated for Mike Johnson', time: '6 hours ago', status: 'completed' },
+  { id: '4', action: 'Diagnosis recommendations reviewed for Sarah Wilson', time: '8 hours ago', status: 'reviewed' },
 ];
 
 export const Dashboard: React.FC = () => {
@@ -65,7 +65,7 @@ export const Dashboard: React.FC = () => {
         Dashboard
       </Typography>
       <Typography variant="body1" color="text.secondary" gutterBottom>
-        Welcome back, {user?.name}! Here's your overview for today.
+        Welcome back, {user?.name}! Here's your visit transcript analysis overview.
       </Typography>
 
       <Grid container spacing={3} sx={{ mt: 2 }}>
@@ -111,21 +111,21 @@ export const Dashboard: React.FC = () => {
                   onClick={() => navigate(ROUTES.PATIENTS)}
                   startIcon={<People />}
                 >
-                  View Patients
+                  Manage Patients
                 </Button>
                 <Button
                   variant="contained"
-                  onClick={() => navigate(ROUTES.SCREENING)}
-                  startIcon={<Assignment />}
+                  onClick={() => navigate(ROUTES.VISITS)}
+                  startIcon={<RecordVoiceOver />}
                 >
-                  Start Screening
+                  View Visits
                 </Button>
                 <Button
                   variant="contained"
-                  onClick={() => navigate(ROUTES.VITALS)}
-                  startIcon={<LocalHospital />}
+                  onClick={() => navigate(ROUTES.VISITS)}
+                  startIcon={<Psychology />}
                 >
-                  Record Vitals
+                  Review AI Analysis
                 </Button>
               </Box>
             </CardContent>
@@ -147,7 +147,11 @@ export const Dashboard: React.FC = () => {
                     />
                     <Chip
                       label={activity.status}
-                      color={activity.status === 'completed' ? 'success' : 'warning'}
+                      color={
+                        activity.status === 'completed' ? 'success' :
+                        activity.status === 'reviewed' ? 'info' :
+                        activity.status === 'processing' ? 'warning' : 'default'
+                      }
                       size="small"
                     />
                   </ListItem>

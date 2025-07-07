@@ -8,9 +8,11 @@ import { ROUTES } from '@/constants';
 
 // Placeholder components for other routes
 const Patients = () => <div>Patients Page</div>;
-const Screening = () => <div>Screening Page</div>;
-const Vitals = () => <div>Vitals Page</div>;
-const Charts = () => <div>Charts Page</div>;
+const Visits = () => <div>Visits Page</div>;
+const VisitDetail = () => <div>Visit Detail Page</div>;
+const TranscriptUpload = () => <div>Transcript Upload Page</div>;
+const AIAnalysis = () => <div>AI Analysis Page</div>;
+const VisitNotes = () => <div>Visit Notes Page</div>;
 const Settings = () => <div>Settings Page</div>;
 
 interface ProtectedRouteProps {
@@ -65,31 +67,51 @@ function App() {
           }
         />
         <Route
-          path={ROUTES.SCREENING}
+          path={ROUTES.VISITS}
           element={
             <ProtectedRoute>
               <Layout>
-                <Screening />
+                <Visits />
               </Layout>
             </ProtectedRoute>
           }
         />
         <Route
-          path={ROUTES.VITALS}
+          path={ROUTES.VISIT_DETAIL}
           element={
             <ProtectedRoute>
               <Layout>
-                <Vitals />
+                <VisitDetail />
               </Layout>
             </ProtectedRoute>
           }
         />
         <Route
-          path={ROUTES.CHARTS}
+          path={ROUTES.TRANSCRIPT_UPLOAD}
           element={
             <ProtectedRoute>
               <Layout>
-                <Charts />
+                <TranscriptUpload />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.AI_ANALYSIS}
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <AIAnalysis />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.VISIT_NOTES}
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <VisitNotes />
               </Layout>
             </ProtectedRoute>
           }

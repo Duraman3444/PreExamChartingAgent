@@ -14,9 +14,9 @@ import {
 import {
   Dashboard,
   People,
-  Assessment,
-  LocalHospital,
   Assignment,
+  RecordVoiceOver,
+  Psychology,
   Settings,
 } from '@mui/icons-material';
 import { ROUTES } from '@/constants';
@@ -39,19 +39,14 @@ const navigationItems = [
     path: ROUTES.PATIENTS,
   },
   {
-    text: 'Screening',
-    icon: <Assessment />,
-    path: ROUTES.SCREENING,
+    text: 'Visits',
+    icon: <RecordVoiceOver />,
+    path: ROUTES.VISITS,
   },
   {
-    text: 'Vitals',
-    icon: <LocalHospital />,
-    path: ROUTES.VITALS,
-  },
-  {
-    text: 'Charts',
-    icon: <Assignment />,
-    path: ROUTES.CHARTS,
+    text: 'AI Analysis',
+    icon: <Psychology />,
+    path: ROUTES.VISITS, // Will show visits with analysis status
   },
 ];
 
@@ -84,7 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       <Box sx={{ overflow: 'auto' }}>
         <Box sx={{ p: 2 }}>
           <Typography variant="h6" noWrap>
-            Medical Charts
+            Visit Transcript Analysis
           </Typography>
           <Typography variant="body2" color="text.secondary">
             {user?.name} • {user?.role}

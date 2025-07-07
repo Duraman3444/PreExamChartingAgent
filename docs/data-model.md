@@ -1,12 +1,14 @@
 # Data Model Documentation 📊
 
-*Comprehensive data model for the Pre-Examination Charting Agent focused on patient visit management.*
+*Focused data model for the Pre-Examination Charting Agent - Visit Transcript Analysis & Diagnosis Assistance*
 
 ---
 
 ## Overview
 
-This document outlines the complete data model for the Pre-Examination Charting Agent, designed specifically for managing patient visits from pre-examination screening through provider documentation. The model focuses on core visit workflows without attempting to manage hospital-controlled systems like laboratory tests or diagnostic equipment.
+This document outlines the focused data model for the Pre-Examination Charting Agent, designed specifically for analyzing patient visit transcripts to assist healthcare providers with diagnosis and treatment recommendations. The system focuses on transcript analysis and AI-powered insights rather than comprehensive medical record management.
+
+**Key Scope**: This system primarily processes visit recordings/transcripts and provides diagnostic assistance. It does not manage sensitive medical data like vitals, test results, or comprehensive medical records.
 
 ## Core Entities
 
@@ -18,7 +20,7 @@ interface User {
   id: string;                    // Firebase Auth UID
   email: string;                 // Login email
   displayName: string;           // Full name
-  role: UserRole;               // nurse | doctor | admin
+  role: UserRole;               // doctor | nurse | admin
   department?: string;           // e.g., "Emergency", "ICU", "Med-Surg"
   licenseNumber?: string;        // Professional license
   isActive: boolean;            // Account status
@@ -29,31 +31,28 @@ interface User {
 }
 
 enum UserRole {
+  DOCTOR = 'doctor',
   NURSE = 'nurse',
-  DOCTOR = 'doctor', 
   ADMIN = 'admin'
 }
 
 interface UserPreferences {
   theme: 'light' | 'dark';
   language: string;              // e.g., 'en', 'es'
-  vitalsUnits: 'metric' | 'imperial';
   autoSave: boolean;
   notificationsEnabled: boolean;
+  aiAssistanceLevel: 'basic' | 'detailed' | 'comprehensive';
 }
 ```
 
-### 2. Patient Management
+### 2. Patient Management (Basic Info Only)
 
 #### Patients Collection
 ```typescript
 interface Patient {
   id: string;                    // System-generated patient ID
-  mrn?: string;                  // Medical Record Number (if available)
   demographics: PatientDemographics;
-  medicalHistory: MedicalHistory;
-  emergencyContacts: EmergencyContact[];
-  insurance?: InsuranceInfo;
+  basicHistory: BasicMedicalHistory;
   photo?: string;                // Photo URL/base64
   isActive: boolean;
   createdAt: Timestamp;
@@ -67,96 +66,14 @@ interface PatientDemographics {
   dateOfBirth: Timestamp;
   gender: 'male' | 'female' | 'other' | 'prefer-not-to-say';
   phone?: string;
-  email?: string;
-  address?: {
-    street: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    country: string;
-  };
   preferredLanguage?: string;
 }
 
-interface MedicalHistory {
-  allergies: Allergy[];
-  medications: Medication[];
-  conditions: MedicalCondition[];
-  socialHistory: SocialHistory;
-  familyHistory: FamilyHistory[];
-}
-
-interface Allergy {
-  id: string;
-  allergen: string;              // Name of allergen
-  type: 'drug' | 'food' | 'environmental' | 'other';
-  severity: 'mild' | 'moderate' | 'severe' | 'life-threatening';
-  reaction?: string;             // Description of reaction
-  onsetDate?: Timestamp;
-  notes?: string;
-  isActive: boolean;
-}
-
-interface Medication {
-  id: string;
-  name: string;                  // Generic or brand name
-  dosage: string;                // e.g., "10mg"
-  frequency: string;             // e.g., "twice daily"
-  route: string;                 // e.g., "oral", "IV"
-  startDate?: Timestamp;
-  endDate?: Timestamp;
-  prescriber?: string;
-  indication?: string;           // Why prescribed
-  isActive: boolean;
-  notes?: string;
-}
-
-interface MedicalCondition {
-  id: string;
-  condition: string;             // Condition name
-  icd10Code?: string;            // ICD-10 code if available
-  diagnosisDate?: Timestamp;
-  status: 'active' | 'resolved' | 'chronic' | 'monitoring';
-  severity?: 'mild' | 'moderate' | 'severe';
-  notes?: string;
-}
-
-interface SocialHistory {
-  smokingStatus: 'never' | 'former' | 'current' | 'unknown';
-  alcoholUse: 'none' | 'occasional' | 'moderate' | 'heavy' | 'unknown';
-  substanceUse?: string;
-  occupation?: string;
-  maritalStatus?: string;
-  livingArrangement?: string;
-  exerciseFrequency?: string;
-}
-
-interface FamilyHistory {
-  id: string;
-  relationship: string;          // e.g., "mother", "father", "sibling"
-  condition: string;
-  ageAtDiagnosis?: number;
-  isDeceased?: boolean;
-  causeOfDeath?: string;
-  notes?: string;
-}
-
-interface EmergencyContact {
-  id: string;
-  name: string;
-  relationship: string;
-  phone: string;
-  email?: string;
-  isPrimary: boolean;
-}
-
-interface InsuranceInfo {
-  provider: string;
-  memberId: string;
-  groupNumber?: string;
-  planName?: string;
-  effectiveDate?: Timestamp;
-  expirationDate?: Timestamp;
+interface BasicMedicalHistory {
+  knownAllergies: string[];      // Simple list from patient conversation
+  currentMedications: string[];  // Simple list from patient conversation
+  knownConditions: string[];     // Simple list from patient conversation
+  notes?: string;                // Any additional notes from conversation
 }
 ```
 
@@ -167,224 +84,177 @@ interface InsuranceInfo {
 interface Visit {
   id: string;                    // System-generated visit ID
   patientId: string;             // Reference to patient
-  visitNumber?: string;          // Hospital visit number
   type: VisitType;
   status: VisitStatus;
   scheduledDateTime?: Timestamp;
-  arrivalTime?: Timestamp;
-  completedTime?: Timestamp;
-  assignedNurse?: string;        // User ID
-  attendingPhysician?: string;   // User ID
+  startTime?: Timestamp;
+  endTime?: Timestamp;
+  attendingProvider: string;     // User ID
   department: string;
-  chiefComplaint?: string;
-  visitSummary?: string;
+  chiefComplaint?: string;       // Primary reason for visit
+  visitSummary?: string;         // Brief summary
+  transcript?: VisitTranscript;  // Main data source
+  aiAnalysis?: AIAnalysis;       // AI-generated insights
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
 
 enum VisitType {
-  EMERGENCY = 'emergency',
-  OUTPATIENT = 'outpatient', 
-  INPATIENT = 'inpatient',
+  CONSULTATION = 'consultation',
+  FOLLOW_UP = 'follow_up',
   URGENT_CARE = 'urgent_care',
-  FOLLOW_UP = 'follow_up'
+  TELEMEDICINE = 'telemedicine'
 }
 
 enum VisitStatus {
   SCHEDULED = 'scheduled',
-  CHECKED_IN = 'checked_in',
-  SCREENING = 'screening',
-  VITALS = 'vitals',
-  PROVIDER_REVIEW = 'provider_review',
+  IN_PROGRESS = 'in_progress',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled'
 }
-```
 
-### 4. Screening Management
-
-#### Screenings Collection
-```typescript
-interface Screening {
-  id: string;                    // System-generated screening ID
-  visitId: string;               // Reference to visit
-  patientId: string;             // Reference to patient
-  templateId: string;            // Reference to screening template
-  status: ScreeningStatus;
-  startedAt?: Timestamp;
-  completedAt?: Timestamp;
-  responses: ScreeningResponse[];
-  totalScore?: number;
-  riskLevel?: 'low' | 'medium' | 'high' | 'critical';
-  completedBy?: string;          // User ID (for nurse-assisted)
-  reviewedBy?: string;           // User ID
-  reviewNotes?: string;
-  flags: ScreeningFlag[];
+interface VisitTranscript {
+  id: string;
+  rawTranscript: string;         // Full transcript text
+  structured: TranscriptSegment[];
+  audioFile?: string;            // Audio file reference
+  transcriptionMethod: 'manual' | 'ai' | 'voice_recognition';
+  confidenceScore?: number;      // Transcription accuracy (0-1)
+  language: string;
+  duration?: number;             // Duration in seconds
+  speakers: Speaker[];
   createdAt: Timestamp;
-  updatedAt: Timestamp;
+  processedAt?: Timestamp;
 }
 
-enum ScreeningStatus {
+interface TranscriptSegment {
+  id: string;
+  speaker: 'patient' | 'provider' | 'other';
+  timestamp: number;             // Seconds from start
+  text: string;
+  confidence?: number;           // Confidence for this segment
+  tags?: string[];               // e.g., ['symptom', 'history', 'medication']
+}
+
+interface Speaker {
+  id: string;
+  role: 'patient' | 'provider' | 'other';
+  name?: string;
+}
+```
+
+### 4. AI Analysis & Diagnosis Assistance
+
+#### AIAnalysis Collection
+```typescript
+interface AIAnalysis {
+  id: string;                    // System-generated analysis ID
+  visitId: string;               // Reference to visit
+  patientId: string;             // Reference to patient
+  status: AnalysisStatus;
+  extractedSymptoms: ExtractedSymptom[];
+  patientHistory: ExtractedHistory;
+  differentialDiagnosis: DiagnosisOption[];
+  treatmentRecommendations: TreatmentRecommendation[];
+  flaggedConcerns: ConcernFlag[];
+  followUpRecommendations: FollowUpRecommendation[];
+  confidenceScore: number;       // Overall AI confidence (0-1)
+  processingTime: number;        // Processing time in seconds
+  aiModel: string;               // AI model used
+  createdAt: Timestamp;
+  reviewedBy?: string;           // User ID who reviewed
+  reviewedAt?: Timestamp;
+  reviewNotes?: string;
+}
+
+enum AnalysisStatus {
   PENDING = 'pending',
-  IN_PROGRESS = 'in_progress',
+  PROCESSING = 'processing',
   COMPLETED = 'completed',
   REVIEWED = 'reviewed',
-  FLAGGED = 'flagged'
+  ERROR = 'error'
 }
 
-interface ScreeningResponse {
-  questionId: string;
-  questionText: string;
-  responseType: 'text' | 'boolean' | 'number' | 'choice' | 'scale';
-  value: any;                    // Response value
-  score?: number;                // Calculated score for this response
-  timestamp: Timestamp;
-}
-
-interface ScreeningFlag {
+interface ExtractedSymptom {
   id: string;
-  type: 'high_risk' | 'missing_info' | 'inconsistent' | 'follow_up';
+  symptom: string;
+  severity?: 'mild' | 'moderate' | 'severe';
+  duration?: string;
+  frequency?: string;
+  context?: string;              // When/how it occurs
+  sourceText: string;            // Original text from transcript
+  confidence: number;            // AI confidence for this extraction
+}
+
+interface ExtractedHistory {
+  medications: string[];
+  allergies: string[];
+  pastConditions: string[];
+  familyHistory: string[];
+  socialHistory: string[];
+  reviewOfSystems: string[];
+}
+
+interface DiagnosisOption {
+  id: string;
+  condition: string;
+  icd10Code?: string;
+  probability: number;           // Likelihood (0-1)
+  supportingEvidence: string[];  // Symptoms/findings that support this
+  againstEvidence: string[];     // Factors that argue against this
+  additionalTestsNeeded: string[];
+  reasoning: string;             // AI reasoning for this diagnosis
+  severity: 'low' | 'medium' | 'high' | 'critical';
+}
+
+interface TreatmentRecommendation {
+  id: string;
+  category: 'medication' | 'procedure' | 'lifestyle' | 'referral' | 'monitoring';
+  recommendation: string;
+  reasoning: string;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  timeframe?: string;            // When to implement
+  contraindications: string[];
+  alternatives: string[];
+  monitoringRequired: string[];
+}
+
+interface ConcernFlag {
+  id: string;
+  type: 'red_flag' | 'drug_interaction' | 'allergy_concern' | 'urgent_referral';
   severity: 'low' | 'medium' | 'high' | 'critical';
   message: string;
-  questionId?: string;           // Related question if applicable
-  autoGenerated: boolean;
-  acknowledged: boolean;
-  acknowledgedBy?: string;       // User ID
-  acknowledgedAt?: Timestamp;
+  recommendation: string;
+  sourceText?: string;           // Supporting text from transcript
+  requiresAttention: boolean;
 }
-```
 
-#### ScreeningTemplates Collection
-```typescript
-interface ScreeningTemplate {
-  id: string;                    // System-generated template ID
-  name: string;                  // Template name
+interface FollowUpRecommendation {
+  id: string;
+  type: 'appointment' | 'test' | 'monitoring' | 'referral';
   description: string;
-  category: string;              // e.g., "general", "cardiac", "mental_health"
-  version: string;               // Version number
-  isActive: boolean;
-  questions: ScreeningQuestion[];
-  scoringRules: ScoringRule[];
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-  createdBy: string;             // User ID
-}
-
-interface ScreeningQuestion {
-  id: string;
-  order: number;                 // Display order
-  text: string;                  // Question text
-  type: 'text' | 'boolean' | 'number' | 'choice' | 'scale';
-  required: boolean;
-  options?: string[];            // For choice/scale questions
-  minValue?: number;             // For number/scale questions
-  maxValue?: number;             // For number/scale questions
-  helpText?: string;
-  conditionalLogic?: ConditionalLogic[];
-  scoringWeight?: number;
-}
-
-interface ConditionalLogic {
-  dependsOnQuestionId: string;
-  condition: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains';
-  value: any;
-  action: 'show' | 'hide' | 'require';
-}
-
-interface ScoringRule {
-  id: string;
-  questionId: string;
-  condition: any;                // Condition for scoring
-  points: number;
-  description: string;
+  timeframe: string;             // e.g., "1-2 weeks", "immediately"
+  specialty?: string;            // For referrals
+  priority: 'routine' | 'urgent' | 'stat';
 }
 ```
 
-### 5. Vitals Management
+### 5. Documentation & Notes
 
-#### Vitals Collection
+#### VisitNotes Collection
 ```typescript
-interface VitalsRecord {
-  id: string;                    // System-generated vitals ID
-  visitId: string;               // Reference to visit
-  patientId: string;             // Reference to patient
-  recordedBy: string;            // User ID of nurse/provider
-  recordedAt: Timestamp;
-  vitals: VitalSign[];
-  notes?: string;
-  isValid: boolean;              // Data validation status
-  flags: VitalsFlag[];
-  device?: DeviceInfo;           // If recorded via device
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-}
-
-interface VitalSign {
-  type: VitalSignType;
-  value: number | string;        // Numeric value or text (e.g., "irregular")
-  unit: string;                  // e.g., "mmHg", "bpm", "°F"
-  isNormal: boolean;
-  normalRange: {
-    min: number;
-    max: number;
-  };
-  timestamp: Timestamp;
-}
-
-enum VitalSignType {
-  SYSTOLIC_BP = 'systolic_bp',
-  DIASTOLIC_BP = 'diastolic_bp',
-  HEART_RATE = 'heart_rate',
-  RESPIRATORY_RATE = 'respiratory_rate',
-  TEMPERATURE = 'temperature',
-  OXYGEN_SATURATION = 'oxygen_saturation',
-  PAIN_SCALE = 'pain_scale',
-  WEIGHT = 'weight',
-  HEIGHT = 'height',
-  BMI = 'bmi'
-}
-
-interface VitalsFlag {
-  id: string;
-  type: 'critical' | 'abnormal' | 'borderline';
-  vitalType: VitalSignType;
-  message: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  autoGenerated: boolean;
-  acknowledged: boolean;
-  acknowledgedBy?: string;       // User ID
-  acknowledgedAt?: Timestamp;
-  notificationSent: boolean;
-}
-
-interface DeviceInfo {
-  deviceId?: string;
-  deviceType: string;            // e.g., "monitor", "thermometer"
-  manufacturer?: string;
-  model?: string;
-  calibrationDate?: Timestamp;
-}
-```
-
-### 6. Documentation Management
-
-#### ChartNotes Collection
-```typescript
-interface ChartNote {
+interface VisitNote {
   id: string;                    // System-generated note ID
   visitId: string;               // Reference to visit
   patientId: string;             // Reference to patient
   type: NoteType;
   status: NoteStatus;
-  content: NoteContent;
+  content: string;               // Note content
   author: string;                // User ID
-  coSigner?: string;             // User ID for co-signature
-  templateId?: string;           // Reference to note template
   aiGenerated: boolean;          // Whether AI-generated
-  aiConfidenceScore?: number;    // AI confidence (0-1)
-  aiSourceData?: string[];       // References to source data
+  aiSourceData?: string[];       // References to transcript segments
+  template?: string;             // Template used
   version: number;               // Version number for revisions
-  revisionHistory: NoteRevision[];
   tags: string[];               // For categorization
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -392,161 +262,21 @@ interface ChartNote {
 }
 
 enum NoteType {
-  ASSESSMENT = 'assessment',
-  HPI = 'hpi',                   // History of Present Illness
-  ROS = 'ros',                   // Review of Systems
+  SOAP = 'soap',                 // Subjective, Objective, Assessment, Plan
   PROGRESS = 'progress',
-  DISCHARGE = 'discharge',
-  NURSING = 'nursing',
-  INCIDENT = 'incident'
+  ASSESSMENT = 'assessment',
+  PLAN = 'plan',
+  SUMMARY = 'summary'
 }
 
 enum NoteStatus {
   DRAFT = 'draft',
   PENDING_REVIEW = 'pending_review',
-  REVIEWED = 'reviewed',
-  SIGNED = 'signed',
-  ADDENDUM = 'addendum'
-}
-
-interface NoteContent {
-  text: string;                  // Rich text content
-  structuredData?: any;          // Structured data if applicable
-  attachments?: string[];        // File URLs/references
-}
-
-interface NoteRevision {
-  id: string;
-  version: number;
-  content: NoteContent;
-  author: string;                // User ID
-  changesSummary: string;
-  timestamp: Timestamp;
-  diffFromPrevious?: string;     // Diff markup
+  SIGNED = 'signed'
 }
 ```
 
-#### NoteTemplates Collection
-```typescript
-interface NoteTemplate {
-  id: string;                    // System-generated template ID
-  name: string;
-  description: string;
-  type: NoteType;
-  category: string;              // e.g., "emergency", "routine"
-  template: string;              // Template content with placeholders
-  fields: TemplateField[];       // Dynamic fields
-  isActive: boolean;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-  createdBy: string;             // User ID
-}
-
-interface TemplateField {
-  id: string;
-  name: string;
-  type: 'text' | 'number' | 'date' | 'choice' | 'boolean';
-  placeholder: string;           // Template placeholder
-  required: boolean;
-  options?: string[];            // For choice fields
-  defaultValue?: any;
-}
-```
-
-### 7. Automation & Workflow
-
-#### WorkflowExecutions Collection
-```typescript
-interface WorkflowExecution {
-  id: string;                    // System-generated execution ID
-  visitId: string;               // Reference to visit
-  workflowType: WorkflowType;
-  status: ExecutionStatus;
-  startedAt: Timestamp;
-  completedAt?: Timestamp;
-  steps: WorkflowStep[];
-  input: any;                    // Input data
-  output?: any;                  // Output data
-  error?: string;                // Error message if failed
-  metadata: ExecutionMetadata;
-  createdAt: Timestamp;
-}
-
-enum WorkflowType {
-  VISIT_TRANSCRIPT_PROCESSING = 'visit_transcript_processing',
-  EHR_SYNC = 'ehr_sync',
-  NURSING_NOTIFICATION = 'nursing_notification',
-  QUALITY_CHECK = 'quality_check'
-}
-
-enum ExecutionStatus {
-  PENDING = 'pending',
-  RUNNING = 'running',
-  COMPLETED = 'completed',
-  FAILED = 'failed',
-  CANCELLED = 'cancelled'
-}
-
-interface WorkflowStep {
-  id: string;
-  name: string;
-  status: ExecutionStatus;
-  startedAt: Timestamp;
-  completedAt?: Timestamp;
-  input?: any;
-  output?: any;
-  error?: string;
-  duration?: number;             // Execution time in milliseconds
-}
-
-interface ExecutionMetadata {
-  triggeredBy: string;           // User ID or 'system'
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  retryCount: number;
-  maxRetries: number;
-  tags: string[];
-}
-```
-
-#### EHRIntegrations Collection
-```typescript
-interface EHRIntegration {
-  id: string;                    // System-generated integration ID
-  name: string;                  // EHR system name
-  type: string;                  // e.g., "Epic", "Cerner", "Custom"
-  endpointUrl: string;
-  authMethod: 'oauth' | 'api_key' | 'basic';
-  credentials: any;              // Encrypted credentials
-  isActive: boolean;
-  lastSyncAt?: Timestamp;
-  syncFrequency: number;         // Minutes between syncs
-  mappingRules: DataMapping[];
-  errorLog: IntegrationError[];
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-}
-
-interface DataMapping {
-  sourceField: string;
-  targetField: string;
-  transformation?: string;       // Transformation function name
-  required: boolean;
-}
-
-interface IntegrationError {
-  id: string;
-  timestamp: Timestamp;
-  errorType: string;
-  errorMessage: string;
-  requestData?: any;
-  responseData?: any;
-  resolved: boolean;
-  resolvedAt?: Timestamp;
-  resolvedBy?: string;           // User ID
-}
-```
-
-### 8. System Configuration
+### 6. System Configuration
 
 #### Settings Collection
 ```typescript
@@ -557,17 +287,14 @@ interface SystemSettings {
   value: any;
   dataType: 'string' | 'number' | 'boolean' | 'object' | 'array';
   description: string;
-  isReadOnly: boolean;
   lastModifiedBy: string;        // User ID
   lastModifiedAt: Timestamp;
 }
 
 enum SettingsCategory {
-  VITALS = 'vitals',
-  SCREENING = 'screening',
+  AI_ANALYSIS = 'ai_analysis',
+  TRANSCRIPTION = 'transcription',
   NOTIFICATIONS = 'notifications',
-  INTEGRATIONS = 'integrations',
-  AI = 'ai',
   SECURITY = 'security'
 }
 ```
@@ -576,14 +303,11 @@ enum SettingsCategory {
 ```typescript
 interface AuditLog {
   id: string;                    // System-generated audit ID
-  userId?: string;               // User who performed action (null for system)
+  userId?: string;               // User who performed action
   action: AuditAction;
-  entityType: string;            // e.g., "patient", "visit", "note"
+  entityType: string;            // e.g., "visit", "transcript", "analysis"
   entityId: string;              // ID of the affected entity
-  oldValue?: any;                // Previous value (for updates)
-  newValue?: any;                // New value (for creates/updates)
   ipAddress?: string;
-  userAgent?: string;
   timestamp: Timestamp;
   metadata?: any;                // Additional context
 }
@@ -595,38 +319,33 @@ enum AuditAction {
   DELETE = 'delete',
   LOGIN = 'login',
   LOGOUT = 'logout',
-  EXPORT = 'export',
-  IMPORT = 'import'
+  TRANSCRIPT_UPLOAD = 'transcript_upload',
+  AI_ANALYSIS = 'ai_analysis'
 }
 ```
 
 ## Relationships and Constraints
 
 ### Entity Relationships
-- **Users** → **Visits** (assigned nurse/physician)
+- **Users** → **Visits** (attending provider)
 - **Patients** → **Visits** (one-to-many)
-- **Visits** → **Screenings** (one-to-many)
-- **Visits** → **VitalsRecords** (one-to-many)
-- **Visits** → **ChartNotes** (one-to-many)
-- **Visits** → **WorkflowExecutions** (one-to-many)
-- **ScreeningTemplates** → **Screenings** (one-to-many)
-- **NoteTemplates** → **ChartNotes** (one-to-many)
+- **Visits** → **VisitTranscript** (one-to-one)
+- **Visits** → **AIAnalysis** (one-to-one)
+- **Visits** → **VisitNotes** (one-to-many)
 
 ### Data Validation Rules
-- Patient emails must be unique (if provided)
-- MRN must be unique within organization (if used)
-- Visit numbers must be unique (if provided)
-- Vital signs must have valid ranges based on patient age
-- Screening responses must match question types
+- All visit transcripts must have associated visits
+- AI analysis requires completed transcript processing
+- Patient demographics must include required fields
 - Notes must have valid authors
-- Workflow executions must reference valid visits
+- Audit logging for all data access
 
 ### Security Constraints
 - PHI data encrypted at rest and in transit
 - Role-based access control for all data
 - Audit logging for all data access
-- Data retention policies based on regulations
-- Anonymous identifiers for AI processing
+- Transcript data anonymized for AI processing when possible
+- No storage of raw patient identifiers in AI processing logs
 
 ## Data Storage Strategy
 
@@ -635,29 +354,24 @@ enum AuditAction {
 /users/{userId}
 /patients/{patientId}
 /visits/{visitId}
-/screenings/{screeningId}
-/screening-templates/{templateId}
-/vitals/{vitalsId}
-/chart-notes/{noteId}
-/note-templates/{templateId}
-/workflow-executions/{executionId}
-/ehr-integrations/{integrationId}
+/visit-notes/{noteId}
+/ai-analysis/{analysisId}
 /settings/{settingId}
 /audit-logs/{auditId}
 ```
 
 ### Indexing Strategy
-- **Patients**: firstName, lastName, dateOfBirth, mrn
-- **Visits**: patientId, status, assignedNurse, attendingPhysician, createdAt
-- **Screenings**: visitId, patientId, status, completedAt
-- **Vitals**: visitId, patientId, recordedAt, recordedBy
-- **ChartNotes**: visitId, patientId, author, type, status, createdAt
-- **AuditLogs**: userId, entityType, entityId, action, timestamp
+- **Patients**: firstName, lastName, dateOfBirth
+- **Visits**: patientId, attendingProvider, status, createdAt
+- **AIAnalysis**: visitId, patientId, status, createdAt
+- **VisitNotes**: visitId, patientId, author, type, createdAt
+- **AuditLogs**: userId, entityType, action, timestamp
 
-### Data Archival
-- Archive completed visits older than 7 years
-- Maintain audit logs for 10 years minimum
-- Anonymous analytics data retained indefinitely
-- Export functionality for patient data portability
+### Data Processing Pipeline
+1. **Transcript Upload**: Audio/text uploaded to visit
+2. **AI Processing**: Extract symptoms, history, generate analysis
+3. **Provider Review**: Healthcare provider reviews AI recommendations
+4. **Documentation**: Generate visit notes based on analysis
+5. **Audit Trail**: Log all access and modifications
 
-This data model provides a robust foundation for managing patient visits while maintaining clear boundaries around what data we control versus hospital-managed systems like laboratory tests and diagnostic equipment. 
+This focused data model centers around visit transcript analysis while maintaining HIPAA compliance and providing actionable diagnostic assistance to healthcare providers. 

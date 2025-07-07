@@ -5,9 +5,11 @@ export const ROUTES = {
   DASHBOARD: '/dashboard',
   PATIENTS: '/patients',
   PATIENT_DETAIL: '/patients/:id',
-  SCREENING: '/screening',
-  VITALS: '/vitals',
-  CHARTS: '/charts',
+  VISITS: '/visits',
+  VISIT_DETAIL: '/visits/:id',
+  TRANSCRIPT_UPLOAD: '/visits/:id/transcript',
+  AI_ANALYSIS: '/visits/:id/analysis',
+  VISIT_NOTES: '/visits/:id/notes',
   SETTINGS: '/settings',
 } as const;
 
@@ -18,39 +20,62 @@ export const USER_ROLES = {
   ADMIN: 'admin',
 } as const;
 
-// Chart note categories
-export const CHART_CATEGORIES = {
+// Visit types
+export const VISIT_TYPES = {
+  CONSULTATION: 'consultation',
+  FOLLOW_UP: 'follow_up',
+  URGENT_CARE: 'urgent_care',
+  TELEMEDICINE: 'telemedicine',
+} as const;
+
+// Visit statuses
+export const VISIT_STATUS = {
+  SCHEDULED: 'scheduled',
+  IN_PROGRESS: 'in_progress',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
+} as const;
+
+// Note types
+export const NOTE_TYPES = {
+  SOAP: 'soap',
+  PROGRESS: 'progress',
   ASSESSMENT: 'assessment',
   PLAN: 'plan',
-  PROGRESS: 'progress',
-  DISCHARGE: 'discharge',
+  SUMMARY: 'summary',
 } as const;
 
-// Screening types
-export const SCREENING_TYPES = {
-  INITIAL: 'initial',
-  FOLLOW_UP: 'follow-up',
-  PRE_PROCEDURE: 'pre-procedure',
+// AI Analysis status
+export const ANALYSIS_STATUS = {
+  PENDING: 'pending',
+  PROCESSING: 'processing',
+  COMPLETED: 'completed',
+  REVIEWED: 'reviewed',
+  ERROR: 'error',
 } as const;
 
-// Question types
-export const QUESTION_TYPES = {
-  YES_NO: 'yes-no',
-  TEXT: 'text',
-  MULTIPLE_CHOICE: 'multiple-choice',
-  SCALE: 'scale',
+// Diagnosis severity levels
+export const DIAGNOSIS_SEVERITY = {
+  LOW: 'low',
+  MEDIUM: 'medium',
+  HIGH: 'high',
+  CRITICAL: 'critical',
 } as const;
 
-// Vital signs normal ranges
-export const VITAL_RANGES = {
-  TEMPERATURE: { min: 97.0, max: 99.5, unit: '°F' },
-  HEART_RATE: { min: 60, max: 100, unit: 'bpm' },
-  RESPIRATORY_RATE: { min: 12, max: 20, unit: 'breaths/min' },
-  OXYGEN_SATURATION: { min: 95, max: 100, unit: '%' },
-  BLOOD_PRESSURE: {
-    SYSTOLIC: { min: 90, max: 120, unit: 'mmHg' },
-    DIASTOLIC: { min: 60, max: 80, unit: 'mmHg' },
-  },
+// Treatment recommendation priorities
+export const TREATMENT_PRIORITY = {
+  LOW: 'low',
+  MEDIUM: 'medium',
+  HIGH: 'high',
+  URGENT: 'urgent',
+} as const;
+
+// Concern flag types
+export const CONCERN_FLAG_TYPES = {
+  RED_FLAG: 'red_flag',
+  DRUG_INTERACTION: 'drug_interaction',
+  ALLERGY_CONCERN: 'allergy_concern',
+  URGENT_REFERRAL: 'urgent_referral',
 } as const;
 
 // Form validation messages
@@ -61,6 +86,8 @@ export const VALIDATION_MESSAGES = {
   MAX_LENGTH: (length: number) => `Must be no more than ${length} characters`,
   INVALID_PHONE: 'Please enter a valid phone number',
   INVALID_DATE: 'Please enter a valid date',
+  INVALID_FILE_TYPE: 'Please select a valid file type',
+  FILE_TOO_LARGE: 'File size must be less than 50MB',
 } as const;
 
 // API endpoints
@@ -78,26 +105,33 @@ export const API_ENDPOINTS = {
     UPDATE: (id: string) => `/api/patients/${id}`,
     DELETE: (id: string) => `/api/patients/${id}`,
   },
-  VITALS: {
-    LIST: (patientId: string) => `/api/patients/${patientId}/vitals`,
-    CREATE: (patientId: string) => `/api/patients/${patientId}/vitals`,
-    GET: (patientId: string, vitalId: string) => `/api/patients/${patientId}/vitals/${vitalId}`,
-    UPDATE: (patientId: string, vitalId: string) => `/api/patients/${patientId}/vitals/${vitalId}`,
-    DELETE: (patientId: string, vitalId: string) => `/api/patients/${patientId}/vitals/${vitalId}`,
+  VISITS: {
+    LIST: '/api/visits',
+    CREATE: '/api/visits',
+    GET: (id: string) => `/api/visits/${id}`,
+    UPDATE: (id: string) => `/api/visits/${id}`,
+    DELETE: (id: string) => `/api/visits/${id}`,
+    BY_PATIENT: (patientId: string) => `/api/patients/${patientId}/visits`,
   },
-  CHARTS: {
-    LIST: (patientId: string) => `/api/patients/${patientId}/charts`,
-    CREATE: (patientId: string) => `/api/patients/${patientId}/charts`,
-    GET: (patientId: string, chartId: string) => `/api/patients/${patientId}/charts/${chartId}`,
-    UPDATE: (patientId: string, chartId: string) => `/api/patients/${patientId}/charts/${chartId}`,
-    DELETE: (patientId: string, chartId: string) => `/api/patients/${patientId}/charts/${chartId}`,
+  TRANSCRIPTS: {
+    UPLOAD: (visitId: string) => `/api/visits/${visitId}/transcript`,
+    GET: (visitId: string) => `/api/visits/${visitId}/transcript`,
+    UPDATE: (visitId: string) => `/api/visits/${visitId}/transcript`,
+    DELETE: (visitId: string) => `/api/visits/${visitId}/transcript`,
   },
-  SCREENING: {
-    LIST: (patientId: string) => `/api/patients/${patientId}/screening`,
-    CREATE: (patientId: string) => `/api/patients/${patientId}/screening`,
-    GET: (patientId: string, screeningId: string) => `/api/patients/${patientId}/screening/${screeningId}`,
-    UPDATE: (patientId: string, screeningId: string) => `/api/patients/${patientId}/screening/${screeningId}`,
-    DELETE: (patientId: string, screeningId: string) => `/api/patients/${patientId}/screening/${screeningId}`,
+  AI_ANALYSIS: {
+    ANALYZE: (visitId: string) => `/api/visits/${visitId}/analysis`,
+    GET: (visitId: string) => `/api/visits/${visitId}/analysis`,
+    UPDATE: (visitId: string) => `/api/visits/${visitId}/analysis`,
+    REVIEW: (visitId: string) => `/api/visits/${visitId}/analysis/review`,
+  },
+  VISIT_NOTES: {
+    LIST: (visitId: string) => `/api/visits/${visitId}/notes`,
+    CREATE: (visitId: string) => `/api/visits/${visitId}/notes`,
+    GET: (visitId: string, noteId: string) => `/api/visits/${visitId}/notes/${noteId}`,
+    UPDATE: (visitId: string, noteId: string) => `/api/visits/${visitId}/notes/${noteId}`,
+    DELETE: (visitId: string, noteId: string) => `/api/visits/${visitId}/notes/${noteId}`,
+    GENERATE: (visitId: string) => `/api/visits/${visitId}/notes/generate`,
   },
 } as const;
 
@@ -107,14 +141,18 @@ export const STORAGE_KEYS = {
   REFRESH_TOKEN: 'refresh_token',
   USER_PREFERENCES: 'user_preferences',
   DRAFT_NOTES: 'draft_notes',
+  VISIT_DRAFTS: 'visit_drafts',
 } as const;
 
 // Application settings
 export const APP_SETTINGS = {
-  NAME: 'Medical Charting App',
+  NAME: 'Visit Transcript Analysis',
   VERSION: '1.0.0',
   DEFAULT_PAGE_SIZE: 10,
-  MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
-  ALLOWED_FILE_TYPES: ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'],
+  MAX_AUDIO_FILE_SIZE: 50 * 1024 * 1024, // 50MB for audio files
+  MAX_TRANSCRIPT_SIZE: 5 * 1024 * 1024, // 5MB for text transcripts
+  ALLOWED_AUDIO_TYPES: ['.mp3', '.wav', '.m4a', '.mp4', '.aac'],
+  ALLOWED_TEXT_TYPES: ['.txt', '.docx', '.pdf'],
   SESSION_TIMEOUT: 30 * 60 * 1000, // 30 minutes
+  AI_CONFIDENCE_THRESHOLD: 0.7, // Minimum confidence score for AI recommendations
 } as const; 
