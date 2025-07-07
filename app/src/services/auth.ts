@@ -38,8 +38,8 @@ export class AuthService {
         email,
         displayName: name,
         role,
-        department: undefined,
-        licenseNumber: undefined,
+        department: role === 'doctor' ? 'General Medicine' : role === 'nurse' ? 'General Ward' : 'Administration',
+        licenseNumber: '',
         isActive: true,
         lastLogin: new Date(),
         preferences: {
