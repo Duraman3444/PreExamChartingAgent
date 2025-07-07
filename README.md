@@ -1,163 +1,203 @@
-# Pre-Examination Charting Agent 🚑🩺  
-"Cursor-style" AI assistant that handles patient screening, vitals capture, and draft-note generation while keeping nurses & doctors firmly in the verification loop.
+# Visit Transcript Analysis & AI Diagnosis Assistance 🩺🤖  
+AI-powered platform that analyzes patient visit transcripts to assist healthcare providers with diagnosis and treatment recommendations.
 
 ## 🎯 Current Status
 **Phase:** Architecture & Frontend Planning  
-**Stack Finalized:** Open-source focused with Firebase + React + GPT-4  
-**Next:** Begin frontend scaffolding with prepared prompts  
+**Stack Finalized:** React + TypeScript + Firebase + OpenAI GPT-4  
+**Next:** Begin frontend development with visit transcript upload and AI analysis features  
 
 ## 1. Why It Matters
-• Nurses spend 30-40% of every patient visit on repetitive data entry (PMH, meds, vitals).  
-• Context often gets lost between patient check-in → vitals → note drafting.  
-• Our agent preserves visit context, drafts notes, and shows transparent diffs so humans verify quickly.
-• Focus: Excellent patient visit management, not managing hospital-controlled systems.
+• Healthcare providers spend significant time analyzing patient visit recordings for diagnosis and treatment planning  
+• Important symptoms and context can be missed during manual transcript review  
+• Our AI assistant extracts key symptoms, suggests differential diagnoses, and provides treatment recommendations  
+• Focus: Transform visit transcripts into actionable clinical insights while maintaining provider control
 
 ## 2. End-to-End Workflow
 ```mermaid
 graph TD
-  PatientArrives["Patient Arrives"] --> Screening["Self-Service Screening Page<br/>(PMH • Meds • Allergies)"]
-  Screening --> Vitals["Nurse Takes Vitals"]
-  Vitals --> AgentDraft["Agent Drafts HPI / ROS"]
-  AgentDraft --> NurseVerify["Nurse Verifies / Edits (diff viewer)"]
-  NurseVerify --> DoctorReview["Doctor Reviews & Signs"]
+  VisitRecorded["Patient Visit Recorded"] --> TranscriptUpload["Upload Audio/Text Transcript"]
+  TranscriptUpload --> AIProcessing["AI Analysis Engine<br/>(Symptom Extraction • Medical History • Diagnosis)"]
+  AIProcessing --> Recommendations["AI Recommendations<br/>(Differential Diagnosis • Treatment Options)"]
+  Recommendations --> ProviderReview["Provider Reviews & Validates"]
+  ProviderReview --> Documentation["Generate Visit Notes & Documentation"]
 ```
 
 ## 3. Key Features
-1. **Screening Page (Tablet/Kiosk)** – collects PMH, meds, allergies, social/family history and stores JSON.  
-2. **Vitals Capture** – nurse inputs vitals, coloured heat-map flags out-of-range values.  
-3. **Agent Draft** – LLM ingests screening JSON + vitals → drafts HPI/ROS and safety checklist.  
-4. **Verification UI** – split-view: generated note ⬅️➡️ highlighted source snippets, diff modal for edits.  
-5. **Autonomy Slider** – OFF / ASSIST / AUTO (confidence-gated) modes.  
-6. **Audit Log & De-ID** – every input/output stored, PHI hashed before LLM calls.  
-7. **Mermaid Diagram Hotkey** – `Ctrl-M` autogenerates the visit workflow diagram for hand-offs.  
-8. **Automated Workflows** – n8n-powered visit transcript processing with EHR integration and nursing notifications.
+1. **Transcript Upload** – Support for audio files (MP3, WAV, M4A) and text transcripts (TXT, DOCX, PDF)  
+2. **AI Symptom Extraction** – Automatically identifies and categorizes symptoms from visit transcripts  
+3. **Medical History Parsing** – Extracts medications, allergies, conditions, and relevant history  
+4. **Differential Diagnosis** – AI-generated diagnosis suggestions with probability scores and reasoning  
+5. **Treatment Recommendations** – Evidence-based treatment options with contraindications and alternatives  
+6. **Clinical Decision Support** – Red flag detection, drug interaction alerts, and urgent referral recommendations  
+7. **Visit Documentation** – Automated SOAP note generation from AI analysis  
+8. **Provider Validation** – Human-in-the-loop review and approval of all AI recommendations  
 
-## 4. Technical Stack (Open Source + Free Tier)
+## 4. Technical Stack
 ### Frontend
 • **React + TypeScript** – Modern, type-safe UI development  
-• **Vite** – Fast build tool and dev server  
-• **Material-UI v5** – Medical-grade component library  
+• **Vite** – Fast build tool and development server  
+• **Material-UI v5** – Professional healthcare UI components  
 • **React Hook Form** – Form validation and state management  
-• **React Diff Viewer** – Side-by-side note comparison  
 • **Zustand** – Lightweight state management  
 
-### Backend & Data
-• **Firebase** ☁️ – Auth, Firestore, Cloud Functions (free tier)  
-• **LangChain** – AI orchestration and prompt management  
-• **OpenAI GPT-4** – Note generation (only paid service)  
-• **Chroma** – Vector database for semantic search (self-hosted)  
+### Backend & AI
+• **Firebase** ☁️ – Authentication, Firestore database, Cloud Storage  
+• **OpenAI GPT-4** – Advanced language model for medical text analysis  
+• **Firebase Functions** – Serverless API endpoints  
+• **Audio Processing** – Speech-to-text transcription services  
 
-### Workflow & Automation
-• **n8n** – Visual workflow automation (self-hosted)  
-• **Presidio** – Open-source PHI de-identification  
-• **Sentry** – Error tracking (free tier)  
-
-### DevOps
-• **GitHub Actions** – CI/CD pipeline  
-• **Docker Compose** – Local development environment  
-• **Firebase Hosting** – Static site deployment  
-• **Grafana + Prometheus** – Monitoring (self-hosted)  
+### Data & Security
+• **HIPAA Compliance** – End-to-end encryption and secure data handling  
+• **PHI Protection** – Data anonymization for AI processing  
+• **Audit Logging** – Complete audit trail for all user actions  
+• **Role-Based Access** – Provider-specific permissions and access controls  
 
 ## 5. Repository Layout
 ```
-pre-exam-charting-agent/
+PreExamChartingAgent/
 │
 ├── app/                    # React frontend
 │   ├── src/
 │   │   ├── components/     # UI components
-│   │   ├── pages/          # Route pages
+│   │   │   ├── layout/     # Header, sidebar, layout
+│   │   │   └── common/     # Shared components
+│   │   ├── pages/          # Route pages (Dashboard, Visits, etc.)
 │   │   ├── hooks/          # Custom React hooks
-│   │   ├── services/       # API and Firebase
-│   │   ├── stores/         # Zustand state
-│   │   └── types/          # TypeScript types
-├── agent/                  # LLM prompts, memory, tools
-│   └── prompt_templates/
-├── data/                   # synthetic sample patients
-├── docs/                   # architecture diagrams, mermaid
-│   ├── BrainLift.md        # Knowledge hub
+│   │   ├── services/       # API and Firebase services
+│   │   ├── stores/         # Zustand state management
+│   │   ├── types/          # TypeScript type definitions
+│   │   └── utils/          # Utility functions
+├── docs/                   # Project documentation
 │   ├── data-model.md              # Complete data model specifications
-│   ├── frontend-setup-prompts.md  # Figma design system prompts
-│   ├── automation-workflows.md    # n8n workflows & EHR integration
-│   ├── n8n-workflow-setup.md     # Complete n8n setup guide
-│   ├── wireflow-diagrams.md      # Visual user flow diagrams
-│   ├── ui-concepts.md             # UI design system & components
-│   ├── user-personas.md           # User profiles & stakeholder analysis
-│   └── industry-context.md        # Market analysis & "Why Now"
-├── tests/                  # pytest suite
-├── scripts/seed_data.py    # generate test patients
-├── .github/workflows/ci.yml
+│   ├── PRD-Medical-Charting-App.md  # Product Requirements Document
+│   ├── frontend-setup-prompts.md    # Development setup guides
+│   ├── automation-workflows.md      # AI processing workflows
+│   ├── wireflow-diagrams.md        # User flow diagrams
+│   ├── ui-concepts.md               # UI design system
+│   ├── user-personas.md             # User profiles & use cases
+│   └── industry-context.md          # Market analysis
+├── .github/workflows/      # CI/CD pipelines
 ├── .gitignore
-├── LICENSE                 # MIT
-├── README.md
-└── Makefile                # dev-up / demo commands
+├── LICENSE
+└── README.md
 ```
 
-## 6. Milestone Timeline (1-Week Sprint)
-**Day 1** ✅ – Project setup, tech stack finalization, frontend prompts prepared  
-**Day 2** 🔄 – Scaffold React app, implement Screening Page stub, commit JSON schema  
-**Days 3-4** – Build Agent draft + verification UI (happy path)  
-**Day 5** – Add autonomy slider, audit log, diff viewer  
-**Day 6** – Polish UI, seed synthetic patients, write docs  
-**Day 7** – Rehearse 5-min demo, tag `v0.1.0`, push social post  
+## 6. Data Model Overview
+### Core Entities
+- **Patients** – Basic demographics and medical history from conversations
+- **Visits** – Visit records with transcripts and AI analysis
+- **Visit Transcripts** – Audio/text processing with speaker identification
+- **AI Analysis** – Symptom extraction, diagnosis suggestions, treatment recommendations
+- **Visit Notes** – Generated documentation and provider notes
+- **Users** – Healthcare providers with role-based access
 
-## 7. Development Setup
+### AI Analysis Components
+- **Extracted Symptoms** – Identified symptoms with severity and context
+- **Patient History** – Medications, allergies, conditions from transcript
+- **Diagnosis Options** – Differential diagnosis with probability scores
+- **Treatment Recommendations** – Evidence-based treatment suggestions
+- **Concern Flags** – Red flags and clinical alerts
+- **Follow-up Recommendations** – Next steps and monitoring plans
+
+## 7. Development Roadmap
+### Phase 1: Foundation (Months 1-2)
+- [x] Project refactoring and architecture planning
+- [x] Data model design and documentation
+- [x] Frontend scaffolding and routing
+- [ ] User authentication and basic patient management
+- [ ] Visit creation and transcript upload UI
+
+### Phase 2: Core AI Features (Months 3-4)
+- [ ] Transcript processing and AI analysis engine
+- [ ] Symptom extraction and medical history parsing
+- [ ] Differential diagnosis recommendations
+- [ ] Treatment suggestions and clinical decision support
+
+### Phase 3: Advanced Features (Months 5-6)
+- [ ] Visit documentation and note generation
+- [ ] Provider review and validation workflows
+- [ ] Reporting and analytics dashboard
+- [ ] Advanced AI features and model refinement
+
+## 8. Development Setup
 ```bash
 # Clone the repository
 git clone https://github.com/Duraman3444/PreExamChartingAgent.git
 cd PreExamChartingAgent
 
-# Frontend setup (coming soon)
+# Frontend setup
 cd app
 npm install
 npm run dev
 
-# Backend setup (coming soon)
-make dev-up     # creates .venv & installs Python deps
-make demo       # seeds data & launches full app
+# Firebase setup (coming soon)
+# - Create Firebase project
+# - Configure authentication
+# - Set up Firestore database
+# - Configure Cloud Storage
 ```
 
-## 8. Current Progress & Next Steps
+## 9. Current Progress & Next Steps
 ### ✅ Completed
-- [x] Project architecture and tech stack decisions
-- [x] Open-source tooling research and selection
-- [x] Frontend setup prompts prepared (10 comprehensive prompts)
-- [x] Repository structure and documentation
-- [x] Comprehensive data model for patient visit management
-- [x] Complete UX documentation (wireflows, personas, design system)
-- [x] Industry analysis and market positioning
+- [x] Project refactoring to focus on visit transcript analysis
+- [x] Complete data model redesign for AI-powered analysis
+- [x] Frontend architecture updates (routes, components, types)
+- [x] Product Requirements Document (PRD) rewrite
+- [x] Updated navigation and dashboard for new scope
+- [x] Git repository with comprehensive documentation
 
-### 🔄 In Progress
-- [ ] React TypeScript project scaffolding
-- [ ] Firebase configuration and security rules
-- [ ] Patient screening interface components
+### 🔄 Next Priority Tasks
+1. **Firebase Configuration** – Set up authentication, Firestore, and Cloud Storage
+2. **Visit Management UI** – Create visit list, detail, and creation pages
+3. **Transcript Upload** – File upload component with validation and progress
+4. **AI Analysis Integration** – Connect to OpenAI API for transcript analysis
+5. **Provider Dashboard** – Display AI recommendations and review interface
 
-### 📋 Upcoming
-- [ ] Vitals capture interface
-- [ ] AI draft verification with diff viewer
-- [ ] LangChain integration and prompt engineering
-- [ ] n8n workflow automation setup
-- [ ] Testing framework and CI/CD pipeline
+### 📋 Upcoming Features
+- [ ] Audio transcription service integration
+- [ ] Symptom extraction and categorization
+- [ ] Differential diagnosis generation
+- [ ] Treatment recommendation engine
+- [ ] Visit note generation and export
 
-## 9. Key Design Decisions
-- **Open Source First**: All tools are open-source except GPT-4 API
-- **Firebase for Speed**: Rapid prototyping with generous free tier
-- **React + TypeScript**: Type safety for medical data handling
-- **Self-Hosted Options**: Can migrate to fully self-hosted stack later
-- **Privacy by Design**: PHI de-identification before any external API calls
+## 10. Key Design Decisions
+- **AI-First Approach**: Leverage advanced language models for medical analysis
+- **Provider-Controlled**: All AI recommendations require human validation
+- **Transcript-Focused**: Specialize in visit recording analysis rather than comprehensive EMR
+- **HIPAA Compliant**: Security and privacy by design
+- **Scalable Architecture**: Built for growth with modern cloud infrastructure
 
-## 10. Contributing
-This is an open-source project welcoming contributions! See our [BrainLift knowledge hub](docs/BrainLift.md) for technical resources and decision rationale.
+## 11. Getting Started Development
+### Immediate Next Steps:
+1. **Set up Firebase project** with authentication and Firestore
+2. **Create visit management pages** (list, detail, create)
+3. **Implement transcript upload** with file validation
+4. **Build AI analysis display** components
+5. **Add provider review workflows**
+
+### Development Workflow:
+```bash
+# Start development server
+cd app && npm run dev
+
+# Access application at http://localhost:5173
+# Login with test credentials (to be configured)
+```
+
+## 12. Contributing
+This project focuses on AI-powered clinical decision support through visit transcript analysis. We welcome contributions that enhance diagnostic accuracy and provider workflow efficiency.
 
 ### Quick Start for Contributors
-1. Review the frontend setup prompts in `docs/frontend-setup-prompts.md`
-2. Pick a component from the current sprint backlog
-3. Follow the established patterns for TypeScript, testing, and documentation
-4. Submit PR with clear description and test coverage
+1. Review the data model in `docs/data-model.md`
+2. Check the PRD for feature requirements
+3. Follow TypeScript and React best practices
+4. Ensure HIPAA compliance in all implementations
+5. Submit PRs with clear descriptions and test coverage
 
 ---
 
-_Building the future of medical documentation, one commit at a time._ 🚀
+_Transforming patient visit transcripts into actionable clinical insights with AI._ 🚀
 
-**Live Demo:** Coming soon  
-**Documentation:** [BrainLift Knowledge Hub](docs/BrainLift.md) | [Data Model](docs/data-model.md) | [Automation Workflows](docs/automation-workflows.md) | [n8n Setup Guide](docs/n8n-workflow-setup.md) | [Wireflow Diagrams](docs/wireflow-diagrams.md) | [UI Design System](docs/ui-concepts.md) | [User Personas](docs/user-personas.md) | [Industry Context](docs/industry-context.md)  
-**Issues:** [GitHub Issues](https://github.com/Duraman3444/PreExamChartingAgent/issues)
+**Documentation:** [Data Model](docs/data-model.md) | [PRD](docs/PRD-Medical-Charting-App.md) | [UI Design](docs/ui-concepts.md) | [User Personas](docs/user-personas.md)  
+**Issues:** [GitHub Issues](https://github.com/Duraman3444/PreExamChartingAgent/issues)  
+**License:** MIT
