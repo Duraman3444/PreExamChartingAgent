@@ -14,7 +14,6 @@ import {
 import {
   Dashboard,
   People,
-  Assignment,
   RecordVoiceOver,
   Psychology,
   Settings,

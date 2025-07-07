@@ -19,7 +19,6 @@ import {
   RecordVoiceOver,
   Psychology,
   TrendingUp,
-  PlayCircle,
   VideoCall,
   LocalHospital,
   Assessment,
