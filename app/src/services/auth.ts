@@ -36,8 +36,19 @@ export class AuthService {
       const userData: User = {
         id: credential.user.uid,
         email,
-        name,
+        displayName: name,
         role,
+        department: undefined,
+        licenseNumber: undefined,
+        isActive: true,
+        lastLogin: new Date(),
+        preferences: {
+          theme: 'dark',
+          language: 'en',
+          autoSave: true,
+          notificationsEnabled: true,
+          aiAssistanceLevel: 'comprehensive',
+        },
         createdAt: new Date(),
         updatedAt: new Date(),
       };

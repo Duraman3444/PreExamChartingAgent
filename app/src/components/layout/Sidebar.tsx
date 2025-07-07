@@ -79,10 +79,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       <Box sx={{ overflow: 'auto' }}>
         <Box sx={{ p: 2 }}>
           <Typography variant="h6" noWrap>
-            Visit Transcript Analysis
+            Care+
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {user?.name} • {user?.role}
+            {user?.displayName} • {user?.role}
           </Typography>
         </Box>
         <Divider />
