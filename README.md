@@ -1,8 +1,13 @@
 # Pre-Examination Charting Agent 🚑🩺  
 "Cursor-style" AI assistant that handles patient screening, vitals capture, and draft-note generation while keeping nurses & doctors firmly in the verification loop.
 
+## 🎯 Current Status
+**Phase:** Architecture & Frontend Planning  
+**Stack Finalized:** Open-source focused with Firebase + React + GPT-4  
+**Next:** Begin frontend scaffolding with prepared prompts  
+
 ## 1. Why It Matters
-• Nurses spend 30-40 % of every visit on repetitive data entry (PMH, meds, vitals).  
+• Nurses spend 30-40% of every visit on repetitive data entry (PMH, meds, vitals).  
 • Context often gets lost between kiosk check-in → vitals → note drafting.  
 • Our agent preserves that context, drafts the note, and shows transparent diffs so humans verify quickly.
 
@@ -25,22 +30,50 @@ graph TD
 6. **Audit Log & De-ID** – every input/output stored, PHI hashed before LLM calls.  
 7. **Mermaid Diagram Hotkey** – `Ctrl-M` autogenerates the visit workflow diagram for hand-offs.
 
-## 4. Technical Stack
-• Front-end: Streamlit (hack-week quick) or React + Material-UI (stretch).  
-• LLM Interface: LangChain + OpenAI GPT-4o (swap-able).  
-• Context Store: In-memory JSON (Pinecone or Postgres vector DB later).  
-• Diff Viewer: `react-diff-viewer` (green/red chunk diff).  
-• CI: GitHub Actions – lint + pytest.  
+## 4. Technical Stack (Open Source + Free Tier)
+### Frontend
+• **React + TypeScript** – Modern, type-safe UI development  
+• **Vite** – Fast build tool and dev server  
+• **Material-UI v5** – Medical-grade component library  
+• **React Hook Form** – Form validation and state management  
+• **React Diff Viewer** – Side-by-side note comparison  
+• **Zustand** – Lightweight state management  
+
+### Backend & Data
+• **Firebase** ☁️ – Auth, Firestore, Cloud Functions (free tier)  
+• **LangChain** – AI orchestration and prompt management  
+• **OpenAI GPT-4** – Note generation (only paid service)  
+• **Chroma** – Vector database for semantic search (self-hosted)  
+
+### Workflow & Automation
+• **n8n** – Visual workflow automation (self-hosted)  
+• **Presidio** – Open-source PHI de-identification  
+• **Sentry** – Error tracking (free tier)  
+
+### DevOps
+• **GitHub Actions** – CI/CD pipeline  
+• **Docker Compose** – Local development environment  
+• **Firebase Hosting** – Static site deployment  
+• **Grafana + Prometheus** – Monitoring (self-hosted)  
 
 ## 5. Repository Layout
 ```
 pre-exam-charting-agent/
 │
-├── app/                    # UI (Streamlit or React)
+├── app/                    # React frontend
+│   ├── src/
+│   │   ├── components/     # UI components
+│   │   ├── pages/          # Route pages
+│   │   ├── hooks/          # Custom React hooks
+│   │   ├── services/       # API and Firebase
+│   │   ├── stores/         # Zustand state
+│   │   └── types/          # TypeScript types
 ├── agent/                  # LLM prompts, memory, tools
 │   └── prompt_templates/
 ├── data/                   # synthetic sample patients
 ├── docs/                   # architecture diagrams, mermaid
+│   ├── BrainLift.md        # Knowledge hub
+│   └── frontend-setup-prompts.md  # Local dev prompts
 ├── tests/                  # pytest suite
 ├── scripts/seed_data.py    # generate test patients
 ├── .github/workflows/ci.yml
@@ -51,29 +84,68 @@ pre-exam-charting-agent/
 ```
 
 ## 6. Milestone Timeline (1-Week Sprint)
-Day 1 – user interviews, scope, write one-pager "Current vs. Agent workflow"  
-Day 2 – scaffold repo, implement Screening Page stub, commit JSON schema  
-Days 3-4 – build Agent draft + verification UI (happy path)  
-Day 5 – add autonomy slider, audit log, diff viewer  
-Day 6 – polish UI, seed synthetic patients, write docs  
-Day 7 – rehearse 5-min demo, tag `v0.1.0`, push social post
+**Day 1** ✅ – Project setup, tech stack finalization, frontend prompts prepared  
+**Day 2** 🔄 – Scaffold React app, implement Screening Page stub, commit JSON schema  
+**Days 3-4** – Build Agent draft + verification UI (happy path)  
+**Day 5** – Add autonomy slider, audit log, diff viewer  
+**Day 6** – Polish UI, seed synthetic patients, write docs  
+**Day 7** – Rehearse 5-min demo, tag `v0.1.0`, push social post  
 
-## 7. How to Run Locally
+## 7. Development Setup
 ```bash
-git clone git@github.com:<your-org>/pre-exam-charting-agent.git
-cd pre-exam-charting-agent
-make dev-up     # creates .venv & installs Python + (optional) front-end deps
-make demo       # seeds data & launches the full app at http://localhost:8501
+# Clone the repository
+git clone https://github.com/Duraman3444/PreExamChartingAgent.git
+cd PreExamChartingAgent
+
+# Frontend setup (coming soon)
+cd app
+npm install
+npm run dev
+
+# Backend setup (coming soon)
+make dev-up     # creates .venv & installs Python deps
+make demo       # seeds data & launches full app
 ```
 
-## 8. Immediate Next Steps
-1. **Clone & install** (see above).  
-2. **Fill `requirements.txt`** – `streamlit langchain openai python-dotenv` …  
-3. **Implement `app/screens.py`** – fields for PMH, meds, allergies.  
-4. **Write first prompt** (`agent/draft_note.py`) that merges screening JSON + vitals.  
-5. **Push a PR** – CI should pass (`pytest -q`).  
-6. **Update `docs/architecture.md`** with the mermaid flow and sequence diagram.
+## 8. Current Progress & Next Steps
+### ✅ Completed
+- [x] Project architecture and tech stack decisions
+- [x] Open-source tooling research and selection
+- [x] Frontend setup prompts prepared (10 comprehensive prompts)
+- [x] Repository structure and documentation
+
+### 🔄 In Progress
+- [ ] React TypeScript project scaffolding
+- [ ] Firebase configuration and security rules
+- [ ] Patient screening interface components
+
+### 📋 Upcoming
+- [ ] Vitals capture interface
+- [ ] AI draft verification with diff viewer
+- [ ] LangChain integration and prompt engineering
+- [ ] n8n workflow automation setup
+- [ ] Testing framework and CI/CD pipeline
+
+## 9. Key Design Decisions
+- **Open Source First**: All tools are open-source except GPT-4 API
+- **Firebase for Speed**: Rapid prototyping with generous free tier
+- **React + TypeScript**: Type safety for medical data handling
+- **Self-Hosted Options**: Can migrate to fully self-hosted stack later
+- **Privacy by Design**: PHI de-identification before any external API calls
+
+## 10. Contributing
+This is an open-source project welcoming contributions! See our [BrainLift knowledge hub](docs/BrainLift.md) for technical resources and decision rationale.
+
+### Quick Start for Contributors
+1. Review the frontend setup prompts in `docs/frontend-setup-prompts.md`
+2. Pick a component from the current sprint backlog
+3. Follow the established patterns for TypeScript, testing, and documentation
+4. Submit PR with clear description and test coverage
 
 ---
 
-_Copy, paste, tweak—now everyone's on the same page!_ 
+_Building the future of medical documentation, one commit at a time._ 🚀
+
+**Live Demo:** Coming soon  
+**Documentation:** [BrainLift Knowledge Hub](docs/BrainLift.md)  
+**Issues:** [GitHub Issues](https://github.com/Duraman3444/PreExamChartingAgent/issues)
