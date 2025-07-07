@@ -8,28 +8,14 @@ import { Dashboard } from '@/pages/Dashboard';
 import { Profile } from '@/pages/Profile';
 import { Settings } from '@/pages/Settings';
 import { PatientManagement } from '@/pages/PatientManagement';
+import { VisitManagement } from '@/pages/VisitManagement';
 import { useAuthStore } from '@/stores/authStore';
 import { ROUTES } from '@/constants';
 import { theme } from '@/theme/theme';
 
 // Proper page components with visible content
 
-const Visits = () => {
-  return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Visits
-      </Typography>
-      <Card>
-        <CardContent>
-          <Typography variant="body1">
-            Visit management and transcript analysis - Coming soon!
-          </Typography>
-        </CardContent>
-      </Card>
-    </Box>
-  );
-};
+// Visits component is now replaced by VisitManagement
 
 const VisitDetail = () => (
   <Box sx={{ p: 3 }}>
@@ -173,7 +159,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <Layout>
-                  <Visits />
+                  <VisitManagement />
                 </Layout>
               </ProtectedRoute>
             }
