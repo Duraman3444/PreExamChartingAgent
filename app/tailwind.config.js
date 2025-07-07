@@ -31,9 +31,15 @@ export default {
           800: '#86198f',
           900: '#701a75',
         },
+        brand: {
+          purple: '#6C5BD4',
+          orange: '#FF6000',
+          dark: '#242424',
+        },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Manrope', 'system-ui', 'sans-serif'],
+        display: ['"Clash Display"', 'sans-serif'],
       },
     },
   },
