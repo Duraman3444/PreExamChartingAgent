@@ -10,35 +10,39 @@ import { ROUTES } from '@/constants';
 import { theme } from '@/theme/theme';
 
 // Proper page components with visible content
-const Patients = () => (
-  <Box sx={{ p: 3 }}>
-    <Typography variant="h4" component="h1" gutterBottom>
-      Patients
-    </Typography>
-    <Card>
-      <CardContent>
-        <Typography variant="body1">
-          Patient management system - Coming soon!
-        </Typography>
-      </CardContent>
-    </Card>
-  </Box>
-);
+const Patients = () => {
+  return (
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Patients
+      </Typography>
+      <Card>
+        <CardContent>
+          <Typography variant="body1">
+            Patient management system - Coming soon!
+          </Typography>
+        </CardContent>
+      </Card>
+    </Box>
+  );
+};
 
-const Visits = () => (
-  <Box sx={{ p: 3 }}>
-    <Typography variant="h4" component="h1" gutterBottom>
-      Visits
-    </Typography>
-    <Card>
-      <CardContent>
-        <Typography variant="body1">
-          Visit management and transcript analysis - Coming soon!
-        </Typography>
-      </CardContent>
-    </Card>
-  </Box>
-);
+const Visits = () => {
+  return (
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Visits
+      </Typography>
+      <Card>
+        <CardContent>
+          <Typography variant="body1">
+            Visit management and transcript analysis - Coming soon!
+          </Typography>
+        </CardContent>
+      </Card>
+    </Box>
+  );
+};
 
 const VisitDetail = () => (
   <Box sx={{ p: 3 }}>
@@ -70,20 +74,22 @@ const TranscriptUpload = () => (
   </Box>
 );
 
-const AIAnalysis = () => (
-  <Box sx={{ p: 3 }}>
-    <Typography variant="h4" component="h1" gutterBottom>
-      AI Analysis
-    </Typography>
-    <Card>
-      <CardContent>
-        <Typography variant="body1">
-          AI-powered visit analysis and insights - Coming soon!
-        </Typography>
-      </CardContent>
-    </Card>
-  </Box>
-);
+const AIAnalysis = () => {
+  return (
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
+        AI Analysis
+      </Typography>
+      <Card>
+        <CardContent>
+          <Typography variant="body1">
+            AI-powered visit analysis and insights - Coming soon!
+          </Typography>
+        </CardContent>
+      </Card>
+    </Box>
+  );
+};
 
 const VisitNotes = () => (
   <Box sx={{ p: 3 }}>
@@ -100,20 +106,22 @@ const VisitNotes = () => (
   </Box>
 );
 
-const Settings = () => (
-  <Box sx={{ p: 3 }}>
-    <Typography variant="h4" component="h1" gutterBottom>
-      Settings
-    </Typography>
-    <Card>
-      <CardContent>
-        <Typography variant="body1">
-          Application settings and preferences - Coming soon!
-        </Typography>
-      </CardContent>
-    </Card>
-  </Box>
-);
+const Settings = () => {
+  return (
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Settings
+      </Typography>
+      <Card>
+        <CardContent>
+          <Typography variant="body1">
+            Application settings and preferences - Coming soon!
+          </Typography>
+        </CardContent>
+      </Card>
+    </Box>
+  );
+};
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -126,11 +134,31 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 };
 
 function App() {
-  const { initialize, isAuthenticated } = useAuthStore();
+  const { initialize, isAuthenticated, isLoading } = useAuthStore();
 
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // Show loading state while initializing
+  if (isLoading) {
+    return (
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            minHeight: '100vh',
+            backgroundColor: '#f5f5f5',
+          }}
+        >
+          <Typography variant="h6">Loading...</Typography>
+        </Box>
+      </ThemeProvider>
+    );
+  }
 
   return (
     <ThemeProvider theme={theme}>

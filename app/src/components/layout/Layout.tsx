@@ -15,7 +15,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <Header onMenuClick={handleDrawerToggle} />
       <Sidebar
         open={mobileOpen}
@@ -26,9 +26,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { sm: `calc(100% - 0px)` },
-          minHeight: 'calc(100vh - 64px)',
+          width: '100%',
+          minHeight: '100vh',
           mt: '64px',
+          backgroundColor: '#f5f5f5',
         }}
       >
         {children}
