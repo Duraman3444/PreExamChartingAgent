@@ -13,6 +13,9 @@ import {
   Avatar,
   Stack,
   useTheme,
+  LinearProgress,
+  Divider,
+  IconButton,
 } from '@mui/material';
 import {
   People,
@@ -22,6 +25,10 @@ import {
   VideoCall,
   LocalHospital,
   Assessment,
+  ChevronRight,
+  CheckCircle,
+  Schedule,
+  Warning,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants';
@@ -33,32 +40,64 @@ const statsCards = [
     value: '156',
     icon: <People />,
     color: '#FF6000',
+    change: '+12%',
+    trend: 'up',
   },
   {
     title: 'Pending Transcripts',
     value: '12',
     icon: <RecordVoiceOver />,
     color: '#6C5BD4',
+    change: '-3%',
+    trend: 'down',
   },
   {
     title: 'AI Analysis Complete',
     value: '34',
     icon: <Psychology />,
     color: '#FF6000',
+    change: '+8%',
+    trend: 'up',
   },
   {
     title: 'Analysis Accuracy',
     value: '92%',
     icon: <TrendingUp />,
     color: '#6C5BD4',
+    change: '+2%',
+    trend: 'up',
   },
 ];
 
 const recentActivities = [
-  { id: '1', action: 'AI analysis completed for John Doe visit', time: '2 hours ago', status: 'completed' },
-  { id: '2', action: 'Transcript uploaded for Jane Smith consultation', time: '4 hours ago', status: 'processing' },
-  { id: '3', action: 'Visit notes generated for Mike Johnson', time: '6 hours ago', status: 'completed' },
-  { id: '4', action: 'Diagnosis recommendations reviewed for Sarah Wilson', time: '8 hours ago', status: 'reviewed' },
+  { 
+    id: '1', 
+    action: 'AI analysis completed for John Doe visit', 
+    time: '2 hours ago', 
+    status: 'completed',
+    icon: <CheckCircle color="success" />,
+  },
+  { 
+    id: '2', 
+    action: 'Transcript uploaded for Jane Smith consultation', 
+    time: '4 hours ago', 
+    status: 'processing',
+    icon: <Schedule color="warning" />,
+  },
+  { 
+    id: '3', 
+    action: 'Visit notes generated for Mike Johnson', 
+    time: '6 hours ago', 
+    status: 'completed',
+    icon: <CheckCircle color="success" />,
+  },
+  { 
+    id: '4', 
+    action: 'Diagnosis recommendations reviewed for Sarah Wilson', 
+    time: '8 hours ago', 
+    status: 'reviewed',
+    icon: <Assessment color="info" />,
+  },
 ];
 
 const recentVisits = [
@@ -67,7 +106,6 @@ const recentVisits = [
     date: '24 April \'23',
     type: 'Complete Blood Count (CBC)',
     doctor: 'Dr. Shimron Hetmyer',
-    avatar: '/api/placeholder/40/40',
     status: 'completed',
     color: '#6C5BD4',
   },
@@ -76,7 +114,6 @@ const recentVisits = [
     date: '31 May \'23',
     type: 'Clinic Visit Appointment',
     doctor: 'Dr. Shilpa Rao',
-    avatar: '/api/placeholder/40/40',
     status: 'completed',
     color: '#FF6000',
   },
@@ -85,57 +122,32 @@ const recentVisits = [
     date: '02 June \'23',
     type: 'Video Consultation Chat',
     doctor: 'Dr. Kartik Aryan',
-    avatar: '/api/placeholder/40/40',
     status: 'video_call',
     color: '#6C5BD4',
   },
 ];
 
-const medicationSchedule = [
+const quickActions = [
   {
-    id: '1',
-    name: 'Albufin',
-    dosage: '20mg',
-    frequency: '1x daily',
-    color: '#6C5BD4',
-    days: ['Mon 20', 'Tue 21', 'Wed 22', 'Thu 23', 'Fri 24', 'Sat 25'],
-    taken: [true, true, false, false, false, false],
-  },
-  {
-    id: '2',
-    name: 'Vitamin D',
-    dosage: '100mg',
-    frequency: '2x daily',
-    color: '#6C5BD4',
-    days: ['Mon 20', 'Tue 21', 'Wed 22', 'Thu 23', 'Fri 24', 'Sat 25'],
-    taken: [true, true, false, false, false, false],
-  },
-  {
-    id: '3',
-    name: 'Omega 3',
-    dosage: '500mg',
-    frequency: '2x daily',
-    color: '#6C5BD4',
-    days: ['Mon 20', 'Tue 21', 'Wed 22', 'Thu 23', 'Fri 24', 'Sat 25'],
-    taken: [true, true, false, false, false, false],
-  },
-  {
-    id: '4',
-    name: 'Ibuprofen',
-    dosage: '75mg',
-    frequency: '1x daily',
+    title: 'Upload Transcript',
+    description: 'Upload new visit transcript for AI analysis',
+    icon: <RecordVoiceOver />,
     color: '#FF6000',
-    days: ['Mon 20', 'Tue 21', 'Wed 22', 'Thu 23', 'Fri 24', 'Sat 25'],
-    taken: [false, false, false, false, false, false],
+    route: ROUTES.TRANSCRIPT_UPLOAD,
   },
   {
-    id: '5',
-    name: 'Aspirin',
-    dosage: '100mg',
-    frequency: '2x daily',
+    title: 'View Patients',
+    description: 'Manage patient records and information',
+    icon: <People />,
     color: '#6C5BD4',
-    days: ['Mon 20', 'Tue 21', 'Wed 22', 'Thu 23', 'Fri 24', 'Sat 25'],
-    taken: [true, true, false, false, false, false],
+    route: ROUTES.PATIENTS,
+  },
+  {
+    title: 'AI Analysis',
+    description: 'Review AI-generated diagnosis and recommendations',
+    icon: <Psychology />,
+    color: '#FF6000',
+    route: ROUTES.AI_ANALYSIS,
   },
 ];
 
@@ -144,22 +156,205 @@ export const Dashboard: React.FC = () => {
   const { user } = useAuthStore();
   const theme = useTheme();
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return theme.palette.success.main;
+      case 'processing':
+        return theme.palette.warning.main;
+      case 'reviewed':
+        return theme.palette.info.main;
+      default:
+        return theme.palette.text.secondary;
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircle />;
+      case 'processing':
+        return <Schedule />;
+      case 'video_call':
+        return <VideoCall />;
+      default:
+        return <Assessment />;
+    }
+  };
+
   return (
     <Box sx={{ flexGrow: 1, p: 3 }}>
-      <Typography variant="h2" component="h1" gutterBottom sx={{ mb: 1 }}>
-        Health Diagnosis Overview
-      </Typography>
-      <Typography variant="body1" color="text.secondary" gutterBottom>
-        Welcome back, {user?.displayName}! Here's your visit transcript analysis overview.
-      </Typography>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h2" component="h1" gutterBottom sx={{ mb: 1 }}>
+          Health Diagnosis Overview
+        </Typography>
+        <Typography variant="body1" color="text.secondary" gutterBottom>
+          Welcome back, {user?.displayName || 'Doctor'}! Here's your visit transcript analysis overview.
+        </Typography>
+      </Box>
 
-      <Grid container spacing={3} sx={{ mt: 3 }}>
-        {/* Summary Section */}
-        <Grid item xs={12} md={6}>
+      {/* Stats Cards */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        {statsCards.map((card, index) => (
+          <Grid item xs={12} sm={6} md={3} key={index}>
+            <Card 
+              sx={{ 
+                height: '100%',
+                transition: 'transform 0.2s ease-in-out',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                },
+              }}
+            >
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Box
+                    sx={{
+                      p: 1,
+                      borderRadius: 2,
+                      backgroundColor: `${card.color}15`,
+                      color: card.color,
+                      mr: 2,
+                    }}
+                  >
+                    {card.icon}
+                  </Box>
+                  <Typography variant="body2" color="text.secondary">
+                    {card.title}
+                  </Typography>
+                </Box>
+                <Typography variant="h3" component="div" sx={{ fontWeight: 'bold', mb: 1 }}>
+                  {card.value}
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Chip
+                    label={card.change}
+                    size="small"
+                    sx={{
+                      backgroundColor: card.trend === 'up' ? '#E8F5E8' : '#FFF3E0',
+                      color: card.trend === 'up' ? '#2E7D32' : '#F57C00',
+                      fontSize: '0.75rem',
+                    }}
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    from last month
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+
+      <Grid container spacing={3}>
+        {/* Main Content */}
+        <Grid item xs={12} md={8}>
+          {/* Quick Actions */}
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h5" gutterBottom>
+                Quick Actions
+              </Typography>
+              <Grid container spacing={2}>
+                {quickActions.map((action, index) => (
+                  <Grid item xs={12} sm={4} key={index}>
+                    <Card 
+                      variant="outlined"
+                      sx={{ 
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease-in-out',
+                        '&:hover': {
+                          borderColor: action.color,
+                          transform: 'translateY(-2px)',
+                        },
+                      }}
+                      onClick={() => navigate(action.route)}
+                    >
+                      <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                        <Box
+                          sx={{
+                            p: 2,
+                            borderRadius: '50%',
+                            backgroundColor: `${action.color}15`,
+                            color: action.color,
+                            display: 'inline-flex',
+                            mb: 2,
+                          }}
+                        >
+                          {action.icon}
+                        </Box>
+                        <Typography variant="h6" gutterBottom>
+                          {action.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {action.description}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </CardContent>
+          </Card>
+
+          {/* Recent Activities */}
           <Card>
             <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h5">
+                  Recent Activities
+                </Typography>
+                <Button 
+                  variant="text" 
+                  endIcon={<ChevronRight />}
+                  onClick={() => navigate(ROUTES.VISITS)}
+                >
+                  View All
+                </Button>
+              </Box>
+              <List disablePadding>
+                {recentActivities.map((activity, index) => (
+                  <React.Fragment key={activity.id}>
+                    <ListItem sx={{ px: 0 }}>
+                      <Box sx={{ mr: 2 }}>
+                        {activity.icon}
+                      </Box>
+                      <ListItemText
+                        primary={activity.action}
+                        secondary={activity.time}
+                        primaryTypographyProps={{
+                          variant: 'body2',
+                          sx: { fontWeight: 500 },
+                        }}
+                        secondaryTypographyProps={{
+                          variant: 'caption',
+                        }}
+                      />
+                      <Chip
+                        label={activity.status}
+                        size="small"
+                        sx={{
+                          backgroundColor: `${getStatusColor(activity.status)}15`,
+                          color: getStatusColor(activity.status),
+                          textTransform: 'capitalize',
+                        }}
+                      />
+                    </ListItem>
+                    {index < recentActivities.length - 1 && <Divider />}
+                  </React.Fragment>
+                ))}
+              </List>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Sidebar */}
+        <Grid item xs={12} md={4}>
+          {/* Health Summary */}
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
               <Typography variant="h6" gutterBottom>
-                Summary
+                Health Summary
               </Typography>
               <Box
                 sx={{
@@ -195,247 +390,77 @@ export const Dashboard: React.FC = () => {
                   </Box>
                 </Box>
               </Box>
-
-              <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
-                Reports
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                <Box sx={{ 
-                  width: 60, 
-                  height: 60, 
-                  backgroundColor: theme.palette.secondary.main, 
-                  borderRadius: 1, 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center' 
-                }}>
-                  <Assessment sx={{ color: 'white' }} />
-                </Box>
-                <Box sx={{ 
-                  width: 60, 
-                  height: 60, 
-                  backgroundColor: theme.palette.primary.main, 
-                  borderRadius: 1, 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center' 
-                }}>
-                  <Psychology sx={{ color: 'white' }} />
-                </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                <Typography variant="body2">
+                  Blood Pressure
+                </Typography>
+                <Typography variant="body2" fontWeight="bold">
+                  120/80 mmHg
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                <Typography variant="body2">
+                  Temperature
+                </Typography>
+                <Typography variant="body2" fontWeight="bold">
+                  98.6°F
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="body2">
+                  Oxygen Level
+                </Typography>
+                <Typography variant="body2" fontWeight="bold">
+                  98%
+                </Typography>
               </Box>
             </CardContent>
           </Card>
-        </Grid>
 
-        {/* Medication Schedule */}
-        <Grid item xs={12} md={6}>
+          {/* Recent Visits */}
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Medication
-              </Typography>
-              <Stack spacing={2}>
-                {medicationSchedule.map((med) => (
-                  <Box
-                    key={med.id}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2,
-                      p: 2,
-                      borderRadius: 2,
-                      backgroundColor: 'rgba(255,255,255,0.02)',
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        backgroundColor: med.color,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                        {med.name} {med.dosage}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', gap: 0.5 }}>
-                      {med.taken.slice(0, 3).map((taken, index) => (
-                        <Box
-                          key={index}
-                          sx={{
-                            width: 24,
-                            height: 24,
-                            borderRadius: '50%',
-                            backgroundColor: taken ? med.color : 'rgba(255,255,255,0.1)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                          }}
-                        >
-                          {taken ? '✓' : index + 1}
-                        </Box>
-                      ))}
-                    </Box>
-                  </Box>
-                ))}
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Visits Section */}
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Visits
-              </Typography>
-              <Grid container spacing={2}>
-                {recentVisits.map((visit) => (
-                  <Grid item xs={12} sm={6} md={4} key={visit.id}>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 2,
-                        p: 2,
-                        borderRadius: 2,
-                        backgroundColor: 'rgba(255,255,255,0.02)',
-                      }}
-                    >
-                      <Box
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">
+                  Recent Visits
+                </Typography>
+                <Button 
+                  variant="text" 
+                  size="small"
+                  endIcon={<ChevronRight />}
+                  onClick={() => navigate(ROUTES.VISITS)}
+                >
+                  View All
+                </Button>
+              </Box>
+              <List disablePadding>
+                {recentVisits.map((visit, index) => (
+                  <React.Fragment key={visit.id}>
+                    <ListItem sx={{ px: 0 }}>
+                      <Avatar
                         sx={{
-                          width: 12,
-                          height: 12,
-                          borderRadius: '50%',
+                          width: 40,
+                          height: 40,
                           backgroundColor: visit.color,
-                          flexShrink: 0,
+                          mr: 2,
+                        }}
+                      >
+                        {getStatusIcon(visit.status)}
+                      </Avatar>
+                      <ListItemText
+                        primary={visit.type}
+                        secondary={`${visit.doctor} • ${visit.date}`}
+                        primaryTypographyProps={{
+                          variant: 'body2',
+                          sx: { fontWeight: 500 },
+                        }}
+                        secondaryTypographyProps={{
+                          variant: 'caption',
                         }}
                       />
-                      <Box sx={{ flex: 1 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          {visit.date}
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                          {visit.type}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {visit.doctor}
-                        </Typography>
-                      </Box>
-                      <Avatar
-                        sx={{ width: 32, height: 32 }}
-                        src={visit.avatar}
-                      >
-                        {visit.doctor.split(' ')[1]?.charAt(0)}
-                      </Avatar>
-                      {visit.status === 'video_call' && (
-                        <VideoCall sx={{ color: theme.palette.secondary.main }} />
-                      )}
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Stats Cards */}
-        {statsCards.map((card, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Box
-                    sx={{
-                      p: 1,
-                      borderRadius: 1,
-                      backgroundColor: card.color,
-                      color: 'white',
-                      mr: 2,
-                    }}
-                  >
-                    {card.icon}
-                  </Box>
-                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                    {card.title}
-                  </Typography>
-                </Box>
-                <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
-                  {card.value}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-
-      <Grid container spacing={3} sx={{ mt: 3 }}>
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Quick Actions
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Button
-                  variant="contained"
-                  onClick={() => navigate(ROUTES.PATIENTS)}
-                  startIcon={<People />}
-                  sx={{ justifyContent: 'flex-start' }}
-                >
-                  Manage Patients
-                </Button>
-                <Button
-                  variant="contained"
-                  onClick={() => navigate(ROUTES.VISITS)}
-                  startIcon={<RecordVoiceOver />}
-                  sx={{ justifyContent: 'flex-start' }}
-                >
-                  View Visits
-                </Button>
-                <Button
-                  variant="contained"
-                  onClick={() => navigate(ROUTES.VISITS)}
-                  startIcon={<Psychology />}
-                  sx={{ justifyContent: 'flex-start' }}
-                >
-                  Review AI Analysis
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Recent Activity
-              </Typography>
-              <List>
-                {recentActivities.map((activity) => (
-                  <ListItem key={activity.id} disablePadding>
-                    <ListItemText
-                      primary={activity.action}
-                      secondary={activity.time}
-                    />
-                    <Chip
-                      label={activity.status}
-                      color={
-                        activity.status === 'completed' ? 'success' :
-                        activity.status === 'reviewed' ? 'info' :
-                        activity.status === 'processing' ? 'warning' : 'default'
-                      }
-                      size="small"
-                    />
-                  </ListItem>
+                    </ListItem>
+                    {index < recentVisits.length - 1 && <Divider />}
+                  </React.Fragment>
                 ))}
               </List>
             </CardContent>

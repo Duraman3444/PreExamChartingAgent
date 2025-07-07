@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box } from '@mui/material';
+import { Box, useTheme } from '@mui/material';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 
@@ -9,13 +9,14 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const theme = useTheme();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', backgroundColor: theme.palette.background.default }}>
       <Header onMenuClick={handleDrawerToggle} />
       <Sidebar
         open={mobileOpen}
@@ -29,7 +30,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           width: '100%',
           minHeight: '100vh',
           mt: '64px',
-          backgroundColor: '#f5f5f5',
+          backgroundColor: theme.palette.background.default,
+          overflow: 'auto',
         }}
       >
         {children}

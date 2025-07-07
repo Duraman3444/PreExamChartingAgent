@@ -9,6 +9,7 @@ import {
   MenuItem,
   Avatar,
   Box,
+  useTheme,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -27,6 +28,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { user, signOut } = useAuthStore();
   const { notifications } = useAppStore();
+  const theme = useTheme();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -45,24 +47,33 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   };
 
   return (
-    <AppBar position="sticky" elevation={0}>
+    <AppBar position="fixed" elevation={1} sx={{ zIndex: theme.zIndex.drawer + 1 }}>
       <Toolbar>
         <IconButton
           edge="start"
           color="inherit"
           aria-label="menu"
           onClick={onMenuClick}
-          sx={{ mr: 2 }}
+          sx={{ mr: 2, color: theme.palette.text.primary }}
         >
           <MenuIcon />
         </IconButton>
 
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontFamily: '"Clash Display", sans-serif', fontWeight: 600 }}>
+        <Typography 
+          variant="h6" 
+          component="div" 
+          sx={{ 
+            flexGrow: 1, 
+            fontFamily: '"Clash Display", sans-serif', 
+            fontWeight: 600,
+            color: theme.palette.primary.main,
+          }}
+        >
           Care+
         </Typography>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconButton color="inherit">
+          <IconButton sx={{ color: theme.palette.text.primary }}>
             <Badge badgeContent={unreadCount} color="error">
               <NotificationsIcon />
             </Badge>
@@ -75,10 +86,10 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             aria-controls="primary-search-account-menu"
             aria-haspopup="true"
             onClick={handleProfileMenuOpen}
-            color="inherit"
+            sx={{ color: theme.palette.text.primary }}
           >
-            <Avatar sx={{ width: 32, height: 32 }}>
-              {user?.displayName.charAt(0).toUpperCase()}
+            <Avatar sx={{ width: 32, height: 32, bgcolor: theme.palette.primary.main }}>
+              {user?.displayName?.charAt(0).toUpperCase() || 'U'}
             </Avatar>
           </IconButton>
         </Box>
