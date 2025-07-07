@@ -45,6 +45,330 @@ app/
 ```
 
 Include all necessary dependencies in package.json and create the basic configuration files.
+
+---
+
+## v0 AI UI Generation Prompts
+
+Use these prompts with [v0.dev](https://v0.dev) to generate beautiful, functional UI components for the medical charting application. Copy the generated components into the appropriate directories in your project structure.
+
+### Authentication Components
+
+#### Login Page Component
+```
+Create a modern medical charting application login page with the following features:
+- Split-screen design with medical imagery on the left side
+- Login form on the right with email, password fields
+- Toggle between "Sign In" and "Create Account" modes
+- Role selection dropdown for new accounts (Doctor, Nurse, Admin)
+- Material-UI styling with healthcare-appropriate color scheme
+- Responsive design for desktop and tablet
+- Loading states and error message display
+- Clean, professional medical aesthetic
+```
+
+#### User Profile Component
+```
+Design a user profile management component for healthcare providers:
+- User avatar with upload functionality
+- Editable profile fields (name, email, role, department)
+- Security settings section (password change, 2FA)
+- Notification preferences
+- Theme selection (light/dark mode)
+- Professional medical styling with Material-UI
+- Form validation and save confirmation states
+```
+
+### Patient Management Components
+
+#### Patient Search & List Component
+```
+Create a comprehensive patient search and list interface:
+- Advanced search bar with filters (name, DOB, MRN, phone)
+- Patient list table with pagination
+- Quick filters (Recent, Favorites, Assigned to Me)
+- Patient status indicators (Active, Discharged, Critical)
+- Click-to-select patients with preview cards
+- Responsive grid/list view toggle
+- Material-UI table with sorting and filtering
+- Healthcare professional color scheme
+```
+
+#### Patient Profile Card
+```
+Design a detailed patient information card component:
+- Patient photo placeholder with upload option
+- Key demographics (name, age, DOB, gender, MRN)
+- Emergency contact information display
+- Medical alerts and allergies badges
+- Insurance information section
+- Recent visit history timeline
+- Quick action buttons (Edit, Add Note, View Charts)
+- Professional medical card design with Material-UI
+- Expandable sections for detailed information
+```
+
+#### Patient Registration Form
+```
+Create a comprehensive patient registration form:
+- Multi-step wizard with progress indicator
+- Personal information (name, DOB, gender, contact info)
+- Emergency contacts section
+- Medical history and allergies
+- Insurance information
+- Photo upload component
+- Form validation with real-time feedback
+- Save draft functionality
+- Material-UI form components with medical styling
+- Responsive design for tablet use
+```
+
+### Screening Module Components
+
+#### Screening Questionnaire Builder
+```
+Design a dynamic questionnaire builder interface:
+- Drag-and-drop question ordering
+- Question type selector (Yes/No, Text, Multiple Choice, Scale)
+- Conditional logic builder (show/hide based on answers)
+- Question preview panel
+- Template library sidebar
+- Scoring configuration interface
+- Material-UI with modern, intuitive design
+- Medical questionnaire styling
+- Real-time preview functionality
+```
+
+#### Screening Assessment Interface
+```
+Create a patient screening assessment form:
+- Question display with various input types
+- Progress bar showing completion status
+- Previous/Next navigation with validation
+- Auto-save functionality indicator
+- Question numbering and categorization
+- Score calculation display
+- Submit for review button
+- Clean, distraction-free design for patient use
+- Large touch targets for tablet interaction
+```
+
+#### Screening Results Dashboard
+```
+Design a screening results review interface:
+- Assessment summary cards with scores
+- Risk indicator badges (Low, Medium, High)
+- Detailed answer review with expandable sections
+- Provider notes and comments section
+- Approval workflow buttons
+- Print/export functionality
+- Data visualization for scores and trends
+- Professional medical dashboard styling
+```
+
+### Vitals Recording Components
+
+#### Vitals Entry Form
+```
+Create a comprehensive vitals recording interface:
+- Grid layout for vital sign inputs (BP, HR, Temp, RR, O2 Sat)
+- Normal range indicators with color coding
+- Timestamp and provider attribution
+- Device integration placeholders
+- Quick entry templates for common scenarios
+- Trend comparison with previous readings
+- Alert notifications for abnormal values
+- Medical device aesthetic with clear, large inputs
+- Validation and error handling
+```
+
+#### Vitals Monitoring Dashboard
+```
+Design a patient vitals monitoring dashboard:
+- Real-time vitals display with large, clear numbers
+- Trend charts for each vital sign over time
+- Alert status indicators with color coding
+- Normal range overlays on charts
+- Time range selector (1hr, 6hr, 24hr, week)
+- Print and export functionality
+- Multiple patient view for nurses
+- Professional medical monitoring interface
+- Responsive layout for different screen sizes
+```
+
+#### Vitals History Timeline
+```
+Create a chronological vitals history component:
+- Timeline view with date/time stamps
+- Expandable entries showing all vitals
+- Provider attribution for each entry
+- Search and filter by date range
+- Trend indicators (improving, stable, declining)
+- Export to PDF functionality
+- Comparison mode for multiple dates
+- Clean, medical record styling
+- Efficient data visualization
+```
+
+### Chart Notes & Documentation Components
+
+#### Rich Text Medical Editor
+```
+Design a specialized medical note editor:
+- Rich text formatting toolbar
+- Medical template insertion
+- Auto-complete for medical terms
+- Voice-to-text integration placeholder
+- Real-time character count
+- Auto-save with visual indicator
+- Spell check for medical terminology
+- Insert vital signs and assessment data
+- Professional medical documentation styling
+- Distraction-free writing interface
+```
+
+#### Note Review and Approval Interface
+```
+Create a medical note review system:
+- Side-by-side note comparison (original vs edited)
+- Comment and annotation system
+- Approval/rejection workflow
+- Review history timeline
+- Co-signature requirements display
+- Print preview functionality
+- Version control indicators
+- Professional review interface styling
+- Efficient navigation between notes
+```
+
+#### Chart Notes Dashboard
+```
+Design a comprehensive chart notes overview:
+- Filterable note list by category and date
+- Quick preview cards with note excerpts
+- Search functionality across all notes
+- Status indicators (Draft, Pending Review, Approved)
+- Provider attribution and timestamps
+- Export and print batch functionality
+- Categories sidebar (Assessment, Progress, Discharge)
+- Professional medical documentation interface
+- Responsive grid layout
+```
+
+### Dashboard & Analytics Components
+
+#### Medical Dashboard Overview
+```
+Create a comprehensive medical dashboard:
+- Key performance metrics cards
+- Patient census overview
+- Pending tasks and alerts
+- Quick action buttons for common workflows
+- Recent activity feed
+- Vital statistics summary
+- Schedule and appointment preview
+- Weather-style layout with medical metrics
+- Role-based customization
+- Modern healthcare dashboard aesthetic
+```
+
+#### Patient Analytics Component
+```
+Design a patient analytics and trends interface:
+- Interactive charts for patient outcomes
+- Filterable data by date range and demographics
+- Key performance indicators
+- Population health metrics
+- Quality measure tracking
+- Export functionality for reports
+- Drill-down capabilities
+- Professional healthcare analytics styling
+- Responsive chart layouts
+```
+
+### Navigation & Layout Components
+
+#### Medical App Sidebar Navigation
+```
+Create a professional medical application sidebar:
+- Hierarchical navigation menu
+- Role-based menu items
+- Active state indicators
+- Collapsible subsections
+- User profile section at bottom
+- Notification badges for pending items
+- Search functionality within navigation
+- Professional medical application styling
+- Smooth animations and transitions
+- Responsive behavior
+```
+
+#### Medical App Header
+```
+Design a comprehensive medical application header:
+- Application logo and branding
+- Global search functionality
+- Notification bell with badge count
+- User profile dropdown menu
+- Quick action buttons
+- Breadcrumb navigation
+- Emergency alert area
+- Professional medical styling
+- Responsive design for all devices
+- Sticky header behavior
+```
+
+### Form Components
+
+#### Medical Form Components Library
+```
+Create a set of reusable medical form components:
+- Validated input fields with medical formatting
+- Date/time pickers for medical use
+- Dropdown selectors for medical codes
+- Multi-select for medications and allergies
+- File upload for medical documents
+- Signature capture component
+- Medical checkbox and radio groups
+- Progress indicators for multi-step forms
+- Consistent medical styling across all components
+- Accessibility compliance
+```
+
+### Data Visualization Components
+
+#### Medical Chart Visualization
+```
+Design medical data visualization components:
+- Vital signs trend charts
+- Pain scale visual indicators
+- Medication timeline displays
+- Assessment score gauges
+- Progress tracking charts
+- Interactive tooltip displays
+- Export to PDF/image functionality
+- Colorblind-friendly color schemes
+- Professional medical chart styling
+- Responsive and touch-friendly
+```
+
+### Usage Instructions
+
+1. **Copy prompts to v0.dev**: Use each prompt individually to generate components
+2. **Customize the output**: Modify the generated code to fit your specific needs
+3. **Integrate with your app**: Place components in the appropriate directories
+4. **Update imports**: Ensure proper TypeScript types and imports
+5. **Test thoroughly**: Verify components work with your existing state management
+6. **Style consistency**: Apply your application's theme and styling guidelines
+
+### Integration Tips
+
+- Replace placeholder data with your TypeScript interfaces from `src/types/index.ts`
+- Connect form submissions to your Zustand stores
+- Use your constants from `src/constants/index.ts`
+- Apply your application's color scheme and branding
+- Ensure components are responsive and accessible
+- Test with real medical workflow scenarios
 ```
 
 ---
