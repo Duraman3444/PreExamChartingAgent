@@ -34,6 +34,10 @@ import {
   Avatar,
   TableSortLabel,
   TablePagination,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Alert,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -47,6 +51,8 @@ import {
   RecordVoiceOver as TranscriptIcon,
   LocalHospital as HospitalIcon,
   CalendarToday as CalendarIcon,
+  ExpandMore as ExpandMoreIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 
@@ -171,6 +177,533 @@ const mockPatientData: PatientRecord[] = [
   },
 ];
 
+// Mock document content data
+const mockDocumentContent = {
+  symptoms: {
+    'P001': {
+      title: 'Symptoms Record',
+      content: `
+**Chief Complaint:** Chest pain and shortness of breath
+
+**History of Present Illness:**
+Patient presents with acute onset chest pain that started 2 hours ago while jogging. Pain is described as pressure-like, non-radiating, 7/10 intensity. Associated with mild shortness of breath and diaphoresis.
+
+**Symptom Summary:**
+• Chest pain - moderate severity, 2 hours duration, intermittent
+• Shortness of breath - mild severity, 30 minutes duration, continuous
+• Diaphoresis - mild, associated with physical activity
+
+**Review of Systems:**
+• Cardiovascular: Positive for chest pain, shortness of breath
+• Respiratory: Positive for dyspnea on exertion
+• Gastrointestinal: Negative for nausea, vomiting
+• Neurological: Negative for dizziness, syncope
+      `.trim(),
+      lastUpdated: '2024-01-20T10:30:00Z'
+    },
+    'P002': {
+      title: 'Symptoms Record',
+      content: `
+**Chief Complaint:** Palpitations and fatigue
+
+**History of Present Illness:**
+62-year-old female presents with palpitations and increased fatigue over the past week. Reports occasional chest tightness and has been more short of breath with usual activities.
+
+**Symptom Summary:**
+• Palpitations - moderate severity, 1 week duration, intermittent
+• Fatigue - moderate severity, 1 week duration, continuous
+• Chest tightness - mild severity, 3 days duration, occasional
+
+**Review of Systems:**
+• Cardiovascular: Positive for palpitations, chest tightness
+• General: Positive for fatigue, weakness
+• Respiratory: Positive for mild dyspnea
+      `.trim(),
+      lastUpdated: '2024-01-18T14:15:00Z'
+    }
+  },
+  diagnosis: {
+    'P001': {
+      title: 'Diagnosis Report',
+      content: `
+**Primary Diagnosis:** Angina Pectoris (I20.9)
+**Confidence Level:** High (85%)
+
+**Secondary Diagnoses:**
+• Hypertension (I10)
+• Type 2 Diabetes Mellitus (E11.9)
+
+**Diagnostic Reasoning:**
+Based on patient presentation of exertional chest pain with associated shortness of breath, combined with significant cardiovascular risk factors including diabetes and hypertension, angina pectoris is the most likely diagnosis.
+
+**Supporting Evidence:**
+• Chest pain triggered by physical activity
+• History of diabetes and hypertension
+• Family history of coronary artery disease
+• Age and gender risk factors
+
+**Differential Diagnoses Considered:**
+• Musculoskeletal chest pain - 25% probability
+• Gastroesophageal reflux - 15% probability
+• Anxiety-related chest pain - 10% probability
+      `.trim(),
+      lastUpdated: '2024-01-20T11:45:00Z'
+    },
+    'P002': {
+      title: 'Diagnosis Report',
+      content: `
+**Primary Diagnosis:** Atrial Fibrillation (I48.0)
+**Confidence Level:** High (90%)
+
+**Secondary Diagnoses:**
+• Hypertension (I10)
+• Hyperlipidemia (E78.5)
+
+**Diagnostic Reasoning:**
+Patient presents with classic symptoms of atrial fibrillation including palpitations, fatigue, and mild dyspnea. EKG findings confirm irregular rhythm consistent with atrial fibrillation.
+
+**Supporting Evidence:**
+• Irregular heart rhythm on examination
+• EKG showing atrial fibrillation
+• Symptoms of palpitations and fatigue
+• Age-related risk factors
+
+**Treatment Plan:**
+• Rate control with beta-blocker
+• Anticoagulation assessment
+• Cardiology consultation for rhythm management
+      `.trim(),
+      lastUpdated: '2024-01-18T16:20:00Z'
+    }
+  },
+  visitTranscripts: {
+    'P001': {
+      title: 'Visit Transcript',
+      content: `
+**Visit Date:** January 20, 2024
+**Provider:** Dr. Smith, Emergency Medicine
+**Duration:** 45 minutes
+
+**TRANSCRIPT:**
+
+Dr. Smith: Good morning, Mr. Doe. I'm Dr. Smith. What brings you in today?
+
+Patient: Hi Doctor. I've been having chest pain for the past couple of hours. It started while I was jogging this morning.
+
+Dr. Smith: Can you describe the pain? Is it sharp, dull, crushing?
+
+Patient: It's more like a pressure feeling, right in the center of my chest. It's not sharp, but it's definitely uncomfortable.
+
+Dr. Smith: On a scale of 1 to 10, how would you rate the pain?
+
+Patient: I'd say about a 7. It's pretty uncomfortable.
+
+Dr. Smith: Does it radiate anywhere? To your arms, neck, or jaw?
+
+Patient: Not really, it stays pretty much in the center of my chest.
+
+Dr. Smith: Any shortness of breath with it?
+
+Patient: Yeah, a little bit. I noticed I was getting winded more easily than usual.
+
+Dr. Smith: Any nausea, sweating, or dizziness?
+
+Patient: No nausea or dizziness, but I did sweat a bit, though that could have been from the exercise.
+
+Dr. Smith: Tell me about your medical history. Are you on any medications?
+
+Patient: I take Lisinopril for high blood pressure and Metformin for diabetes. I'm allergic to Penicillin.
+
+Dr. Smith: Any family history of heart problems?
+
+Patient: My father had a heart attack when he was 55. That's actually why I'm a bit worried about this chest pain.
+
+Dr. Smith: I understand your concern. Let's do some tests to make sure everything is okay. We'll start with an EKG and some blood work.
+
+Patient: Okay, that sounds good. How long will that take?
+
+Dr. Smith: The EKG is immediate, and we should have the blood work results in about an hour. In the meantime, I want you to rest and let me know if the pain gets worse.
+
+**END TRANSCRIPT**
+      `.trim(),
+      lastUpdated: '2024-01-20T11:30:00Z'
+    },
+    'P002': {
+      title: 'Visit Transcript',
+      content: `
+**Visit Date:** January 18, 2024
+**Provider:** Dr. Johnson, Cardiology
+**Duration:** 30 minutes
+
+**TRANSCRIPT:**
+
+Dr. Johnson: Good afternoon, Mrs. Smith. I'm Dr. Johnson from Cardiology. I understand you've been having some heart rhythm issues?
+
+Patient: Yes, Doctor. I've been having these episodes where my heart feels like it's racing or fluttering. It's been happening for about a week now.
+
+Dr. Johnson: Can you describe what the episodes feel like?
+
+Patient: It's like my heart is beating really fast and irregularly. Sometimes I feel short of breath, and I get tired more easily than usual.
+
+Dr. Johnson: How long do these episodes last?
+
+Patient: They vary. Sometimes just a few minutes, other times it can go on for an hour or more.
+
+Dr. Johnson: Any chest pain with these episodes?
+
+Patient: Sometimes there's a mild tightness in my chest, but not really pain. More like pressure.
+
+Dr. Johnson: Are you on any medications currently?
+
+Patient: I take medications for my blood pressure and cholesterol. I have the list with me.
+
+Dr. Johnson: Good. Any family history of heart problems?
+
+Patient: My mother had atrial fibrillation when she was older, and my father had high blood pressure.
+
+Dr. Johnson: Based on your symptoms and the EKG we did, it looks like you're experiencing atrial fibrillation. This is a common heart rhythm disorder.
+
+Patient: Is that serious? What does that mean?
+
+Dr. Johnson: It's manageable with proper treatment. We'll start you on medication to control your heart rate and discuss anticoagulation to prevent blood clots.
+
+**END TRANSCRIPT**
+      `.trim(),
+      lastUpdated: '2024-01-18T15:00:00Z'
+    },
+    'P003': {
+      title: 'Visit Transcript',
+      content: `
+**Visit Date:** January 20, 2024
+**Provider:** Dr. Davis, Internal Medicine
+**Duration:** 25 minutes
+
+**TRANSCRIPT:**
+
+Dr. Davis: Good morning, Mr. Brown. What brings you in today?
+
+Patient: Hi Doctor. I've been feeling really tired lately, and I've had some stomach issues. My wife convinced me to come in.
+
+Dr. Davis: How long have you been feeling tired?
+
+Patient: About two weeks now. I used to have a lot of energy, but now I feel exhausted even after a full night's sleep.
+
+Dr. Davis: Tell me about the stomach issues.
+
+Patient: I've been having some nausea, especially in the mornings. And I've lost my appetite. I think I've lost some weight too.
+
+Dr. Davis: Any abdominal pain?
+
+Patient: Yes, there's a dull ache in my upper abdomen. It's not severe, but it's been persistent.
+
+Dr. Davis: Any changes in bowel movements?
+
+Patient: They've been a bit loose, and sometimes there's a darker color to them.
+
+Dr. Davis: Any other symptoms? Fever, night sweats?
+
+Patient: No fever, but I have been sweating more at night.
+
+Dr. Davis: Given your symptoms, I'd like to run some blood tests and possibly schedule some imaging studies. We want to make sure we're not missing anything.
+
+Patient: Okay, that sounds reasonable. Should I be worried?
+
+Dr. Davis: Let's wait for the test results before we draw any conclusions. We'll take good care of you.
+
+**END TRANSCRIPT**
+      `.trim(),
+      lastUpdated: '2024-01-20T09:45:00Z'
+    }
+  },
+  aiAnalysis: {
+    'P001': {
+      title: 'AI Analysis Report',
+      content: `
+**AI Analysis Summary**
+**Generated:** January 20, 2024 at 11:45 AM
+**Confidence Score:** 87%
+**Model:** GPT-4 Turbo
+
+**EXTRACTED SYMPTOMS:**
+• Chest pain - Moderate severity, 2 hours duration, pressure-like quality (92% confidence)
+• Shortness of breath - Mild severity, associated with chest pain (85% confidence)
+• Diaphoresis - Mild, exercise-related (78% confidence)
+
+**DIFFERENTIAL DIAGNOSIS:**
+1. **Angina Pectoris (I20.9)** - 75% probability
+   - Supporting: Exertional chest pain, cardiac risk factors, family history
+   - Against: Relatively short duration, no EKG changes noted
+
+2. **Musculoskeletal Chest Pain (M79.3)** - 45% probability
+   - Supporting: Exercise-related onset, no radiation pattern
+   - Against: Associated shortness of breath, cardiac risk factors
+
+**TREATMENT RECOMMENDATIONS:**
+• Immediate: EKG and cardiac enzymes
+• Short-term: Sublingual nitroglycerin PRN
+• Long-term: Cardiology consultation, stress testing
+
+**FLAGGED CONCERNS:**
+⚠️ **HIGH PRIORITY:** Chest pain with cardiac risk factors requires immediate evaluation
+⚠️ **MEDIUM PRIORITY:** Patient has diabetes and hypertension - increased cardiac risk
+
+**FOLLOW-UP RECOMMENDATIONS:**
+• Cardiology consultation within 1 week
+• Stress test if initial workup negative
+• Lifestyle counseling for diabetes and hypertension management
+
+**AI CONFIDENCE METRICS:**
+• Symptom extraction: 92%
+• Diagnosis ranking: 87%
+• Treatment recommendations: 84%
+• Risk assessment: 91%
+      `.trim(),
+      lastUpdated: '2024-01-20T11:45:00Z'
+    },
+    'P003': {
+      title: 'AI Analysis Report',
+      content: `
+**AI Analysis Summary**
+**Generated:** January 20, 2024 at 10:15 AM
+**Confidence Score:** 74%
+**Model:** GPT-4 Turbo
+
+**EXTRACTED SYMPTOMS:**
+• Fatigue - Severe severity, 2 weeks duration, persistent (89% confidence)
+• Nausea - Moderate severity, morning predominant (82% confidence)
+• Abdominal pain - Mild severity, upper abdomen, dull ache (78% confidence)
+• Weight loss - Unintentional, gradual onset (85% confidence)
+• Night sweats - Mild severity, recent onset (71% confidence)
+
+**DIFFERENTIAL DIAGNOSIS:**
+1. **Gastroesophageal Malignancy** - 65% probability
+   - Supporting: Weight loss, abdominal pain, nausea, night sweats
+   - Against: Age factor, no dysphagia reported
+
+2. **Peptic Ulcer Disease** - 45% probability
+   - Supporting: Upper abdominal pain, nausea
+   - Against: No clear pain pattern with meals
+
+3. **Hepatitis** - 35% probability
+   - Supporting: Fatigue, nausea, night sweats
+   - Against: No jaundice reported
+
+**TREATMENT RECOMMENDATIONS:**
+• Immediate: Complete blood count, comprehensive metabolic panel
+• Short-term: Upper endoscopy, CT abdomen/pelvis
+• Long-term: Gastroenterology consultation
+
+**FLAGGED CONCERNS:**
+⚠️ **HIGH PRIORITY:** Unintentional weight loss requires immediate investigation
+⚠️ **HIGH PRIORITY:** Combination of symptoms suggests possible malignancy
+
+**FOLLOW-UP RECOMMENDATIONS:**
+• Gastroenterology consultation within 1 week
+• Nutritional assessment
+• Oncology consultation if imaging abnormal
+
+**AI CONFIDENCE METRICS:**
+• Symptom extraction: 81%
+• Diagnosis ranking: 74%
+• Treatment recommendations: 77%
+• Risk assessment: 88%
+      `.trim(),
+      lastUpdated: '2024-01-20T10:15:00Z'
+    }
+  },
+  visitNotes: {
+    'P001': {
+      title: 'Visit Notes',
+      content: `
+**VISIT NOTE**
+**Date:** January 20, 2024
+**Time:** 10:30 AM - 11:45 AM
+**Provider:** Dr. Smith, Emergency Medicine
+**Visit Type:** Emergency Department
+
+**CHIEF COMPLAINT:**
+Chest pain x 2 hours, onset with exercise
+
+**HISTORY OF PRESENT ILLNESS:**
+45-year-old male presents with acute onset chest pain that began while jogging approximately 2 hours ago. Patient describes pain as pressure-like, non-radiating, 7/10 intensity. Associated with mild shortness of breath and diaphoresis. No nausea, vomiting, or dizziness. Patient has significant concern due to family history of cardiac disease.
+
+**PAST MEDICAL HISTORY:**
+• Hypertension
+• Type 2 Diabetes Mellitus
+• No known cardiac disease
+
+**MEDICATIONS:**
+• Lisinopril 10mg daily
+• Metformin 500mg twice daily
+
+**ALLERGIES:**
+• Penicillin
+
+**SOCIAL HISTORY:**
+• Non-smoker
+• Occasional alcohol use
+• Regular exercise routine
+
+**PHYSICAL EXAMINATION:**
+• Vital Signs: BP 142/88, HR 78, RR 16, O2 Sat 98% on room air
+• General: Well-appearing male in no acute distress
+• Cardiovascular: Regular rate and rhythm, no murmurs
+• Respiratory: Clear to auscultation bilaterally
+• Abdomen: Soft, non-tender
+
+**DIAGNOSTIC STUDIES:**
+• EKG: Normal sinus rhythm, no acute ST changes
+• Chest X-ray: Clear lung fields, normal cardiac silhouette
+• Laboratory: Troponin I pending
+
+**ASSESSMENT AND PLAN:**
+• Chest pain, likely angina pectoris
+• Serial cardiac enzymes
+• Cardiology consultation
+• Discharge planning pending troponin results
+
+**DISPOSITION:**
+Patient stable, awaiting final laboratory results for disposition decision.
+
+**Provider:** Dr. Smith, MD
+**Electronically signed:** 01/20/2024 11:45 AM
+      `.trim(),
+      lastUpdated: '2024-01-20T11:45:00Z'
+    },
+    'P004': {
+      title: 'Visit Notes',
+      content: `
+**VISIT NOTE**
+**Date:** January 22, 2024
+**Time:** 9:00 AM - 10:30 AM
+**Provider:** Dr. Thompson, Neurology
+**Visit Type:** Outpatient Consultation
+
+**CHIEF COMPLAINT:**
+Headaches and dizziness, increasing frequency over past month
+
+**HISTORY OF PRESENT ILLNESS:**
+29-year-old female presents with complaint of progressively worsening headaches over the past month. Patient describes headaches as throbbing, primarily frontal and temporal, 6-7/10 intensity. Associated with occasional dizziness, nausea, and photophobia. Episodes occur 3-4 times per week, lasting 4-8 hours each. Patient reports missed work days due to severity.
+
+**PAST MEDICAL HISTORY:**
+• Migraines (diagnosed age 22)
+• No other significant medical history
+
+**MEDICATIONS:**
+• Sumatriptan 50mg PRN for migraines
+• Oral contraceptive pills
+
+**ALLERGIES:**
+• No known drug allergies
+
+**SOCIAL HISTORY:**
+• Non-smoker
+• Rare alcohol use
+• Office work, high stress environment
+• Single, no children
+
+**PHYSICAL EXAMINATION:**
+• Vital Signs: BP 118/76, HR 72, RR 14, O2 Sat 99% on room air
+• General: Well-appearing female, no acute distress
+• Neurological: Alert and oriented x3, normal cognitive function
+• Cranial nerves: II-XII intact
+• Motor: 5/5 strength in all extremities
+• Sensory: Intact to light touch and proprioception
+• Reflexes: 2+ and symmetric
+• Cerebellar: Normal coordination and balance
+
+**DIAGNOSTIC STUDIES:**
+• MRI Brain: Scheduled for next week
+• Laboratory: CBC, CMP, ESR, CRP ordered
+
+**ASSESSMENT AND PLAN:**
+• Migraine headaches, increasing frequency and severity
+• Possible medication overuse headache
+• Rule out secondary causes with imaging
+• Preventive therapy discussion
+• Lifestyle modifications counseling
+
+**DISPOSITION:**
+Patient to follow up in 2 weeks with MRI results. Emergency precautions discussed.
+
+**Provider:** Dr. Thompson, MD
+**Electronically signed:** 01/22/2024 10:30 AM
+      `.trim(),
+      lastUpdated: '2024-01-22T10:30:00Z'
+    }
+  }
+};
+
+interface DocumentContentViewerProps {
+  open: boolean;
+  onClose: () => void;
+  documentType: string;
+  documentLabel: string;
+  patient: PatientRecord;
+}
+
+const DocumentContentViewer: React.FC<DocumentContentViewerProps> = ({ 
+  open, 
+  onClose, 
+  documentType, 
+  documentLabel, 
+  patient 
+}) => {
+  const documentData = (mockDocumentContent as any)[documentType]?.[patient.patientId];
+  
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Typography variant="h6">{documentLabel}</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {patient.firstName} {patient.lastName} - {patient.patientId}
+            </Typography>
+          </Box>
+          <IconButton onClick={onClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        </Box>
+      </DialogTitle>
+      <DialogContent>
+        {documentData ? (
+          <Box>
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Last Updated: {format(new Date(documentData.lastUpdated), 'PPpp')}
+            </Alert>
+            <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
+              <Typography 
+                variant="body1" 
+                sx={{ 
+                  whiteSpace: 'pre-line',
+                  fontFamily: 'monospace',
+                  fontSize: '0.9rem',
+                  lineHeight: 1.6
+                }}
+              >
+                {documentData.content}
+              </Typography>
+            </Paper>
+          </Box>
+        ) : (
+          <Alert severity="warning">
+            No document content available for this patient.
+          </Alert>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Close</Button>
+        {documentData && (
+          <Button variant="contained" startIcon={<DownloadIcon />}>
+            Download
+          </Button>
+        )}
+      </DialogActions>
+    </Dialog>
+  );
+};
+
 interface DocumentViewerProps {
   open: boolean;
   onClose: () => void;
@@ -178,6 +711,10 @@ interface DocumentViewerProps {
 }
 
 const DocumentViewer: React.FC<DocumentViewerProps> = ({ open, onClose, patient }) => {
+  const [documentContentOpen, setDocumentContentOpen] = useState(false);
+  const [selectedDocumentType, setSelectedDocumentType] = useState<string>('');
+  const [selectedDocumentLabel, setSelectedDocumentLabel] = useState<string>('');
+
   const documentTypes = [
     { key: 'symptoms', label: 'Symptoms Record', icon: <HospitalIcon />, available: patient.documents.symptoms },
     { key: 'diagnosis', label: 'Diagnosis Report', icon: <AssessmentIcon />, available: patient.documents.diagnosis },
@@ -185,6 +722,25 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ open, onClose, patient 
     { key: 'aiAnalysis', label: 'AI Analysis', icon: <PsychologyIcon />, available: patient.documents.aiAnalysis },
     { key: 'visitNotes', label: 'Visit Notes', icon: <DescriptionIcon />, available: patient.documents.visitNotes },
   ];
+
+  const handleViewDocument = (documentType: string, documentLabel: string) => {
+    setSelectedDocumentType(documentType);
+    setSelectedDocumentLabel(documentLabel);
+    setDocumentContentOpen(true);
+  };
+
+  const handleCloseDocumentContent = () => {
+    setDocumentContentOpen(false);
+    setSelectedDocumentType('');
+    setSelectedDocumentLabel('');
+  };
+
+  const handleClose = () => {
+    setDocumentContentOpen(false);
+    setSelectedDocumentType('');
+    setSelectedDocumentLabel('');
+    onClose();
+  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -241,6 +797,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ open, onClose, patient 
                 disabled={!doc.available}
                 size="small"
                 startIcon={<VisibilityIcon />}
+                onClick={() => handleViewDocument(doc.key, doc.label)}
               >
                 View
               </Button>
@@ -249,8 +806,16 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ open, onClose, patient 
         </List>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Close</Button>
+        <Button onClick={handleClose}>Close</Button>
       </DialogActions>
+      
+      <DocumentContentViewer
+        open={documentContentOpen}
+        onClose={handleCloseDocumentContent}
+        documentType={selectedDocumentType}
+        documentLabel={selectedDocumentLabel}
+        patient={patient}
+      />
     </Dialog>
   );
 };
