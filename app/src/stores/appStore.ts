@@ -34,8 +34,33 @@ export const useAppStore = create<AppStore>((set, get) => ({
   // State
   currentPatient: null,
   sidebarOpen: true,
-  theme: 'light',
-  notifications: [],
+  theme: 'dark',
+  notifications: [
+    {
+      id: '1',
+      type: 'info',
+      title: 'New AI Analysis',
+      message: 'AI analysis completed for patient John Doe',
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+      read: false,
+    },
+    {
+      id: '2',
+      type: 'success',
+      title: 'Visit Completed',
+      message: 'Visit notes generated for Jane Smith',
+      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
+      read: false,
+    },
+    {
+      id: '3',
+      type: 'warning',
+      title: 'Review Required',
+      message: 'Diagnosis recommendations need review',
+      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
+      read: true,
+    },
+  ],
 
   // Actions
   setCurrentPatient: (patient) => set({ currentPatient: patient }),

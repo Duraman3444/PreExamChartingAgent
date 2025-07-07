@@ -74,10 +74,37 @@ export const useAuthStore = create<AuthStore>()(
       initialize: async () => {
         set({ isLoading: true });
         
-        // Listen to auth state changes
-        authService.onAuthStateChanged((user) => {
-          set({ user, isAuthenticated: !!user, isLoading: false });
-        });
+        // Try to initialize auth service, fallback to mock user for development
+        try {
+          authService.onAuthStateChanged((user) => {
+            set({ user, isAuthenticated: !!user, isLoading: false });
+          });
+        } catch (error) {
+          console.log('Auth service not available, using mock user for development');
+          
+          // Create a mock user for development
+          const mockUser: User = {
+            id: 'dev-user-1',
+            email: 'dev@example.com',
+            displayName: 'Dr. Dev User',
+            role: 'doctor',
+            department: 'Development',
+            licenseNumber: 'DEV123456',
+            isActive: true,
+            lastLogin: new Date(),
+            preferences: {
+              theme: 'dark',
+              language: 'en',
+              autoSave: true,
+              notificationsEnabled: true,
+              aiAssistanceLevel: 'comprehensive',
+            },
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+          
+          set({ user: mockUser, isAuthenticated: true, isLoading: false });
+        }
       },
     }),
     {
