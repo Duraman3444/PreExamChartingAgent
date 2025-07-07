@@ -76,7 +76,11 @@ pre-exam-charting-agent/
 │   ├── BrainLift.md        # Knowledge hub
 │   ├── frontend-setup-prompts.md  # Figma design system prompts
 │   ├── automation-workflows.md    # n8n workflows & EHR integration
-│   └── n8n-workflow-setup.md     # Complete n8n setup guide
+│   ├── n8n-workflow-setup.md     # Complete n8n setup guide
+│   ├── wireflow-diagrams.md      # Visual user flow diagrams
+│   ├── ui-concepts.md             # UI design system & components
+│   ├── user-personas.md           # User profiles & stakeholder analysis
+│   └── industry-context.md        # Market analysis & "Why Now"
 ├── tests/                  # pytest suite
 ├── scripts/seed_data.py    # generate test patients
 ├── .github/workflows/ci.yml
@@ -150,5 +154,5 @@ This is an open-source project welcoming contributions! See our [BrainLift knowl
 _Building the future of medical documentation, one commit at a time._ 🚀
 
 **Live Demo:** Coming soon  
-**Documentation:** [BrainLift Knowledge Hub](docs/BrainLift.md) | [Automation Workflows](docs/automation-workflows.md) | [n8n Setup Guide](docs/n8n-workflow-setup.md)  
+**Documentation:** [BrainLift Knowledge Hub](docs/BrainLift.md) | [Automation Workflows](docs/automation-workflows.md) | [n8n Setup Guide](docs/n8n-workflow-setup.md) | [Wireflow Diagrams](docs/wireflow-diagrams.md) | [UI Design System](docs/ui-concepts.md) | [User Personas](docs/user-personas.md) | [Industry Context](docs/industry-context.md)  
 **Issues:** [GitHub Issues](https://github.com/Duraman3444/PreExamChartingAgent/issues)
