@@ -811,51 +811,47 @@ Include proper TypeScript types, error handling, and loading states for all oper
 
 ---
 
-## 10. Testing Setup
+## 10. Data Integration & API Layer
 
 ```
-Create a comprehensive testing setup for the medical charting application:
+Set up data integration and API communication for the medical charting application:
 
-1. Testing framework setup:
-   - Jest for unit testing
-   - React Testing Library for component testing
-   - Cypress for E2E testing
-   - MSW (Mock Service Worker) for API mocking
+1. API service layer:
+   - Firebase Firestore client configuration
+   - Real-time data subscriptions
+   - Optimistic UI updates
+   - Error handling and retry logic
+   - Connection state management
 
-2. Test utilities:
-   - Firebase emulator setup for testing
-   - Mock data generators for patients/vitals
-   - Custom render function with providers
-   - Accessibility testing utilities
+2. Data synchronization:
+   - Patient data caching strategies
+   - Offline data storage
+   - Conflict resolution for concurrent edits
+   - Data validation and sanitization
+   - Background sync processes
 
-3. Test coverage for:
-   - Authentication flows
-   - Form validation and submission
-   - Real-time data updates
-   - AI draft generation and verification
-   - Role-based access control
-   - Error handling scenarios
+3. Integration points:
+   - EHR system API connections
+   - Visit transcript processing
+   - Automated workflow triggers
+   - Notification service integration
+   - File upload and storage
 
-4. E2E test scenarios:
-   - Complete patient screening workflow
-   - Nurse vitals capture and review
-   - Doctor note approval process
-   - Autonomy mode switching
-   - Offline functionality
+4. State management:
+   - Zustand store configuration
+   - Data normalization patterns
+   - Loading and error states
+   - Cache invalidation strategies
+   - Real-time update handling
 
-5. Testing components:
-   - Mock Firebase services
-   - Patient data fixtures
-   - User role simulation
-   - Network condition simulation
+5. Security considerations:
+   - Authentication token management
+   - PHI data encryption
+   - Secure API communication
+   - Role-based data access
+   - Audit trail implementation
 
-6. CI/CD integration:
-   - GitHub Actions workflow
-   - Automated testing on PR
-   - Code coverage reporting
-   - Visual regression testing
-
-Include proper setup for Firebase emulators and mock all external dependencies.
+Focus on robust data handling and visit workflow management without external test system dependencies.
 ```
 
 ---

@@ -257,13 +257,16 @@ To provide healthcare professionals with an intuitive, secure, and comprehensive
 ### 5.3 Data Models
 - **Users**: Authentication and role management
 - **Patients**: Demographics, medical history, relationships
+- **Visits**: Visit management, status tracking, assignments
 - **Screenings**: Questions, responses, scoring, assignments
-- **Vitals**: Measurements, timestamps, devices, trends
+- **Vitals**: Measurements, timestamps, normal ranges, trends
 - **Charts**: Notes, versions, reviews, signatures
 - **Audit Logs**: Actions, timestamps, users, data changes
 - **Workflows**: n8n workflow definitions, execution logs, error tracking
 - **Visit Transcripts**: Raw transcripts, AI summaries, processing metadata
 - **EHR Integrations**: API endpoints, data mappings, sync status
+
+*See [Data Model Documentation](docs/data-model.md) for complete specifications.*
 
 ---
 
@@ -318,16 +321,14 @@ To provide healthcare professionals with an intuitive, secure, and comprehensive
 - **Custom APIs**: RESTful APIs for proprietary EHR systems
 
 ### 7.2 Medical Devices
-- **Vital Sign Monitors**: Automated data import from patient monitors
-- **Barcode Scanners**: Medication administration and equipment tracking
-- **Lab Equipment**: Direct results import from laboratory systems
-- **Imaging Systems**: Integration with PACS and radiology workflows
+- **Vital Sign Monitors**: Automated data import from patient monitors (future enhancement)
+- **Barcode Scanners**: Patient identification and equipment tracking
 
 ### 7.3 Healthcare Analytics
-- **Quality Metrics**: Patient outcomes and quality indicators
-- **Performance Dashboards**: Provider productivity and efficiency metrics
-- **Compliance Reporting**: Regulatory reporting and audit preparation
-- **Population Health**: Aggregated patient data for research and quality improvement
+- **Visit Quality Metrics**: Documentation completeness and accuracy indicators
+- **Performance Dashboards**: Provider productivity and workflow efficiency metrics
+- **Compliance Reporting**: Documentation and audit preparation
+- **Visit Analytics**: Aggregated visit data for workflow improvement
 
 ### 7.4 Workflow Automation Systems
 - **n8n Platform**: Visual workflow automation engine

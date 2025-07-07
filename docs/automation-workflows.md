@@ -281,7 +281,7 @@ WORKFLOW_TIMEOUT=300
 2. **Credential Rotation**: Rotate API keys and tokens
 3. **Performance Tuning**: Optimize workflow execution
 4. **Backup**: Regular backup of workflow configurations
-5. **Testing**: Periodic testing of all integrations
+5. **Monitoring**: Continuous monitoring of all integrations
 
 ---
 

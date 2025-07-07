@@ -359,13 +359,10 @@ flowchart TD
     A[🔄 Data Input] --> B{Integration Type?}
     B -->|EHR| C[📤 HL7 FHIR]
     B -->|Device| D[📤 Device API]
-    B -->|Lab| E[📤 Lab Interface]
     C --> F[🔄 Data Mapping]
     D --> G[🔄 Real-time Sync]
-    E --> H[🔄 Results Import]
     F --> I[✅ Validation]
     G --> I
-    H --> I
     I --> J{Data Valid?}
     J -->|Yes| K[📋 Auto-Update]
     J -->|No| L[⚠️ Error Handling]

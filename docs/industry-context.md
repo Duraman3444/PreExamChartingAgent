@@ -134,7 +134,7 @@ The healthcare industry is experiencing a perfect storm of challenges that creat
 - **ICD-11**: Latest diagnostic coding standard
 - **CPT Codes**: 10,000+ procedure codes
 - **SNOMED CT**: 350,000+ clinical terms
-- **LOINC**: 95,000+ laboratory data standards
+- **HL7 FHIR**: Healthcare data exchange standards
 
 ---
 

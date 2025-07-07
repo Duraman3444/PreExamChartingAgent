@@ -158,7 +158,7 @@ Understanding our users is critical to building a successful healthcare solution
 - **Preferences**: Prefers dictation over typing
 
 #### Daily Workflow
-- **6:00 AM**: Review overnight events and labs
+- **6:00 AM**: Review overnight events and patient updates
 - **7:00 AM**: Nursing rounds, patient assessment
 - **8:00 AM**: Begin patient rounds with residents
 - **10:00 AM**: Discharge planning, family meetings
