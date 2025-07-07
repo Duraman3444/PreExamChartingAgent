@@ -45,7 +45,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   };
 
   return (
-    <AppBar position="sticky" elevation={1} sx={{ bgcolor: 'primary.main' }}>
+    <AppBar position="sticky" elevation={0}>
       <Toolbar>
         <IconButton
           edge="start"
@@ -57,8 +57,8 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           <MenuIcon />
         </IconButton>
 
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          Medical Charting App
+        <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontFamily: '"Clash Display", sans-serif', fontWeight: 600 }}>
+          Care+
         </Typography>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -78,7 +78,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             color="inherit"
           >
             <Avatar sx={{ width: 32, height: 32 }}>
-              {user?.name.charAt(0).toUpperCase()}
+              {user?.displayName.charAt(0).toUpperCase()}
             </Avatar>
           </IconButton>
         </Box>

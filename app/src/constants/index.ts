@@ -146,7 +146,7 @@ export const STORAGE_KEYS = {
 
 // Application settings
 export const APP_SETTINGS = {
-  NAME: 'Visit Transcript Analysis',
+  NAME: 'Care+',
   VERSION: '1.0.0',
   DEFAULT_PAGE_SIZE: 10,
   MAX_AUDIO_FILE_SIZE: 50 * 1024 * 1024, // 50MB for audio files
