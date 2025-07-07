@@ -9,6 +9,7 @@ import { Profile } from '@/pages/Profile';
 import { Settings } from '@/pages/Settings';
 import { PatientManagement } from '@/pages/PatientManagement';
 import { VisitManagement } from '@/pages/VisitManagement';
+import { AIAnalysis } from '@/pages/AIAnalysis';
 import { useAuthStore } from '@/stores/authStore';
 import { ROUTES } from '@/constants';
 import { theme } from '@/theme/theme';
@@ -47,22 +48,7 @@ const TranscriptUpload = () => (
   </Box>
 );
 
-const AIAnalysis = () => {
-  return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        AI Analysis
-      </Typography>
-      <Card>
-        <CardContent>
-          <Typography variant="body1">
-            AI-powered visit analysis and insights - Coming soon!
-          </Typography>
-        </CardContent>
-      </Card>
-    </Box>
-  );
-};
+// AIAnalysis component is now imported from @/pages/AIAnalysis
 
 const VisitNotes = () => (
   <Box sx={{ p: 3 }}>
