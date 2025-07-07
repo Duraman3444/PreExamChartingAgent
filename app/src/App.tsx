@@ -7,27 +7,12 @@ import { Login } from '@/pages/Login';
 import { Dashboard } from '@/pages/Dashboard';
 import { Profile } from '@/pages/Profile';
 import { Settings } from '@/pages/Settings';
+import { PatientManagement } from '@/pages/PatientManagement';
 import { useAuthStore } from '@/stores/authStore';
 import { ROUTES } from '@/constants';
 import { theme } from '@/theme/theme';
 
 // Proper page components with visible content
-const Patients = () => {
-  return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Patients
-      </Typography>
-      <Card>
-        <CardContent>
-          <Typography variant="body1">
-            Patient management system - Coming soon!
-          </Typography>
-        </CardContent>
-      </Card>
-    </Box>
-  );
-};
 
 const Visits = () => {
   return (
@@ -178,7 +163,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <Layout>
-                  <Patients />
+                  <PatientManagement />
                 </Layout>
               </ProtectedRoute>
             }
