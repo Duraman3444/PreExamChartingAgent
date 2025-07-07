@@ -1,42 +1,58 @@
 # BrainLift 📚✨
-*A living knowledge hub for how we "lifted" the codebase with AI workflows.*
+*A living knowledge hub for AI-powered visit transcript analysis and diagnosis assistance.*
 
 ## 1. Purpose
-BrainLift collects every reference, tutorial, paper, or blog post that helped us design, implement, and improve the Pre-Examination Charting Agent.  
+BrainLift collects every reference, tutorial, paper, or blog post that helped us design, implement, and improve the Visit Transcript Analysis & AI Diagnosis Assistance platform.  
 It keeps the whole team (and future contributors) up-to-speed on the rationale behind our AI choices and makes onboarding painless.
 
 ## 2. Key Resources
 | Topic | Link | Why it's useful |
 |-------|------|----------------|
-| LangChain "Agents" docs | https://python.langchain.com/docs/modules/agents/ | How we orchestrate external tools + GPT-4o |
-| OpenAI Function-calling guide | https://platform.openai.com/docs/guides/function-calling | Safer, structured LLM outputs |
-| HIPAA & de-identification | https://www.hhs.gov/hipaa/for-professionals/privacy/special-topics/de-identification/index.html | Ensuring PHI never leaves our control |
-| React Diff Viewer | https://github.com/praneshr/react-diff-viewer | The diff UI for nurse verification |
-| n8n Documentation | https://docs.n8n.io/ | Visual workflow automation platform for EHR integration |
-| n8n Webhook Nodes | https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.webhook/ | Triggering workflows from EHR systems |
-| n8n OpenAI Integration | https://docs.n8n.io/integrations/nodes/n8n-nodes-base.openai/ | AI-powered transcript summarization |
-| n8n HTTP Request Nodes | https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.httprequest/ | EHR API integration patterns |
-| n8n Slack Integration | https://docs.n8n.io/integrations/nodes/n8n-nodes-base.slack/ | Nursing team notifications |
-| Slack Bot Token Setup | https://api.slack.com/authentication/token-types#bot | Setting up automated notifications |
-| EHR Integration Patterns | https://www.hl7.org/fhir/ | Healthcare data exchange standards |
-| Automation Workflows Doc | docs/automation-workflows.md | Complete workflow documentation and setup |
-| n8n Setup Guide | docs/n8n-workflow-setup.md | Step-by-step n8n installation and configuration |
+| OpenAI GPT-4 Medical Analysis | https://platform.openai.com/docs/guides/text-generation | Advanced language model for medical text analysis |
+| OpenAI Function Calling | https://platform.openai.com/docs/guides/function-calling | Structured AI outputs for diagnosis and treatment recommendations |
+| Medical NLP Best Practices | https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8075445/ | Natural language processing in healthcare applications |
+| HIPAA Compliance & AI | https://www.hhs.gov/hipaa/for-professionals/privacy/special-topics/de-identification/index.html | Ensuring PHI protection in AI processing |
+| Clinical Decision Support Systems | https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6520041/ | Evidence-based AI recommendations in healthcare |
+| Speech-to-Text Medical Accuracy | https://cloud.google.com/speech-to-text/docs/medical-model | Accurate transcription of medical conversations |
+| Azure Cognitive Services Health | https://docs.microsoft.com/en-us/azure/cognitive-services/language-service/text-analytics-for-health/ | Medical entity extraction and analysis |
+| ICD-10 Code Integration | https://www.cdc.gov/nchs/icd/icd10cm.htm | Standardized diagnosis coding |
+| Medical Ontologies (SNOMED) | https://www.snomed.org/ | Medical terminology standardization |
+| Firebase Healthcare APIs | https://firebase.google.com/docs/firestore/security/rules | Secure medical data storage and access |
+| React Medical UI Components | https://mui.com/x/react-data-grid/ | Professional healthcare interface design |
+| Audio Processing for Medical | https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/ | Medical-grade audio transcription |
+| AI Confidence Scoring | https://arxiv.org/abs/1706.04599 | Measuring AI prediction reliability |
+| Medical AI Ethics Guidelines | https://www.who.int/publications/i/item/9789240029200 | Ethical AI in healthcare applications |
+| Visit Documentation Standards | https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/Downloads/clm104c12.pdf | Standard medical documentation practices |
 
 _Add new rows as you discover more material. Keep explanations concise._
 
-## 3. Contribution Guide
-1. Found a great article, video, or library?  
+## 3. AI Analysis Components
+### Core AI Workflows
+- **Symptom Extraction**: Identifying and categorizing symptoms from transcripts
+- **Medical History Parsing**: Extracting medications, allergies, and conditions
+- **Differential Diagnosis**: AI-generated diagnosis suggestions with reasoning
+- **Treatment Recommendations**: Evidence-based treatment options
+- **Risk Assessment**: Red flag detection and clinical alerts
+
+### Technical Implementation
+- **OpenAI Integration**: GPT-4 for medical text analysis
+- **Transcript Processing**: Audio-to-text conversion and structuring
+- **Confidence Scoring**: Reliability assessment of AI recommendations
+- **Provider Validation**: Human-in-the-loop review workflows
+
+## 4. Contribution Guide
+1. Found a great article, video, or library for medical AI?  
    • Add it to the table above with a short description.  
-2. Made a significant architectural decision?  
+2. Made a significant architectural decision about AI analysis?  
    • Link the design doc, ADR, or PR under "Key Resources".  
-3. Updated the LLM prompt or workflow?  
+3. Updated the AI prompts or analysis workflow?  
    • Summarize *why* in a bullet under **Changelog** (below).
 
-## 4. Changelog
-- **v0.1.0** – Initial BrainLift created (resources on agents, PHI de-ID, diff viewer).
-- **v0.2.0** – Added automation workflows section with n8n integration resources, EHR integration patterns, and Slack notification setup guides.
-- **v0.3.0** – Added comprehensive n8n setup guide with installation, configuration, and production deployment instructions.
+## 5. Changelog
+- **v1.0.0** – Project refactored to focus on visit transcript analysis and AI diagnosis assistance
+- **v1.1.0** – Added AI analysis resources, medical NLP references, and clinical decision support documentation
+- **v1.2.0** – Added healthcare AI ethics guidelines and medical documentation standards
 
 ---
 
-> **Tip:** Reference BrainLift in code comments or PR descriptions so reviewers can quickly jump to the underlying reasoning. 
+> **Tip:** Reference BrainLift in code comments or PR descriptions so reviewers can quickly understand the medical AI reasoning behind implementation choices. 

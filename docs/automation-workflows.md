@@ -1,29 +1,29 @@
-# Automation Workflows Documentation 🔄
+# AI Analysis Workflows Documentation 🤖
 
-*This document outlines the automated workflows for the Pre-Examination Charting Agent, including visit transcript processing and EHR integration.*
+*This document outlines the automated AI analysis workflows for the Visit Transcript Analysis & Diagnosis Assistance platform.*
 
 ---
 
 ## Overview
 
-The Pre-Examination Charting Agent includes automated workflows that process patient visit transcripts and update electronic health records (EHR) systems. These workflows are designed to reduce manual data entry, improve accuracy, and ensure timely nursing notifications.
+The Visit Transcript Analysis & AI Diagnosis Assistance platform includes automated workflows that process patient visit transcripts and generate AI-powered clinical insights. These workflows are designed to reduce manual analysis time, improve diagnostic accuracy, and provide evidence-based treatment recommendations while maintaining provider control.
 
 ## Architecture Components
 
-### 1. Webhook-Based Trigger System
-- **Purpose**: Initiates the workflow when patient visits are completed
-- **Integration**: Connects with existing healthcare systems via REST API
-- **Security**: Implements authentication and authorization protocols
+### 1. Transcript Processing Pipeline
+- **Purpose**: Converts audio recordings to structured text and extracts clinical information
+- **Integration**: Supports multiple audio formats and direct text uploads
+- **Security**: Implements HIPAA-compliant data handling and encryption
 
-### 2. AI-Powered Summarization
-- **Model**: GPT-4o-mini for medical accuracy and cost efficiency
-- **Temperature**: 0.2 for consistent, reliable outputs
-- **Specialization**: Trained prompts for medical chart notes and nursing instructions
+### 2. AI Analysis Engine
+- **Model**: OpenAI GPT-4 for advanced medical text analysis
+- **Temperature**: 0.2 for consistent, reliable medical outputs
+- **Specialization**: Medical-specific prompts for symptom extraction and diagnosis
 
-### 3. EHR Integration
-- **Method**: RESTful API integration with existing EHR systems
-- **Data Format**: Standardized medical terminology and formats
-- **Validation**: Ensures data integrity and compliance
+### 3. Clinical Decision Support
+- **Method**: Evidence-based recommendations with confidence scoring
+- **Data Sources**: Medical literature, treatment guidelines, drug databases
+- **Validation**: Human-in-the-loop provider review and approval
 
 ---
 
@@ -31,311 +31,309 @@ The Pre-Examination Charting Agent includes automated workflows that process pat
 
 ```mermaid
 flowchart TD
-  A[Webhook Trigger] --> B[Get Visit Transcript]
-  B --> C[Extract Transcript]
-  C --> D[Summarize Visit]
-  D --> E[Format for EHR]
-  E --> F[Update EHR Chart]
-  F --> G[Notify Nursing]
+  A[Upload Transcript] --> B[Validate & Process File]
+  B --> C[Speaker Identification]
+  C --> D[Segment Analysis]
+  D --> E[Extract Symptoms]
+  E --> F[Parse Medical History]
+  F --> G[Generate Differential Diagnosis]
+  G --> H[Treatment Recommendations]
+  H --> I[Risk Assessment & Flags]
+  I --> J[Provider Review Interface]
+  J --> K[Generate Documentation]
 ```
 
 ## Workflow Steps
 
-### Step 1: Webhook Trigger
-- **Trigger**: POST request to `/patient-charting` endpoint
-- **Input**: Patient ID, Visit ID, EHR API URL
-- **Authentication**: Bearer token or API key authentication
-- **Response**: Immediate acknowledgment for async processing
+### Step 1: Upload Transcript
+- **Input Types**: Audio files (MP3, WAV, M4A, MP4, AAC) or text files (TXT, DOCX, PDF)
+- **Validation**: File size limits (50MB audio, 5MB text), format verification
+- **Processing**: Audio-to-text conversion using medical-trained speech recognition
+- **Security**: Encrypted upload and storage with audit logging
 
-### Step 2: Get Visit Transcript
-- **Action**: Retrieves complete visit transcript from EHR system
-- **API Call**: `GET /patients/{patientId}/visits/{visitId}/transcript`
-- **Error Handling**: Retry logic for network failures
-- **Timeout**: 30-second timeout with exponential backoff
+### Step 2: Validate & Process File
+- **Audio Processing**: Noise reduction, speaker separation, medical terminology optimization
+- **Text Processing**: Format standardization, metadata extraction, quality validation
+- **Error Handling**: Retry logic for processing failures, manual review triggers
+- **Quality Check**: Confidence scoring for transcription accuracy
 
-### Step 3: Extract Transcript
-- **Process**: Parses and validates transcript data
-- **Data Cleaning**: Removes metadata, formatting artifacts
-- **Validation**: Ensures transcript completeness and format
+### Step 3: Speaker Identification
+- **Recognition**: Distinguish between patient and healthcare provider voices
+- **Segmentation**: Time-stamped conversation segments
+- **Confidence**: Audio quality assessment and speaker clarity scoring
+- **Manual Override**: Provider ability to correct speaker assignments
 
-### Step 4: Summarize Visit
-- **AI Model**: GPT-4o-mini with medical specialization
-- **System Prompt**: "You are a medical assistant. Summarize the patient visit transcript and provide concise chart notes and next nursing steps."
-- **Output**: Structured summary with:
-  - Visit summary
-  - Key findings
-  - Next nursing steps
-  - Recommendations
+### Step 4: Segment Analysis
+- **Classification**: Categorize conversation segments by content type
+- **Topics**: History taking, physical exam, symptoms, treatment discussion
+- **Tagging**: Automated tagging of relevant medical content
+- **Context**: Relationship mapping between related segments
 
-### Step 5: Format for EHR
-- **Process**: Converts AI summary to EHR-compatible format
-- **Data Extraction**: Separates chart notes from nursing instructions
-- **Standardization**: Applies medical terminology standards
-- **Validation**: Ensures data integrity and completeness
+### Step 5: Extract Symptoms
+- **AI Processing**: GPT-4 analysis with medical symptom extraction prompts
+- **System Prompt**: "You are a medical AI assistant. Extract and categorize symptoms from the patient visit transcript. Identify severity, duration, frequency, and context for each symptom."
+- **Output**: Structured symptom data with:
+  - Symptom name and description
+  - Severity assessment (mild, moderate, severe)
+  - Duration and frequency
+  - Associated context and triggers
+  - Confidence score
 
-### Step 6: Update EHR Chart
-- **API Call**: `PATCH /patients/{patientId}/visits/{visitId}/chart`
-- **Payload**: Chart notes and nursing instructions
-- **Validation**: Confirms successful update
-- **Audit Trail**: Logs all changes for compliance
+### Step 6: Parse Medical History
+- **Extraction**: Current medications, allergies, past conditions, family history
+- **Validation**: Cross-reference with known medical terminology
+- **Categorization**: Organize by relevance to current complaint
+- **Documentation**: Source text references for provider verification
 
-### Step 7: Notify Nursing
-- **Method**: Slack notification to nursing team
-- **Channel**: #nursing-updates
-- **Content**: Patient ID, visit ID, and next steps
-- **Escalation**: Critical findings trigger immediate alerts
+### Step 7: Generate Differential Diagnosis
+- **AI Analysis**: Medical reasoning with differential diagnosis generation
+- **System Prompt**: "Based on the extracted symptoms and patient history, generate a differential diagnosis list with probability scores, supporting evidence, and reasoning for each condition."
+- **Output**: Ranked diagnosis options with:
+  - Condition name and ICD-10 code
+  - Probability score (0-1)
+  - Supporting evidence from transcript
+  - Contradicting factors
+  - Additional tests needed
+  - Clinical reasoning
+
+### Step 8: Treatment Recommendations
+- **Evidence-Based**: Treatment options based on current medical guidelines
+- **Categories**: Medications, procedures, lifestyle interventions, referrals
+- **Personalization**: Consider patient history, allergies, contraindications
+- **Alternatives**: Multiple treatment approaches with pros and cons
+
+### Step 9: Risk Assessment & Flags
+- **Red Flags**: Critical symptoms requiring immediate attention
+- **Drug Interactions**: Medication compatibility checking
+- **Allergy Alerts**: Contraindication warnings
+- **Urgent Referrals**: Specialist consultation recommendations
+- **Follow-up**: Required monitoring and next steps
+
+### Step 10: Provider Review Interface
+- **Summary Dashboard**: Comprehensive view of AI analysis results
+- **Validation Tools**: Easy editing and approval of AI recommendations
+- **Confidence Display**: Clear indication of AI certainty levels
+- **Source References**: Links back to original transcript segments
+
+### Step 11: Generate Documentation
+- **SOAP Notes**: Automated clinical note generation
+- **Visit Summary**: Concise overview of key findings
+- **Treatment Plan**: Structured care plans with follow-up instructions
+- **Export Options**: Multiple formats for EHR integration
 
 ---
 
-## n8n Workflow Configuration
+## AI Analysis Prompts
 
-### Workflow JSON
-```json
-{
-  "nodes": [
-    {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "patient-charting",
-        "responseMode": "onReceived"
-      },
-      "name": "Webhook Trigger",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
-      "position": [250, 300]
-    },
-    {
-      "parameters": {
-        "authentication": "predefinedCredentialType",
-        "url": "={{ $json[\"ehrApiUrl\"] }}/patients/{{$json.patientId}}/visits/{{$json.visitId}}/transcript",
-        "options": {}
-      },
-      "name": "Get Visit Transcript",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 1,
-      "position": [450, 300]
-    },
-    {
-      "parameters": {
-        "mode": "passThrough",
-        "destinationKey": "transcript"
-      },
-      "name": "Extract Transcript",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 1,
-      "position": [650, 300]
-    },
-    {
-      "parameters": {
-        "model": "gpt-4o-mini",
-        "temperature": 0.2,
-        "messages": [
-          {
-            "role": "system",
-            "content": "You are a medical assistant. Summarize the patient visit transcript and provide concise chart notes and next nursing steps."
-          },
-          {
-            "role": "user",
-            "content": "{{$node[\"Extract Transcript\"].json.transcript}}"
-          }
-        ]
-      },
-      "name": "Summarize Visit",
-      "type": "n8n-nodes-base.openAI",
-      "typeVersion": 1,
-      "position": [850, 300]
-    },
-    {
-      "parameters": {
-        "functionCode": "// Prepare payload for EHR update\nreturn [{\n  json: {\n    patientId: $json.patientId,\n    visitId: $json.visitId,\n    chartSummary: $node['Summarize Visit'].json.choices[0].message.content,\n    nextSteps: extractNextSteps($node['Summarize Visit'].json.choices[0].message.content)\n  }\n}];\n\nfunction extractNextSteps(summary) {\n  const match = summary.match(/Next Steps[:\\-\\s]*([\\s\\S]*)/i);\n  return match ? match[1].trim() : '';\n}"
-      },
-      "name": "Format for EHR",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
-      "position": [1050, 300]
-    },
-    {
-      "parameters": {
-        "authentication": "predefinedCredentialType",
-        "url": "={{ $json.ehrApiUrl }}/patients/{{$json.patientId}}/visits/{{$json.visitId}}/chart",
-        "method": "PATCH",
-        "jsonParameters": true,
-        "options": {},
-        "bodyParametersJson": "={{ { chartNotes: $json.chartSummary, nursingInstructions: $json.nextSteps } }}"
-      },
-      "name": "Update EHR Chart",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 1,
-      "position": [1250, 300]
-    },
-    {
-      "parameters": {
-        "channel": "#nursing-updates",
-        "text": "Patient {{$json.patientId}} visit {{$json.visitId}} chart updated. Next nursing steps: {{$json.nextSteps}}"
-      },
-      "name": "Notify Nursing",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 1,
-      "position": [1450, 300]
-    }
-  ],
-  "connections": {
-    "Webhook Trigger": { "main": [[{"node": "Get Visit Transcript", "type": "main", "index": 0}]] },
-    "Get Visit Transcript": { "main": [[{"node": "Extract Transcript", "type": "main", "index": 0}]] },
-    "Extract Transcript": { "main": [[{"node": "Summarize Visit", "type": "main", "index": 0}]] },
-    "Summarize Visit": { "main": [[{"node": "Format for EHR", "type": "main", "index": 0}]] },
-    "Format for EHR": { "main": [[{"node": "Update EHR Chart", "type": "main", "index": 0}]] },
-    "Update EHR Chart": { "main": [[{"node": "Notify Nursing", "type": "main", "index": 0}]] }
+### Symptom Extraction Prompt
+```
+You are a medical AI assistant specializing in clinical symptom analysis. 
+
+Analyze the following patient visit transcript and extract all symptoms mentioned by the patient. For each symptom, provide:
+
+1. Symptom name (standardized medical terminology)
+2. Severity (mild/moderate/severe) if mentioned
+3. Duration (onset and how long present)
+4. Frequency (constant, intermittent, specific timing)
+5. Context (triggers, relieving factors, associated symptoms)
+6. Source text (exact quote from transcript)
+7. Confidence score (0.0-1.0) for accuracy of extraction
+
+Format as structured JSON. Only extract symptoms explicitly mentioned by the patient.
+
+Transcript: {transcript_text}
+```
+
+### Differential Diagnosis Prompt
+```
+You are an expert clinician providing differential diagnosis based on patient presentation.
+
+Given the extracted symptoms and patient history below, generate a comprehensive differential diagnosis. For each potential diagnosis:
+
+1. Condition name and ICD-10 code
+2. Probability score (0.0-1.0) based on symptom fit
+3. Supporting evidence from the case
+4. Contradicting factors or missing symptoms
+5. Additional tests/workup needed
+6. Clinical reasoning (2-3 sentences)
+
+Rank diagnoses by probability and include 5-8 most likely conditions.
+
+Symptoms: {extracted_symptoms}
+Patient History: {patient_history}
+```
+
+### Treatment Recommendations Prompt
+```
+You are a clinical decision support AI providing evidence-based treatment recommendations.
+
+Based on the differential diagnosis and patient information, provide treatment recommendations for the most likely conditions. Include:
+
+1. First-line treatments with evidence level
+2. Alternative options and their indications
+3. Contraindications based on patient history
+4. Monitoring requirements
+5. Follow-up timeline and specialist referrals
+6. Patient education points
+
+Consider patient allergies, current medications, and comorbidities.
+
+Diagnosis: {primary_diagnosis}
+Patient Allergies: {allergies}
+Current Medications: {medications}
+```
+
+---
+
+## Technical Implementation
+
+### Firebase Cloud Functions
+```javascript
+exports.analyzeTranscript = functions.https.onCall(async (data, context) => {
+  // Authenticate user
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
   }
+  
+  const { visitId, transcriptText } = data;
+  
+  try {
+    // Step 1: Extract symptoms
+    const symptoms = await extractSymptoms(transcriptText);
+    
+    // Step 2: Parse medical history
+    const history = await parseHistory(transcriptText);
+    
+    // Step 3: Generate differential diagnosis
+    const diagnosis = await generateDifferential(symptoms, history);
+    
+    // Step 4: Treatment recommendations
+    const treatments = await getTreatmentRecommendations(diagnosis, history);
+    
+    // Step 5: Risk assessment
+    const riskFlags = await assessRisk(symptoms, diagnosis);
+    
+    // Save analysis results
+    const analysis = {
+      visitId,
+      extractedSymptoms: symptoms,
+      patientHistory: history,
+      differentialDiagnosis: diagnosis,
+      treatmentRecommendations: treatments,
+      flaggedConcerns: riskFlags,
+      status: 'completed',
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+    
+    await admin.firestore().collection('ai-analysis').add(analysis);
+    
+    return { success: true, analysisId: analysis.id };
+    
+  } catch (error) {
+    console.error('Analysis error:', error);
+    throw new functions.https.HttpsError('internal', 'Analysis failed');
+  }
+});
+
+async function extractSymptoms(transcript) {
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4',
+    temperature: 0.2,
+    messages: [
+      {
+        role: 'system',
+        content: 'You are a medical AI assistant specializing in clinical symptom analysis...'
+      },
+      {
+        role: 'user',
+        content: `Transcript: ${transcript}`
+      }
+    ]
+  });
+  
+  return JSON.parse(response.choices[0].message.content);
 }
 ```
 
-### Node Configuration Details
+### Error Handling & Retry Logic
+```javascript
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
 
-#### Webhook Trigger Node
-- **Type**: `n8n-nodes-base.webhook`
-- **Method**: POST
-- **Path**: `patient-charting`
-- **Response Mode**: On received
-- **Authentication**: Configurable via n8n credentials
+async function withRetry(operation, retries = MAX_RETRIES) {
+  try {
+    return await operation();
+  } catch (error) {
+    if (retries > 0 && isRetryableError(error)) {
+      await sleep(RETRY_DELAY);
+      return withRetry(operation, retries - 1);
+    }
+    throw error;
+  }
+}
 
-#### HTTP Request Nodes
-- **Authentication**: Uses predefined credential types
-- **Timeout**: 30 seconds default
-- **Retry Logic**: Automatic retry on network failures
-- **Error Handling**: Propagates errors to workflow error handling
-
-#### OpenAI Node
-- **Model**: GPT-4o-mini
-- **Temperature**: 0.2 for consistent outputs
-- **System Prompt**: Medical assistant specialization
-- **Rate Limiting**: Handled by OpenAI API
-
-#### Function Node
-- **Purpose**: Data transformation and extraction
-- **Language**: JavaScript
-- **Error Handling**: Try-catch blocks for parsing
-- **Output**: Structured data for EHR update
-
-#### Slack Node
-- **Channel**: #nursing-updates
-- **Message Format**: Structured notification
-- **Mentions**: Configurable for urgent cases
-- **Attachments**: Can include chart summaries
-
----
-
-## Integration Requirements
-
-### Prerequisites
-1. **n8n Installation**: Self-hosted or cloud instance
-2. **API Credentials**: OpenAI API key
-3. **EHR System**: RESTful API access
-4. **Slack Workspace**: Bot token and channel access
-5. **Network Access**: Secure communication channels
-
-### Environment Variables
-```bash
-# OpenAI Configuration
-OPENAI_API_KEY=your_openai_api_key
-OPENAI_MODEL=gpt-4o-mini
-
-# EHR System Configuration
-EHR_API_BASE_URL=https://your-ehr-system.com/api
-EHR_API_KEY=your_ehr_api_key
-
-# Slack Configuration
-SLACK_BOT_TOKEN=your_slack_bot_token
-SLACK_CHANNEL=#nursing-updates
-
-# Workflow Configuration
-WEBHOOK_PATH=patient-charting
-WORKFLOW_TIMEOUT=300
+function isRetryableError(error) {
+  return error.code === 'rate_limit_exceeded' || 
+         error.code === 'timeout' ||
+         error.status === 503;
+}
 ```
 
-### Security Considerations
-1. **Authentication**: All API calls use secure authentication
-2. **HTTPS**: All communications encrypted in transit
-3. **Rate Limiting**: Implements proper rate limiting
-4. **Data Privacy**: PHI handling compliant with HIPAA
-5. **Audit Logging**: Complete audit trail for all operations
+---
+
+## Performance Metrics
+
+### Processing Times
+- **Audio Transcription**: 2-5 minutes per hour of audio
+- **Symptom Extraction**: 30-60 seconds per transcript
+- **Differential Diagnosis**: 60-90 seconds
+- **Treatment Recommendations**: 30-45 seconds
+- **Total Analysis**: 3-7 minutes per visit
+
+### Accuracy Targets
+- **Symptom Detection**: >90% sensitivity for mentioned symptoms
+- **Diagnosis Relevance**: >85% provider agreement with top 3 diagnoses
+- **Treatment Appropriateness**: >95% guideline concordance
+- **Red Flag Detection**: >99% sensitivity for critical conditions
+
+### System Reliability
+- **Uptime**: 99.9% availability target
+- **Error Rate**: <1% processing failures
+- **Response Time**: <30 seconds for real-time analysis
+- **Concurrent Users**: Support for 100+ simultaneous analyses
 
 ---
 
-## Monitoring and Maintenance
-
-### Performance Metrics
-- **Processing Time**: Average workflow execution time
-- **Success Rate**: Percentage of successful completions
-- **Error Rate**: Categorized error tracking
-- **API Response Times**: Monitor external API performance
-
-### Alerting
-- **Workflow Failures**: Immediate alerts for critical failures
-- **API Timeouts**: Monitoring for external service issues
-- **Data Quality**: Alerts for incomplete or invalid data
-- **Volume Monitoring**: Track processing volume and capacity
-
-### Maintenance Tasks
-1. **Regular Updates**: Keep n8n and node versions updated
-2. **Credential Rotation**: Rotate API keys and tokens
-3. **Performance Tuning**: Optimize workflow execution
-4. **Backup**: Regular backup of workflow configurations
-5. **Monitoring**: Continuous monitoring of all integrations
-
----
-
-## Error Handling and Recovery
-
-### Error Categories
-1. **Network Errors**: Connection failures, timeouts
-2. **API Errors**: Invalid responses, rate limits
-3. **Data Errors**: Malformed or incomplete data
-4. **Processing Errors**: AI model failures, parsing issues
-
-### Recovery Strategies
-- **Retry Logic**: Exponential backoff for temporary failures
-- **Fallback Procedures**: Manual processing for critical cases
-- **Dead Letter Queue**: Store failed requests for later processing
-- **Escalation**: Automated escalation for persistent failures
-
-### Logging and Debugging
-- **Structured Logging**: JSON format for log analysis
-- **Debug Mode**: Detailed logging for troubleshooting
-- **Performance Logs**: Execution time and resource usage
-- **Error Context**: Full context capture for error analysis
-
----
-
-## Future Enhancements
-
-### Planned Features
-1. **Multi-Language Support**: Support for non-English transcripts
-2. **Specialty Templates**: Specialized templates for different medical specialties
-3. **Quality Scoring**: Automated quality assessment of generated notes
-4. **Real-time Processing**: Live transcript processing during visits
-5. **Integration Expansion**: Support for additional EHR systems
-
-### Scalability Considerations
-- **Load Balancing**: Distribute processing across multiple instances
-- **Queue Management**: Implement robust queue system for high volume
-- **Database Optimization**: Efficient data storage and retrieval
-- **Caching**: Cache frequently accessed data and templates
-
----
-
-## Compliance and Documentation
+## Security & Compliance
 
 ### HIPAA Compliance
-- **Data Encryption**: All data encrypted at rest and in transit
-- **Access Control**: Role-based access to sensitive data
-- **Audit Trails**: Complete logging of all data access
-- **Data Retention**: Compliant data retention policies
+- **Encryption**: AES-256 for data at rest and in transit
+- **Access Controls**: Role-based permissions with audit logging
+- **De-identification**: PHI anonymization for AI processing when possible
+- **Audit Trails**: Comprehensive logging of all data access
 
-### Documentation Requirements
-- **Workflow Documentation**: Complete workflow descriptions
-- **API Documentation**: Detailed API specifications
-- **User Guides**: Instructions for healthcare staff
-- **Troubleshooting**: Common issues and solutions
+### Data Protection
+- **Retention**: Configurable data retention policies
+- **Backup**: Automated backups with point-in-time recovery
+- **Disaster Recovery**: Multi-region redundancy
+- **Penetration Testing**: Regular security assessments
 
-This automation workflow significantly reduces manual data entry, improves accuracy, and ensures timely communication between healthcare providers, ultimately enhancing patient care quality and operational efficiency. 
+---
+
+## Quality Assurance
+
+### AI Model Validation
+- **Continuous Monitoring**: Performance tracking against clinical benchmarks
+- **Feedback Loop**: Provider corrections improve model accuracy
+- **Version Control**: Model versioning with rollback capabilities
+- **A/B Testing**: Comparing different AI approaches
+
+### Provider Validation
+- **Review Required**: All AI recommendations require provider approval
+- **Confidence Thresholds**: Low-confidence results flagged for manual review
+- **Override Capability**: Providers can modify or reject AI suggestions
+- **Learning Integration**: Provider feedback incorporated into model training
+
+---
+
+This AI analysis workflow provides a comprehensive framework for transforming patient visit transcripts into actionable clinical insights while maintaining the highest standards of accuracy, security, and provider control. 
