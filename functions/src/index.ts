@@ -65,7 +65,7 @@ export const analyzeTranscript = functions.https.onRequest(async (request, respo
 
       // Call OpenAI API
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4-turbo-preview',
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: MEDICAL_ANALYSIS_PROMPT },
           { role: 'user', content: `Transcript: ${transcript}` }
@@ -159,7 +159,7 @@ export const generateSummary = functions.https.onRequest(async (request, respons
       `;
 
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4-turbo-preview',
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: 'You are a medical assistant providing clinical summaries.' },
           { role: 'user', content: summaryPrompt }
