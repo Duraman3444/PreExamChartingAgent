@@ -43,6 +43,7 @@ import {
   Step,
   StepLabel,
   StepContent,
+  Snackbar,
 } from '@mui/material';
 import {
   Psychology as PsychologyIcon,
@@ -68,6 +69,9 @@ import {
   Schedule as ScheduleIcon,
   Send as SendIcon,
   Clear as ClearIcon,
+  Email as EmailIcon,
+  Link as LinkIcon,
+  ContentCopy as ContentCopyIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import type { AIAnalysis } from '@/types';
@@ -245,6 +249,163 @@ interface TranscriptAnalyzerProps {
   isAnalyzing: boolean;
 }
 
+interface ShareAnalysisDialogProps {
+  open: boolean;
+  onClose: () => void;
+  analysis: AIAnalysis;
+}
+
+const ShareAnalysisDialog: React.FC<ShareAnalysisDialogProps> = ({ open, onClose, analysis }) => {
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+  const [shareLink, setShareLink] = useState('');
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+
+  const generateShareLink = () => {
+    // In a real app, this would generate a secure shareable link
+    const link = `${window.location.origin}/shared-analysis/${analysis.id}`;
+    setShareLink(link);
+  };
+
+  const copyLink = async () => {
+    if (shareLink) {
+      try {
+        await navigator.clipboard.writeText(shareLink);
+        setLinkCopied(true);
+        setTimeout(() => setLinkCopied(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy link:', err);
+      }
+    }
+  };
+
+  const handleEmailShare = async () => {
+    if (!email.trim()) return;
+    
+    setIsSharing(true);
+    try {
+      // In a real app, this would send an email through your backend
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('Sharing analysis via email:', { email, message, analysisId: analysis.id });
+      setEmail('');
+      setMessage('');
+      onClose();
+    } catch (error) {
+      console.error('Failed to share analysis:', error);
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleClose = () => {
+    setEmail('');
+    setMessage('');
+    setShareLink('');
+    setLinkCopied(false);
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <ShareIcon color="primary" />
+          <Typography variant="h6">Share Analysis</Typography>
+        </Box>
+      </DialogTitle>
+      <DialogContent>
+        <Stack spacing={3}>
+          <Alert severity="info">
+            Share Analysis #{analysis.id} with colleagues or save for later reference
+          </Alert>
+          
+          {/* Share Link Section */}
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              Share Link
+            </Typography>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Generate a secure link to share this analysis
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <TextField
+                fullWidth
+                value={shareLink}
+                placeholder="Click 'Generate Link' to create a shareable link"
+                InputProps={{
+                  readOnly: true,
+                }}
+                size="small"
+              />
+              <Button
+                variant="outlined"
+                startIcon={<LinkIcon />}
+                onClick={generateShareLink}
+                disabled={!!shareLink}
+              >
+                Generate Link
+              </Button>
+              {shareLink && (
+                <Tooltip title={linkCopied ? 'Copied!' : 'Copy Link'}>
+                  <IconButton onClick={copyLink} color={linkCopied ? 'success' : 'default'}>
+                    <ContentCopyIcon />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+          </Box>
+
+          <Divider />
+
+          {/* Email Share Section */}
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              Share via Email
+            </Typography>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Send this analysis directly to a colleague
+            </Typography>
+            <Stack spacing={2}>
+              <TextField
+                label="Recipient Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                type="email"
+                fullWidth
+                size="small"
+              />
+              <TextField
+                label="Message (Optional)"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                multiline
+                rows={3}
+                fullWidth
+                placeholder="Add a personal message..."
+                size="small"
+              />
+            </Stack>
+          </Box>
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleClose} disabled={isSharing}>
+          Cancel
+        </Button>
+        <Button
+          onClick={handleEmailShare}
+          variant="contained"
+          startIcon={isSharing ? <CircularProgress size={16} /> : <EmailIcon />}
+          disabled={!email.trim() || isSharing}
+        >
+          {isSharing ? 'Sharing...' : 'Share via Email'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
 const TranscriptAnalyzer: React.FC<TranscriptAnalyzerProps> = ({ open, onClose, onAnalyze, isAnalyzing }) => {
   const [transcript, setTranscript] = useState('');
   const [selectedTranscript, setSelectedTranscript] = useState('');
@@ -331,6 +492,10 @@ export default function AIAnalysisPage() {
   const [analyzerOpen, setAnalyzerOpen] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   const handleAnalyze = async (transcript: string) => {
     setIsAnalyzing(true);
@@ -430,6 +595,160 @@ export default function AIAnalysisPage() {
       setIsAnalyzing(false);
       setActiveStep(0);
     }
+  };
+
+  const handleRefreshAnalysis = async () => {
+    if (!selectedAnalysis) return;
+    
+    setIsRefreshing(true);
+    try {
+      // In a real app, this would fetch the original transcript and re-analyze
+      const mockTranscript = "Doctor: Good morning. Patient: Hi Doctor. I've been having chest pain...";
+      
+      // Show progressive analysis steps
+      const steps = ['Refreshing Data', 'Re-analyzing Transcript', 'Updating Results'];
+      
+      for (let i = 0; i < steps.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setActiveStep(i);
+      }
+      
+      // Update the analysis with new timestamp
+      const refreshedAnalysis = {
+        ...selectedAnalysis,
+        createdAt: new Date(),
+        confidenceScore: Math.min(0.99, selectedAnalysis.confidenceScore + 0.02),
+        reviewedBy: undefined,
+        reviewedAt: undefined,
+        reviewNotes: undefined,
+      };
+      
+      setAnalyses(prev => prev.map(a => a.id === selectedAnalysis.id ? refreshedAnalysis : a));
+      setSelectedAnalysis(refreshedAnalysis);
+      setSnackbarMessage('Analysis refreshed successfully!');
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error('Failed to refresh analysis:', error);
+      setSnackbarMessage('Failed to refresh analysis. Please try again.');
+      setSnackbarOpen(true);
+    } finally {
+      setIsRefreshing(false);
+      setActiveStep(0);
+    }
+  };
+
+  const handleDownloadReport = async () => {
+    if (!selectedAnalysis) return;
+    
+    try {
+      // In a real app, this would generate a proper PDF report
+      const reportContent = generateReportContent(selectedAnalysis);
+      const blob = new Blob([reportContent], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `ai-analysis-report-${selectedAnalysis.id}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      setSnackbarMessage('Report downloaded successfully!');
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error('Failed to download report:', error);
+      setSnackbarMessage('Failed to download report. Please try again.');
+      setSnackbarOpen(true);
+    }
+  };
+
+  const generateReportContent = (analysis: AIAnalysis): string => {
+    const reportDate = format(new Date(), 'PPP');
+    const analysisDate = format(analysis.createdAt, 'PPpp');
+    
+    return `
+AI ANALYSIS REPORT
+Generated: ${reportDate}
+Analysis Date: ${analysisDate}
+Analysis ID: ${analysis.id}
+Confidence Score: ${(analysis.confidenceScore * 100).toFixed(1)}%
+AI Model: ${analysis.aiModel}
+
+=== FLAGGED CONCERNS ===
+${analysis.flaggedConcerns.map(concern => `
+• ${concern.message}
+  Severity: ${concern.severity.toUpperCase()}
+  Recommendation: ${concern.recommendation}
+`).join('')}
+
+=== EXTRACTED SYMPTOMS ===
+${analysis.extractedSymptoms.map(symptom => `
+• ${symptom.symptom}
+  Severity: ${symptom.severity}
+  Duration: ${symptom.duration}
+  Frequency: ${symptom.frequency}
+  Context: ${symptom.context}
+  Confidence: ${(symptom.confidence * 100).toFixed(0)}%
+`).join('')}
+
+=== DIFFERENTIAL DIAGNOSIS ===
+${analysis.differentialDiagnosis.map(diagnosis => `
+• ${diagnosis.condition} (${diagnosis.icd10Code})
+  Probability: ${(diagnosis.probability * 100).toFixed(0)}%
+  Severity: ${diagnosis.severity}
+  Reasoning: ${diagnosis.reasoning}
+  
+  Supporting Evidence:
+  ${diagnosis.supportingEvidence.map(evidence => `  - ${evidence}`).join('\n')}
+  
+  Against Evidence:
+  ${diagnosis.againstEvidence.map(evidence => `  - ${evidence}`).join('\n')}
+  
+  Additional Tests Needed:
+  ${diagnosis.additionalTestsNeeded.map(test => `  - ${test}`).join('\n')}
+`).join('')}
+
+=== TREATMENT RECOMMENDATIONS ===
+${analysis.treatmentRecommendations.map(treatment => `
+• ${treatment.recommendation}
+  Category: ${treatment.category}
+  Priority: ${treatment.priority}
+  Timeframe: ${treatment.timeframe}
+  Reasoning: ${treatment.reasoning}
+  
+  Contraindications:
+  ${treatment.contraindications.map(contra => `  - ${contra}`).join('\n')}
+  
+  Monitoring Required:
+  ${treatment.monitoringRequired.map(monitor => `  - ${monitor}`).join('\n')}
+`).join('')}
+
+=== FOLLOW-UP RECOMMENDATIONS ===
+${analysis.followUpRecommendations.map(followUp => `
+• ${followUp.description}
+  Type: ${followUp.type}
+  Priority: ${followUp.priority}
+  Timeframe: ${followUp.timeframe}
+  ${followUp.specialty ? `Specialty: ${followUp.specialty}` : ''}
+`).join('')}
+
+${analysis.reviewedBy ? `
+=== PHYSICIAN REVIEW ===
+Reviewed by: ${analysis.reviewedBy}
+Review Date: ${format(analysis.reviewedAt!, 'PPpp')}
+Notes: ${analysis.reviewNotes || 'No additional notes'}
+` : ''}
+
+---
+This report was generated by the AI Analysis system.
+For questions or concerns, please contact your healthcare provider.
+    `.trim();
+  };
+
+  const handleShareAnalysis = () => {
+    if (!selectedAnalysis) return;
+    setShareDialogOpen(true);
   };
 
   const getSeverityColor = (severity: string) => {
@@ -534,15 +853,15 @@ export default function AIAnalysisPage() {
             </CardContent>
           </Card>
 
-          {isAnalyzing && (
+          {(isAnalyzing || isRefreshing) && (
             <Card sx={{ mt: 2 }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <CircularProgress size={20} />
-                  Processing Analysis
+                  {isAnalyzing ? 'Processing Analysis' : 'Refreshing Analysis'}
                 </Typography>
                 <Stepper activeStep={activeStep} orientation="vertical">
-                  {analysisSteps.map((step, index) => (
+                  {(isAnalyzing ? analysisSteps : ['Refreshing Data', 'Re-analyzing Transcript', 'Updating Results']).map((step, index) => (
                     <Step key={step}>
                       <StepLabel>{step}</StepLabel>
                       <StepContent>
@@ -585,17 +904,26 @@ export default function AIAnalysisPage() {
                     </Box>
                     <Box>
                       <Tooltip title="Refresh Analysis">
-                        <IconButton>
+                        <IconButton 
+                          onClick={handleRefreshAnalysis}
+                          disabled={isRefreshing || isAnalyzing}
+                        >
                           <RefreshIcon />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Download Report">
-                        <IconButton>
+                        <IconButton 
+                          onClick={handleDownloadReport}
+                          disabled={isRefreshing || isAnalyzing}
+                        >
                           <DownloadIcon />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Share Analysis">
-                        <IconButton>
+                        <IconButton 
+                          onClick={handleShareAnalysis}
+                          disabled={isRefreshing || isAnalyzing}
+                        >
                           <ShareIcon />
                         </IconButton>
                       </Tooltip>
@@ -925,6 +1253,21 @@ export default function AIAnalysisPage() {
         onClose={() => setAnalyzerOpen(false)}
         onAnalyze={handleAnalyze}
         isAnalyzing={isAnalyzing}
+      />
+
+      {selectedAnalysis && (
+        <ShareAnalysisDialog
+          open={shareDialogOpen}
+          onClose={() => setShareDialogOpen(false)}
+          analysis={selectedAnalysis}
+        />
+      )}
+
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={4000}
+        onClose={() => setSnackbarOpen(false)}
+        message={snackbarMessage}
       />
     </Box>
   );
