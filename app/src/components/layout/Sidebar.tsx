@@ -18,6 +18,8 @@ import {
   Psychology,
   Settings,
   Person,
+  Description,
+  Upload,
 } from '@mui/icons-material';
 import { ROUTES } from '@/constants';
 import { useAuthStore } from '@/stores/authStore';
@@ -42,6 +44,16 @@ const navigationItems = [
     text: 'Visits',
     icon: <RecordVoiceOver />,
     path: ROUTES.VISITS,
+  },
+  {
+    text: 'Transcripts',
+    icon: <Upload />,
+    path: ROUTES.TRANSCRIPTS,
+  },
+  {
+    text: 'Visit Notes',
+    icon: <Description />,
+    path: ROUTES.NOTES,
   },
   {
     text: 'AI Analysis',

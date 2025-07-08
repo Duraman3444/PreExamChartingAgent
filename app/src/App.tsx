@@ -19,7 +19,10 @@ import { Settings } from '@/pages/Settings';
 import { PatientManagement } from '@/pages/PatientManagement';
 import { VisitManagement } from '@/pages/VisitManagement';
 import AIAnalysis from '@/pages/AIAnalysis';
+import AIAnalysisEntry from '@/pages/AIAnalysisEntry';
 import TranscriptUpload from '@/pages/TranscriptUpload';
+import Transcripts from '@/pages/Transcripts';
+import Notes from '@/pages/Notes';
 import { useAuthStore } from '@/stores/authStore';
 import { ROUTES } from '@/constants';
 import { theme } from '@/theme/theme';
@@ -725,6 +728,16 @@ function App() {
             element={
               <ProtectedRoute>
                 <Layout>
+                  <AIAnalysisEntry />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.AI_ANALYSIS_DETAIL}
+            element={
+              <ProtectedRoute>
+                <Layout>
                   <AIAnalysis />
                 </Layout>
               </ProtectedRoute>
@@ -746,6 +759,26 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Profile />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.TRANSCRIPTS}
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Transcripts />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.NOTES}
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Notes />
                 </Layout>
               </ProtectedRoute>
             }

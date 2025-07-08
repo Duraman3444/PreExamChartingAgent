@@ -8,8 +8,11 @@ export const ROUTES = {
   VISITS: '/visits',
   VISIT_DETAIL: '/visits/:id',
   TRANSCRIPT_UPLOAD: '/visits/:id/transcript',
+  TRANSCRIPTS: '/transcripts',
   AI_ANALYSIS: '/ai-analysis',
+  AI_ANALYSIS_DETAIL: '/ai-analysis/:id',
   VISIT_NOTES: '/visits/:id/notes',
+  NOTES: '/notes',
   PROFILE: '/profile',
   SETTINGS: '/settings',
 } as const;
