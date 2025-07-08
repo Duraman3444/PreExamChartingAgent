@@ -19,7 +19,6 @@ import {
   RecordVoiceOver,
   Psychology,
   TrendingUp,
-  VideoCall,
   Assessment,
   ChevronRight,
   CheckCircle,
