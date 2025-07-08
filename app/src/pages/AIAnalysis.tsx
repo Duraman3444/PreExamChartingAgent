@@ -66,6 +66,7 @@ import {
 } from '@mui/icons-material';
 import { openAIService } from '@/services/openai';
 import { ROUTES } from '@/constants';
+import { mockVisits as visitData } from '@/data/mockData';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -127,6 +128,275 @@ interface ConcernFlag {
   requiresImmediateAction: boolean;
 }
 
+// Function to generate patient-specific analysis data
+const generatePatientAnalysisData = (visitId: string) => {
+  const visit = visitData.find(v => v.id === visitId);
+  if (!visit) return null;
+
+  const analysisConfigurations = {
+    'V001': { // John Doe - Chest pain and shortness of breath
+      symptoms: [
+        { id: 'sym-1', name: 'Chest pain', severity: 'moderate' as const, confidence: 0.95, duration: '2 hours', location: 'substernal', quality: 'pressure-like', associatedFactors: ['exertion', 'anxiety'], sourceText: 'Patient reports pressure-like chest pain that started 2 hours ago during stair climbing' },
+        { id: 'sym-2', name: 'Shortness of breath', severity: 'mild' as const, confidence: 0.87, duration: '1 hour', location: 'bilateral', quality: 'difficulty breathing', associatedFactors: ['chest pain', 'exertion'], sourceText: 'Patient mentions some difficulty breathing associated with chest discomfort' },
+        { id: 'sym-3', name: 'Anxiety', severity: 'moderate' as const, confidence: 0.78, duration: 'ongoing', associatedFactors: ['chest pain', 'fear of heart attack'], sourceText: 'Patient appears anxious and worried about potential cardiac event' },
+      ] as Symptom[],
+      diagnoses: [
+        { id: 'dx-1', condition: 'Acute Coronary Syndrome', icd10Code: 'I24.9', probability: 0.75, severity: 'high' as const, supportingEvidence: ['chest pain', 'male gender', 'age >40', 'exertional trigger'], againstEvidence: ['normal ECG', 'short duration', 'anxiety component'], additionalTestsNeeded: ['troponin levels', 'stress test', 'echocardiogram'], reasoning: 'Classic presentation of chest pain in middle-aged male with cardiac risk factors', urgency: 'urgent' as const },
+        { id: 'dx-2', condition: 'Anxiety Disorder with Panic Attack', icd10Code: 'F41.0', probability: 0.65, severity: 'medium' as const, supportingEvidence: ['anxiety symptoms', 'pressure sensation', 'situational trigger'], againstEvidence: ['physical exertion trigger', 'duration'], additionalTestsNeeded: ['anxiety assessment', 'psychiatric evaluation'], reasoning: 'Anxiety can manifest with chest discomfort and breathing difficulties', urgency: 'routine' as const },
+      ] as Diagnosis[],
+      treatments: [
+        { id: 'tx-1', category: 'medication' as const, recommendation: 'Aspirin 325mg if no contraindications', priority: 'high' as const, timeframe: 'immediate', contraindications: ['active bleeding', 'aspirin allergy'], alternatives: ['clopidogrel 75mg if aspirin contraindicated'], expectedOutcome: 'Reduced platelet aggregation and cardiovascular risk', evidenceLevel: 'A' as const },
+        { id: 'tx-2', category: 'referral' as const, recommendation: 'Urgent cardiology consultation', priority: 'high' as const, timeframe: 'within 24 hours', contraindications: [], alternatives: ['emergency department if symptoms worsen'], expectedOutcome: 'Expert cardiac evaluation and risk stratification', evidenceLevel: 'A' as const },
+      ] as Treatment[],
+      concerns: [
+        { id: 'flag-1', type: 'red_flag' as const, severity: 'high' as const, message: 'Chest pain in middle-aged male with potential cardiac risk factors', recommendation: 'Immediate cardiac evaluation with ECG and troponin', requiresImmediateAction: true },
+      ] as ConcernFlag[],
+      confidenceScore: 0.87,
+    },
+    'V002': { // Jane Smith - Palpitations and fatigue
+      symptoms: [
+        { id: 'sym-1', name: 'Palpitations', severity: 'moderate', confidence: 0.92, duration: '3 days', location: 'cardiac', quality: 'irregular heartbeat', associatedFactors: ['fatigue', 'stress'], sourceText: 'Patient reports irregular heartbeat sensations over the past 3 days' },
+        { id: 'sym-2', name: 'Fatigue', severity: 'moderate', confidence: 0.88, duration: '1 week', quality: 'generalized weakness', associatedFactors: ['palpitations', 'sleep disturbance'], sourceText: 'Patient describes feeling tired and weak for the past week' },
+        { id: 'sym-3', name: 'Irregular pulse', severity: 'mild', confidence: 0.95, duration: 'intermittent', associatedFactors: ['palpitations'], sourceText: 'Physical examination reveals irregular pulse rhythm' },
+      ],
+      diagnoses: [
+        { id: 'dx-1', condition: 'Atrial Fibrillation', icd10Code: 'I48.91', probability: 0.85, severity: 'high', supportingEvidence: ['irregular pulse', 'palpitations', 'age >60', 'female gender'], againstEvidence: ['no chest pain', 'no syncope'], additionalTestsNeeded: ['ECG', 'echocardiogram', 'thyroid function'], reasoning: 'Irregular pulse with palpitations in elderly female suggests atrial fibrillation', urgency: 'urgent' },
+        { id: 'dx-2', condition: 'Thyroid dysfunction', icd10Code: 'E07.9', probability: 0.45, severity: 'medium', supportingEvidence: ['palpitations', 'fatigue', 'female gender'], againstEvidence: ['no weight changes', 'no heat intolerance'], additionalTestsNeeded: ['TSH', 'T3', 'T4'], reasoning: 'Thyroid disorders can cause palpitations and fatigue', urgency: 'routine' },
+      ],
+      treatments: [
+        { id: 'tx-1', category: 'medication', recommendation: 'Anticoagulation therapy (warfarin or DOAC)', priority: 'high', timeframe: 'within 24 hours', contraindications: ['active bleeding', 'severe liver disease'], alternatives: ['aspirin if anticoagulation contraindicated'], expectedOutcome: 'Reduced stroke risk', evidenceLevel: 'A' },
+        { id: 'tx-2', category: 'referral', recommendation: 'Cardiology consultation for rhythm management', priority: 'high', timeframe: 'within 48 hours', contraindications: [], alternatives: ['emergency department if symptoms worsen'], expectedOutcome: 'Optimal rhythm and rate control', evidenceLevel: 'A' },
+      ],
+      concerns: [
+        { id: 'flag-1', type: 'red_flag', severity: 'high', message: 'New onset atrial fibrillation requires immediate anticoagulation assessment', recommendation: 'Urgent cardiology consultation and anticoagulation initiation', requiresImmediateAction: true },
+      ],
+      confidenceScore: 0.92,
+    },
+    'V003': { // Michael Brown - Fatigue and gastrointestinal symptoms
+      symptoms: [
+        { id: 'sym-1', name: 'Fatigue', severity: 'moderate', confidence: 0.90, duration: '2 weeks', quality: 'generalized weakness', associatedFactors: ['weight loss', 'appetite changes'], sourceText: 'Patient reports persistent fatigue and weakness for 2 weeks' },
+        { id: 'sym-2', name: 'Epigastric pain', severity: 'moderate', confidence: 0.85, duration: '1 week', location: 'upper abdomen', quality: 'burning sensation', associatedFactors: ['eating', 'nausea'], sourceText: 'Patient describes burning pain in upper abdomen, worse after meals' },
+        { id: 'sym-3', name: 'Weight loss', severity: 'mild', confidence: 0.78, duration: '3 weeks', quality: 'unintentional', associatedFactors: ['poor appetite', 'abdominal pain'], sourceText: 'Patient reports unintentional weight loss of 8 pounds over 3 weeks' },
+      ],
+      diagnoses: [
+        { id: 'dx-1', condition: 'Peptic Ulcer Disease', icd10Code: 'K27.9', probability: 0.70, severity: 'medium', supportingEvidence: ['epigastric pain', 'weight loss', 'male gender'], againstEvidence: ['no melena', 'no vomiting'], additionalTestsNeeded: ['upper endoscopy', 'H. pylori testing', 'CBC'], reasoning: 'Epigastric pain with weight loss suggests peptic ulcer disease', urgency: 'urgent' },
+        { id: 'dx-2', condition: 'Gastric malignancy', icd10Code: 'C16.9', probability: 0.35, severity: 'high', supportingEvidence: ['weight loss', 'fatigue', 'age >30'], againstEvidence: ['young age', 'no family history'], additionalTestsNeeded: ['upper endoscopy with biopsy', 'CT abdomen'], reasoning: 'Weight loss and fatigue warrant evaluation for gastric malignancy', urgency: 'urgent' },
+      ],
+      treatments: [
+        { id: 'tx-1', category: 'medication', recommendation: 'Proton pump inhibitor (omeprazole 40mg daily)', priority: 'high', timeframe: 'immediate', contraindications: ['hypersensitivity'], alternatives: ['H2 blockers if PPI contraindicated'], expectedOutcome: 'Reduced gastric acid production and symptom relief', evidenceLevel: 'A' },
+        { id: 'tx-2', category: 'procedure', recommendation: 'Upper endoscopy', priority: 'high', timeframe: 'within 1 week', contraindications: ['severe coagulopathy'], alternatives: ['upper GI series if endoscopy not available'], expectedOutcome: 'Direct visualization and tissue sampling', evidenceLevel: 'A' },
+      ],
+      concerns: [
+        { id: 'flag-1', type: 'red_flag', severity: 'high', message: 'Weight loss and epigastric pain require urgent evaluation to rule out malignancy', recommendation: 'Urgent upper endoscopy within 1 week', requiresImmediateAction: true },
+      ],
+      confidenceScore: 0.85,
+    },
+    'V004': { // Sarah Wilson - Severe headache with vision changes
+      symptoms: [
+        { id: 'sym-1', name: 'Severe headache', severity: 'severe', confidence: 0.95, duration: '4 hours', location: 'unilateral', quality: 'throbbing', associatedFactors: ['photophobia', 'nausea'], sourceText: 'Patient reports severe throbbing headache on right side' },
+        { id: 'sym-2', name: 'Vision changes', severity: 'moderate', confidence: 0.88, duration: '2 hours', location: 'bilateral', quality: 'visual aura', associatedFactors: ['headache', 'flashing lights'], sourceText: 'Patient describes seeing flashing lights and zigzag patterns' },
+        { id: 'sym-3', name: 'Photophobia', severity: 'moderate', confidence: 0.82, duration: '3 hours', associatedFactors: ['headache', 'nausea'], sourceText: 'Patient reports sensitivity to light with headache' },
+      ],
+      diagnoses: [
+        { id: 'dx-1', condition: 'Migraine with Aura', icd10Code: 'G43.109', probability: 0.90, severity: 'medium', supportingEvidence: ['unilateral headache', 'visual aura', 'photophobia', 'young female'], againstEvidence: ['no fever', 'no neck stiffness'], additionalTestsNeeded: ['neurological exam', 'consider MRI if atypical'], reasoning: 'Classic presentation of migraine with visual aura in young female', urgency: 'routine' },
+        { id: 'dx-2', condition: 'Tension headache', icd10Code: 'G44.209', probability: 0.25, severity: 'low', supportingEvidence: ['headache', 'stress'], againstEvidence: ['unilateral pain', 'visual symptoms'], additionalTestsNeeded: ['headache diary'], reasoning: 'Less likely given unilateral nature and visual symptoms', urgency: 'routine' },
+      ],
+      treatments: [
+        { id: 'tx-1', category: 'medication', recommendation: 'Sumatriptan 50mg for acute treatment', priority: 'high', timeframe: 'immediate', contraindications: ['coronary artery disease', 'uncontrolled hypertension'], alternatives: ['NSAIDs if triptans contraindicated'], expectedOutcome: 'Rapid headache relief', evidenceLevel: 'A' },
+        { id: 'tx-2', category: 'lifestyle', recommendation: 'Identify and avoid migraine triggers', priority: 'medium', timeframe: 'ongoing', contraindications: [], alternatives: ['prophylactic medications if frequent'], expectedOutcome: 'Reduced frequency of migraine episodes', evidenceLevel: 'B' },
+      ],
+      concerns: [
+        { id: 'flag-1', type: 'urgent_referral', severity: 'medium', message: 'New onset severe headache with visual symptoms requires neurological evaluation', recommendation: 'Neurology consultation if symptoms persist or worsen', requiresImmediateAction: false },
+      ],
+      confidenceScore: 0.91,
+    },
+    'V005': { // Robert Johnson - Knee pain and swelling
+      symptoms: [
+        { id: 'sym-1', name: 'Knee pain', severity: 'moderate', confidence: 0.92, duration: '5 days', location: 'bilateral knees', quality: 'aching', associatedFactors: ['swelling', 'stiffness'], sourceText: 'Patient reports aching pain in both knees for 5 days' },
+        { id: 'sym-2', name: 'Knee swelling', severity: 'mild', confidence: 0.85, duration: '3 days', location: 'bilateral', quality: 'joint effusion', associatedFactors: ['pain', 'limited mobility'], sourceText: 'Patient notes swelling in both knees with decreased range of motion' },
+        { id: 'sym-3', name: 'Morning stiffness', severity: 'mild', confidence: 0.78, duration: '1 week', quality: 'joint stiffness', associatedFactors: ['pain', 'improved with movement'], sourceText: 'Patient reports morning stiffness lasting 30 minutes' },
+      ],
+      diagnoses: [
+        { id: 'dx-1', condition: 'Osteoarthritis with acute flare', icd10Code: 'M19.90', probability: 0.80, severity: 'medium', supportingEvidence: ['age >50', 'joint pain', 'stiffness', 'male gender'], againstEvidence: ['no joint deformity', 'acute onset'], additionalTestsNeeded: ['X-ray knees', 'joint aspiration if effusion'], reasoning: 'Classic presentation of osteoarthritis flare in middle-aged male', urgency: 'routine' },
+        { id: 'dx-2', condition: 'Rheumatoid arthritis', icd10Code: 'M06.9', probability: 0.25, severity: 'high', supportingEvidence: ['bilateral joint involvement', 'morning stiffness'], againstEvidence: ['age >50', 'male gender'], additionalTestsNeeded: ['RF', 'anti-CCP', 'ESR', 'CRP'], reasoning: 'Bilateral joint involvement warrants evaluation for inflammatory arthritis', urgency: 'routine' },
+      ],
+      treatments: [
+        { id: 'tx-1', category: 'medication', recommendation: 'NSAIDs (ibuprofen 600mg TID)', priority: 'high', timeframe: 'immediate', contraindications: ['peptic ulcer disease', 'kidney disease'], alternatives: ['acetaminophen if NSAIDs contraindicated'], expectedOutcome: 'Reduced pain and inflammation', evidenceLevel: 'A' },
+        { id: 'tx-2', category: 'referral', recommendation: 'Physical therapy evaluation', priority: 'medium', timeframe: 'within 2 weeks', contraindications: [], alternatives: ['home exercise program'], expectedOutcome: 'Improved joint function and mobility', evidenceLevel: 'B' },
+      ],
+      concerns: [
+        { id: 'flag-1', type: 'urgent_referral', severity: 'low', message: 'Bilateral joint involvement may require rheumatology evaluation', recommendation: 'Rheumatology consultation if symptoms persist despite treatment', requiresImmediateAction: false },
+      ],
+      confidenceScore: 0.78,
+    },
+    'V006': { // Emily Davis - Fever and cough
+      symptoms: [
+        { id: 'sym-1', name: 'Fever', severity: 'moderate', confidence: 0.90, duration: '2 days', quality: 'intermittent', associatedFactors: ['cough', 'fatigue'], sourceText: 'Patient has fever up to 101.5°F for 2 days' },
+        { id: 'sym-2', name: 'Cough', severity: 'mild', confidence: 0.85, duration: '3 days', quality: 'dry cough', associatedFactors: ['fever', 'throat irritation'], sourceText: 'Patient has dry cough for 3 days' },
+        { id: 'sym-3', name: 'Fatigue', severity: 'mild', confidence: 0.78, duration: '2 days', quality: 'tiredness', associatedFactors: ['fever', 'poor sleep'], sourceText: 'Patient appears tired and less active than usual' },
+      ],
+      diagnoses: [
+        { id: 'dx-1', condition: 'Viral Upper Respiratory Infection', icd10Code: 'J06.9', probability: 0.85, severity: 'low', supportingEvidence: ['fever', 'cough', 'pediatric age', 'seasonal pattern'], againstEvidence: ['no sore throat', 'no runny nose'], additionalTestsNeeded: ['supportive care', 'consider rapid strep if throat symptoms develop'], reasoning: 'Typical viral URI presentation in pediatric patient', urgency: 'routine' },
+        { id: 'dx-2', condition: 'Bacterial pneumonia', icd10Code: 'J15.9', probability: 0.20, severity: 'medium', supportingEvidence: ['fever', 'cough'], againstEvidence: ['no shortness of breath', 'no chest pain'], additionalTestsNeeded: ['chest X-ray', 'CBC if concerns'], reasoning: 'Less likely without respiratory distress', urgency: 'routine' },
+      ],
+      treatments: [
+        { id: 'tx-1', category: 'medication', recommendation: 'Acetaminophen for fever and comfort', priority: 'medium', timeframe: 'as needed', contraindications: ['liver disease'], alternatives: ['ibuprofen if >6 months old'], expectedOutcome: 'Symptom relief and comfort', evidenceLevel: 'A' },
+        { id: 'tx-2', category: 'lifestyle', recommendation: 'Supportive care: rest, fluids, humidified air', priority: 'medium', timeframe: 'ongoing', contraindications: [], alternatives: ['honey for cough if >1 year old'], expectedOutcome: 'Faster recovery and symptom relief', evidenceLevel: 'B' },
+      ],
+      concerns: [
+        { id: 'flag-1', type: 'urgent_referral', severity: 'low', message: 'Monitor for signs of bacterial superinfection', recommendation: 'Return if fever persists >3 days or respiratory symptoms worsen', requiresImmediateAction: false },
+      ],
+      confidenceScore: 0.82,
+    },
+    'V007': { // David Anderson - Severe abdominal pain
+      symptoms: [
+        { id: 'sym-1', name: 'Severe abdominal pain', severity: 'severe', confidence: 0.95, duration: '6 hours', location: 'right lower quadrant', quality: 'sharp, constant', associatedFactors: ['nausea', 'vomiting'], sourceText: 'Patient reports severe, constant pain in right lower abdomen' },
+        { id: 'sym-2', name: 'Nausea and vomiting', severity: 'moderate', confidence: 0.88, duration: '4 hours', associatedFactors: ['abdominal pain', 'anorexia'], sourceText: 'Patient has been vomiting and feels nauseous' },
+        { id: 'sym-3', name: 'Fever', severity: 'mild', confidence: 0.82, duration: '3 hours', quality: 'low-grade', associatedFactors: ['abdominal pain', 'malaise'], sourceText: 'Patient has low-grade fever of 100.8°F' },
+      ],
+      diagnoses: [
+        { id: 'dx-1', condition: 'Acute Appendicitis', icd10Code: 'K35.9', probability: 0.90, severity: 'high', supportingEvidence: ['RLQ pain', 'nausea/vomiting', 'fever', 'male gender'], againstEvidence: ['no rebound tenderness noted'], additionalTestsNeeded: ['CT abdomen', 'CBC with differential', 'urinalysis'], reasoning: 'Classic presentation of acute appendicitis with RLQ pain and systemic symptoms', urgency: 'emergent' },
+        { id: 'dx-2', condition: 'Inflammatory bowel disease flare', icd10Code: 'K50.9', probability: 0.15, severity: 'medium', supportingEvidence: ['abdominal pain', 'male gender'], againstEvidence: ['no diarrhea', 'no blood in stool'], additionalTestsNeeded: ['colonoscopy', 'inflammatory markers'], reasoning: 'Less likely without typical IBD symptoms', urgency: 'routine' },
+      ],
+      treatments: [
+        { id: 'tx-1', category: 'procedure', recommendation: 'Emergency appendectomy', priority: 'urgent', timeframe: 'within 6 hours', contraindications: ['severe comorbidities precluding surgery'], alternatives: ['antibiotics if surgery contraindicated'], expectedOutcome: 'Removal of inflamed appendix, prevent rupture', evidenceLevel: 'A' },
+        { id: 'tx-2', category: 'medication', recommendation: 'IV antibiotics perioperatively', priority: 'high', timeframe: 'immediate', contraindications: ['severe antibiotic allergy'], alternatives: ['alternative antibiotic regimen'], expectedOutcome: 'Prevent postoperative infection', evidenceLevel: 'A' },
+      ],
+      concerns: [
+        { id: 'flag-1', type: 'red_flag', severity: 'critical', message: 'Acute appendicitis requires immediate surgical intervention', recommendation: 'Emergency surgery within 6 hours to prevent rupture', requiresImmediateAction: true },
+      ],
+      confidenceScore: 0.94,
+    },
+    'V008': { // Lisa Martinez - Decreased fetal movement at 32 weeks
+      symptoms: [
+        { id: 'sym-1', name: 'Decreased fetal movement', severity: 'moderate', confidence: 0.90, duration: '24 hours', location: 'uterine', quality: 'reduced kick count', associatedFactors: ['maternal anxiety'], sourceText: 'Patient reports decreased fetal movement over past 24 hours' },
+        { id: 'sym-2', name: 'Maternal anxiety', severity: 'moderate', confidence: 0.85, duration: '12 hours', quality: 'worried about baby', associatedFactors: ['decreased fetal movement'], sourceText: 'Patient expresses concern about baby\'s wellbeing' },
+      ],
+      diagnoses: [
+        { id: 'dx-1', condition: 'Decreased fetal movement (normal variant)', icd10Code: 'O36.8190', probability: 0.75, severity: 'low', supportingEvidence: ['gestational age 32 weeks', 'no other symptoms'], againstEvidence: ['maternal concern'], additionalTestsNeeded: ['fetal monitoring', 'biophysical profile'], reasoning: 'Most cases of decreased fetal movement are normal variants', urgency: 'routine' },
+        { id: 'dx-2', condition: 'Fetal compromise', icd10Code: 'O36.9990', probability: 0.25, severity: 'high', supportingEvidence: ['decreased movement'], againstEvidence: ['no bleeding', 'no contractions'], additionalTestsNeeded: ['continuous fetal monitoring', 'ultrasound'], reasoning: 'Must rule out fetal compromise with decreased movement', urgency: 'urgent' },
+      ],
+      treatments: [
+        { id: 'tx-1', category: 'monitoring', recommendation: 'Fetal monitoring and biophysical profile', priority: 'high', timeframe: 'immediate', contraindications: [], alternatives: ['kick count instructions'], expectedOutcome: 'Reassurance of fetal wellbeing', evidenceLevel: 'A' },
+        { id: 'tx-2', category: 'lifestyle', recommendation: 'Kick count monitoring instructions', priority: 'medium', timeframe: 'ongoing', contraindications: [], alternatives: ['more frequent monitoring'], expectedOutcome: 'Early detection of fetal compromise', evidenceLevel: 'B' },
+      ],
+      concerns: [
+        { id: 'flag-1', type: 'urgent_referral', severity: 'medium', message: 'Decreased fetal movement requires immediate assessment', recommendation: 'Immediate fetal monitoring and obstetric evaluation', requiresImmediateAction: true },
+      ],
+      confidenceScore: 0.88,
+    },
+    'V009': { // James Taylor - Depression and anxiety symptoms
+      symptoms: [
+        { id: 'sym-1', name: 'Depression', severity: 'moderate', confidence: 0.92, duration: '3 weeks', quality: 'persistent low mood', associatedFactors: ['anxiety', 'sleep disturbance'], sourceText: 'Patient reports persistent low mood and loss of interest for 3 weeks' },
+        { id: 'sym-2', name: 'Anxiety', severity: 'moderate', confidence: 0.88, duration: '2 weeks', quality: 'excessive worry', associatedFactors: ['depression', 'physical symptoms'], sourceText: 'Patient describes excessive worry and physical symptoms of anxiety' },
+        { id: 'sym-3', name: 'Sleep disturbance', severity: 'mild', confidence: 0.85, duration: '2 weeks', quality: 'insomnia', associatedFactors: ['depression', 'anxiety'], sourceText: 'Patient reports difficulty falling asleep and staying asleep' },
+      ],
+      diagnoses: [
+        { id: 'dx-1', condition: 'Major Depressive Disorder', icd10Code: 'F33.1', probability: 0.80, severity: 'high', supportingEvidence: ['persistent low mood', 'loss of interest', 'sleep disturbance', 'duration >2 weeks'], againstEvidence: ['no psychotic features', 'no suicidal ideation'], additionalTestsNeeded: ['PHQ-9', 'suicide risk assessment'], reasoning: 'Meets criteria for major depressive disorder with moderate severity', urgency: 'urgent' },
+        { id: 'dx-2', condition: 'Generalized Anxiety Disorder', icd10Code: 'F41.1', probability: 0.70, severity: 'medium', supportingEvidence: ['excessive worry', 'physical symptoms', 'duration >2 weeks'], againstEvidence: ['no panic attacks'], additionalTestsNeeded: ['GAD-7', 'anxiety assessment'], reasoning: 'Comorbid anxiety disorder commonly occurs with depression', urgency: 'routine' },
+      ],
+      treatments: [
+        { id: 'tx-1', category: 'medication', recommendation: 'Sertraline 50mg daily', priority: 'high', timeframe: 'immediate', contraindications: ['MAOI use', 'severe liver disease'], alternatives: ['other SSRIs or SNRIs'], expectedOutcome: 'Improved mood and reduced anxiety', evidenceLevel: 'A' },
+        { id: 'tx-2', category: 'referral', recommendation: 'Cognitive behavioral therapy', priority: 'high', timeframe: 'within 2 weeks', contraindications: [], alternatives: ['other psychotherapy modalities'], expectedOutcome: 'Improved coping skills and mood regulation', evidenceLevel: 'A' },
+      ],
+      concerns: [
+        { id: 'flag-1', type: 'urgent_referral', severity: 'high', message: 'Major depression requires immediate treatment and suicide risk assessment', recommendation: 'Immediate psychiatric evaluation and safety assessment', requiresImmediateAction: true },
+      ],
+      confidenceScore: 0.87,
+    },
+    'V010': { // Maria Gonzalez - Polyuria, polydipsia, and fatigue
+      symptoms: [
+        { id: 'sym-1', name: 'Polyuria', severity: 'moderate', confidence: 0.95, duration: '2 weeks', quality: 'excessive urination', associatedFactors: ['polydipsia', 'fatigue'], sourceText: 'Patient reports urinating frequently, especially at night' },
+        { id: 'sym-2', name: 'Polydipsia', severity: 'moderate', confidence: 0.90, duration: '2 weeks', quality: 'excessive thirst', associatedFactors: ['polyuria', 'dry mouth'], sourceText: 'Patient describes constant thirst and dry mouth' },
+        { id: 'sym-3', name: 'Fatigue', severity: 'mild', confidence: 0.85, duration: '3 weeks', quality: 'tiredness', associatedFactors: ['polyuria', 'polydipsia'], sourceText: 'Patient reports feeling tired and weak' },
+      ],
+      diagnoses: [
+        { id: 'dx-1', condition: 'Type 2 Diabetes Mellitus', icd10Code: 'E11.9', probability: 0.90, severity: 'high', supportingEvidence: ['polyuria', 'polydipsia', 'fatigue', 'age >50', 'female'], againstEvidence: ['no weight loss', 'no ketosis'], additionalTestsNeeded: ['fasting glucose', 'HbA1c', 'urinalysis'], reasoning: 'Classic triad of diabetes symptoms in middle-aged patient', urgency: 'urgent' },
+        { id: 'dx-2', condition: 'Diabetes Insipidus', icd10Code: 'E23.2', probability: 0.15, severity: 'medium', supportingEvidence: ['polyuria', 'polydipsia'], againstEvidence: ['no hypernatremia', 'age'], additionalTestsNeeded: ['urine specific gravity', 'serum osmolality'], reasoning: 'Less likely given age and presentation', urgency: 'routine' },
+      ],
+      treatments: [
+        { id: 'tx-1', category: 'medication', recommendation: 'Metformin 500mg twice daily', priority: 'high', timeframe: 'immediate', contraindications: ['kidney disease', 'liver disease'], alternatives: ['other antidiabetic agents'], expectedOutcome: 'Improved glycemic control', evidenceLevel: 'A' },
+        { id: 'tx-2', category: 'lifestyle', recommendation: 'Diabetes education and lifestyle modifications', priority: 'high', timeframe: 'within 1 week', contraindications: [], alternatives: ['intensive diabetes management program'], expectedOutcome: 'Better diabetes self-management', evidenceLevel: 'A' },
+      ],
+      concerns: [
+        { id: 'flag-1', type: 'urgent_referral', severity: 'high', message: 'New diagnosis of diabetes requires immediate management and education', recommendation: 'Endocrinology consultation and diabetes education within 1 week', requiresImmediateAction: true },
+      ],
+      confidenceScore: 0.93,
+    },
+    'V011': { // Christopher White - Generalized rash and itching
+      symptoms: [
+        { id: 'sym-1', name: 'Generalized rash', severity: 'moderate', confidence: 0.90, duration: '3 days', location: 'widespread', quality: 'erythematous', associatedFactors: ['itching', 'new detergent exposure'], sourceText: 'Patient has widespread red rash over trunk and extremities' },
+        { id: 'sym-2', name: 'Itching', severity: 'moderate', confidence: 0.85, duration: '3 days', quality: 'pruritus', associatedFactors: ['rash', 'worse at night'], sourceText: 'Patient reports intense itching, especially at night' },
+        { id: 'sym-3', name: 'Skin irritation', severity: 'mild', confidence: 0.78, duration: '2 days', quality: 'inflamed skin', associatedFactors: ['rash', 'itching'], sourceText: 'Skin appears inflamed and irritated' },
+      ],
+      diagnoses: [
+        { id: 'dx-1', condition: 'Contact Dermatitis', icd10Code: 'L25.9', probability: 0.85, severity: 'low', supportingEvidence: ['new detergent exposure', 'widespread rash', 'itching'], againstEvidence: ['no blisters', 'no fever'], additionalTestsNeeded: ['patch testing if recurrent'], reasoning: 'Clear temporal relationship with new detergent exposure', urgency: 'routine' },
+        { id: 'dx-2', condition: 'Allergic reaction', icd10Code: 'T78.40', probability: 0.20, severity: 'medium', supportingEvidence: ['widespread rash', 'itching'], againstEvidence: ['no respiratory symptoms', 'no angioedema'], additionalTestsNeeded: ['allergy testing'], reasoning: 'Possible allergic reaction but less likely without systemic symptoms', urgency: 'routine' },
+      ],
+      treatments: [
+        { id: 'tx-1', category: 'medication', recommendation: 'Topical corticosteroid (hydrocortisone 1%)', priority: 'high', timeframe: 'immediate', contraindications: ['skin infection'], alternatives: ['calamine lotion'], expectedOutcome: 'Reduced inflammation and itching', evidenceLevel: 'A' },
+        { id: 'tx-2', category: 'lifestyle', recommendation: 'Avoid suspected allergen (new detergent)', priority: 'high', timeframe: 'immediate', contraindications: [], alternatives: ['hypoallergenic products'], expectedOutcome: 'Prevention of recurrence', evidenceLevel: 'A' },
+      ],
+      concerns: [
+        { id: 'flag-1', type: 'urgent_referral', severity: 'low', message: 'Monitor for signs of secondary infection', recommendation: 'Return if rash worsens or develops signs of infection', requiresImmediateAction: false },
+      ],
+      confidenceScore: 0.76,
+    },
+    'V012': { // Amanda Thompson - Persistent cough with hemoptysis and weight loss
+      symptoms: [
+        { id: 'sym-1', name: 'Persistent cough', severity: 'moderate', confidence: 0.95, duration: '6 weeks', quality: 'productive', associatedFactors: ['hemoptysis', 'weight loss'], sourceText: 'Patient reports productive cough persisting for 6 weeks' },
+        { id: 'sym-2', name: 'Hemoptysis', severity: 'moderate', confidence: 0.90, duration: '2 weeks', quality: 'blood-streaked sputum', associatedFactors: ['cough', 'weight loss'], sourceText: 'Patient notices blood-streaked sputum for 2 weeks' },
+        { id: 'sym-3', name: 'Weight loss', severity: 'moderate', confidence: 0.88, duration: '2 months', quality: 'unintentional', associatedFactors: ['cough', 'poor appetite'], sourceText: 'Patient reports unintentional weight loss of 15 pounds over 2 months' },
+      ],
+      diagnoses: [
+        { id: 'dx-1', condition: 'Lung Adenocarcinoma', icd10Code: 'C78.00', probability: 0.75, severity: 'critical', supportingEvidence: ['hemoptysis', 'weight loss', 'persistent cough', 'age >45', 'female'], againstEvidence: ['no smoking history documented'], additionalTestsNeeded: ['chest CT', 'bronchoscopy with biopsy', 'PET scan'], reasoning: 'Classic presentation of lung cancer with hemoptysis and weight loss', urgency: 'emergent' },
+        { id: 'dx-2', condition: 'Pulmonary tuberculosis', icd10Code: 'A15.9', probability: 0.25, severity: 'high', supportingEvidence: ['persistent cough', 'hemoptysis', 'weight loss'], againstEvidence: ['no night sweats', 'no fever'], additionalTestsNeeded: ['sputum AFB', 'chest X-ray', 'tuberculin skin test'], reasoning: 'TB can present with similar symptoms', urgency: 'urgent' },
+      ],
+      treatments: [
+        { id: 'tx-1', category: 'procedure', recommendation: 'Urgent chest CT and bronchoscopy', priority: 'urgent', timeframe: 'within 48 hours', contraindications: ['severe coagulopathy'], alternatives: ['sputum cytology'], expectedOutcome: 'Tissue diagnosis and staging', evidenceLevel: 'A' },
+        { id: 'tx-2', category: 'referral', recommendation: 'Immediate oncology consultation', priority: 'urgent', timeframe: 'within 24 hours', contraindications: [], alternatives: ['multidisciplinary tumor board'], expectedOutcome: 'Comprehensive cancer treatment planning', evidenceLevel: 'A' },
+      ],
+      concerns: [
+        { id: 'flag-1', type: 'red_flag', severity: 'critical', message: 'Hemoptysis with weight loss highly suspicious for lung malignancy', recommendation: 'Immediate workup with chest CT and bronchoscopy', requiresImmediateAction: true },
+      ],
+      confidenceScore: 0.96,
+    },
+  };
+
+  const config = analysisConfigurations[visitId as keyof typeof analysisConfigurations];
+  if (!config) return null;
+
+  return {
+    id: `analysis-${visitId}`,
+    status: 'completed',
+    confidenceScore: config.confidenceScore,
+    processingTime: Math.random() * 2 + 2, // Random between 2-4 seconds
+    aiModel: 'GPT-4 Medical',
+    analysisDate: new Date(),
+    reviewStatus: 'pending',
+    
+    patientContext: {
+      age: visit.patientAge,
+      gender: visit.patientGender,
+      primaryLanguage: 'English',
+      chiefComplaint: visit.chiefComplaint || 'No chief complaint documented',
+    },
+    
+    symptoms: config.symptoms,
+    diagnoses: config.diagnoses,
+    treatments: config.treatments,
+    concerns: config.concerns,
+    
+    metrics: {
+      totalSymptoms: config.symptoms.length,
+      highConfidenceFindings: config.symptoms.filter(s => s.confidence > 0.85).length,
+      criticalConcerns: config.concerns.filter(c => c.severity === 'critical' || c.severity === 'high').length,
+      recommendedTests: config.treatments.filter(t => t.category === 'procedure' || t.category === 'monitoring').length,
+      urgentActions: config.treatments.filter(t => t.priority === 'urgent' || t.priority === 'high').length,
+    },
+  };
+};
+
 const AIAnalysisPage: React.FC = () => {
   const { id: visitId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -143,175 +413,39 @@ const AIAnalysisPage: React.FC = () => {
   const [selectedSymptom, setSelectedSymptom] = useState<Symptom | null>(null);
   const [selectedDiagnosis, setSelectedDiagnosis] = useState<Diagnosis | null>(null);
   
-  // Comprehensive mock analysis data
-  const [analysisData] = useState({
-    id: `analysis-${visitId}`,
-    status: 'completed',
-    confidenceScore: 0.87,
-    processingTime: 3.2,
-    aiModel: 'GPT-4 Medical',
-    analysisDate: new Date(),
-    reviewStatus: 'pending',
-    
-    // Patient context
-    patientContext: {
-      age: 45,
-      gender: 'male',
-      primaryLanguage: 'English',
-      chiefComplaint: 'Chest pain and shortness of breath',
-    },
-    
-    // Extracted symptoms with detailed analysis
-    symptoms: [
-      {
-        id: 'sym-1',
-        name: 'Chest pain',
-        severity: 'moderate',
-        confidence: 0.95,
-        duration: '2 hours',
-        location: 'substernal',
-        quality: 'pressure-like',
-        associatedFactors: ['exertion', 'anxiety'],
-        sourceText: 'Patient reports pressure-like chest pain that started 2 hours ago during stair climbing',
-      },
-      {
-        id: 'sym-2',
-        name: 'Shortness of breath',
-        severity: 'mild',
-        confidence: 0.87,
-        duration: '1 hour',
-        location: 'bilateral',
-        quality: 'difficulty breathing',
-        associatedFactors: ['chest pain', 'exertion'],
-        sourceText: 'Patient mentions some difficulty breathing associated with chest discomfort',
-      },
-      {
-        id: 'sym-3',
-        name: 'Anxiety',
-        severity: 'moderate',
-        confidence: 0.78,
-        duration: 'ongoing',
-        associatedFactors: ['chest pain', 'fear of heart attack'],
-        sourceText: 'Patient appears anxious and worried about potential cardiac event',
-      },
-    ] as Symptom[],
-    
-    // Differential diagnoses with comprehensive details
-    diagnoses: [
-      {
-        id: 'dx-1',
-        condition: 'Acute Coronary Syndrome',
-        icd10Code: 'I24.9',
-        probability: 0.75,
-        severity: 'high',
-        supportingEvidence: ['chest pain', 'male gender', 'age >40', 'exertional trigger'],
-        againstEvidence: ['normal ECG', 'short duration', 'anxiety component'],
-        additionalTestsNeeded: ['troponin levels', 'stress test', 'echocardiogram'],
-        reasoning: 'Classic presentation of chest pain in middle-aged male with cardiac risk factors',
-        urgency: 'urgent',
-      },
-      {
-        id: 'dx-2',
-        condition: 'Anxiety Disorder with Panic Attack',
-        icd10Code: 'F41.0',
-        probability: 0.65,
-        severity: 'medium',
-        supportingEvidence: ['anxiety symptoms', 'pressure sensation', 'situational trigger'],
-        againstEvidence: ['physical exertion trigger', 'duration'],
-        additionalTestsNeeded: ['anxiety assessment', 'psychiatric evaluation'],
-        reasoning: 'Anxiety can manifest with chest discomfort and breathing difficulties',
-        urgency: 'routine',
-      },
-      {
-        id: 'dx-3',
-        condition: 'Gastroesophageal Reflux Disease',
-        icd10Code: 'K21.9',
-        probability: 0.45,
-        severity: 'low',
-        supportingEvidence: ['chest discomfort', 'pressure sensation'],
-        againstEvidence: ['exertional trigger', 'breathing symptoms'],
-        additionalTestsNeeded: ['PPI trial', 'upper endoscopy'],
-        reasoning: 'GERD can cause chest pain that mimics cardiac symptoms',
-        urgency: 'routine',
-      },
-    ] as Diagnosis[],
-    
-    // Treatment recommendations with detailed information
-    treatments: [
-      {
-        id: 'tx-1',
-        category: 'medication',
-        recommendation: 'Aspirin 325mg if no contraindications',
-        priority: 'high',
-        timeframe: 'immediate',
-        contraindications: ['active bleeding', 'aspirin allergy', 'severe asthma'],
-        alternatives: ['clopidogrel 75mg if aspirin contraindicated'],
-        expectedOutcome: 'Reduced platelet aggregation and cardiovascular risk',
-        evidenceLevel: 'A',
-      },
-      {
-        id: 'tx-2',
-        category: 'referral',
-        recommendation: 'Urgent cardiology consultation',
-        priority: 'high',
-        timeframe: 'within 24 hours',
-        contraindications: [],
-        alternatives: ['emergency department if symptoms worsen'],
-        expectedOutcome: 'Expert cardiac evaluation and risk stratification',
-        evidenceLevel: 'A',
-      },
-      {
-        id: 'tx-3',
-        category: 'monitoring',
-        recommendation: 'Serial troponin measurements',
-        priority: 'high',
-        timeframe: '0, 6, and 12 hours',
-        contraindications: [],
-        alternatives: ['high-sensitivity troponin if available'],
-        expectedOutcome: 'Rule out myocardial infarction',
-        evidenceLevel: 'A',
-      },
-      {
-        id: 'tx-4',
-        category: 'lifestyle',
-        recommendation: 'Anxiety management techniques',
-        priority: 'medium',
-        timeframe: 'ongoing',
-        contraindications: [],
-        alternatives: ['anxiolytic medication if severe'],
-        expectedOutcome: 'Reduced anxiety and associated symptoms',
-        evidenceLevel: 'B',
-      },
-    ] as Treatment[],
-    
-    // Critical concerns and red flags
-    concerns: [
-      {
-        id: 'flag-1',
-        type: 'red_flag',
-        severity: 'high',
-        message: 'Chest pain in middle-aged male with potential cardiac risk factors',
-        recommendation: 'Immediate cardiac evaluation with ECG and troponin',
-        requiresImmediateAction: true,
-      },
-      {
-        id: 'flag-2',
-        type: 'urgent_referral',
-        severity: 'medium',
-        message: 'Requires specialist evaluation for definitive diagnosis',
-        recommendation: 'Cardiology consultation within 24 hours',
-        requiresImmediateAction: false,
-      },
-    ] as ConcernFlag[],
-    
-    // Analysis metrics
-    metrics: {
-      totalSymptoms: 3,
-      highConfidenceFindings: 2,
-      criticalConcerns: 1,
-      recommendedTests: 6,
-      urgentActions: 2,
-    },
+  // Generate patient-specific analysis data
+  const [analysisData] = useState(() => {
+    const data = generatePatientAnalysisData(visitId!);
+    if (!data) {
+      // Fallback data if visit not found
+      return {
+        id: `analysis-${visitId}`,
+        status: 'completed',
+        confidenceScore: 0.5,
+        processingTime: 2.0,
+        aiModel: 'GPT-4 Medical',
+        analysisDate: new Date(),
+        reviewStatus: 'pending',
+        patientContext: {
+          age: 0,
+          gender: 'unknown',
+          primaryLanguage: 'English',
+          chiefComplaint: 'Visit not found',
+        },
+        symptoms: [],
+        diagnoses: [],
+        treatments: [],
+        concerns: [],
+        metrics: {
+          totalSymptoms: 0,
+          highConfidenceFindings: 0,
+          criticalConcerns: 0,
+          recommendedTests: 0,
+          urgentActions: 0,
+        },
+      };
+    }
+    return data;
   });
 
   const [transcriptData] = useState({
