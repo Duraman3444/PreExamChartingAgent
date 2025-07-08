@@ -128,6 +128,29 @@ interface ConcernFlag {
   requiresImmediateAction: boolean;
 }
 
+interface PrescriptionSuggestion {
+  id: string;
+  medication: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions: string;
+  contraindications: string[];
+  interactions: string[];
+  confidence: number;
+  reasoning: string;
+  category: 'first-line' | 'second-line' | 'alternative';
+}
+
+interface CustomPrescription {
+  medication: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions: string;
+  notes: string;
+}
+
 // Function to generate patient-specific analysis data
 const generatePatientAnalysisData = (visitId: string) => {
   const visit = visitData.find(v => v.id === visitId);
@@ -413,6 +436,20 @@ const AIAnalysisPage: React.FC = () => {
   const [selectedSymptom, setSelectedSymptom] = useState<Symptom | null>(null);
   const [selectedDiagnosis, setSelectedDiagnosis] = useState<Diagnosis | null>(null);
   
+  // Prescription-related state
+  const [showPrescriptionDialog, setShowPrescriptionDialog] = useState(false);
+  const [prescriptionSuggestions, setPrescriptionSuggestions] = useState<PrescriptionSuggestion[]>([]);
+  const [isGeneratingPrescriptions, setIsGeneratingPrescriptions] = useState(false);
+  const [customPrescription, setCustomPrescription] = useState<CustomPrescription>({
+    medication: '',
+    dosage: '',
+    frequency: '',
+    duration: '',
+    instructions: '',
+    notes: ''
+  });
+  const [selectedPrescriptionTab, setSelectedPrescriptionTab] = useState(0);
+  
   // Generate patient-specific analysis data
   const [analysisData] = useState(() => {
     const data = generatePatientAnalysisData(visitId!);
@@ -612,6 +649,225 @@ Patient: Yes, I'm allergic to penicillin - I get a rash.`,
       type: 'success'
     });
     console.log('Approving analysis');
+  };
+
+  // Prescription handler functions
+  const handlePrescribeTreatment = async (treatment: Treatment) => {
+    setShowPrescriptionDialog(true);
+    setIsGeneratingPrescriptions(true);
+    
+    try {
+      const suggestions = await generatePrescriptionSuggestions(treatment, analysisData);
+      setPrescriptionSuggestions(suggestions);
+    } catch (error) {
+      console.error('Error generating prescription suggestions:', error);
+      setNotification({
+        message: 'Error generating prescription suggestions. You can still enter a custom prescription.',
+        type: 'warning'
+      });
+    } finally {
+      setIsGeneratingPrescriptions(false);
+    }
+  };
+
+  const generatePrescriptionSuggestions = async (treatment: Treatment, patientData: any): Promise<PrescriptionSuggestion[]> => {
+    try {
+      // Build context for AI
+      const patientContext = {
+        age: patientData.patientContext.age,
+        gender: patientData.patientContext.gender,
+        chiefComplaint: patientData.patientContext.chiefComplaint,
+        symptoms: patientData.symptoms.map((s: any) => s.name).join(', '),
+        diagnoses: patientData.diagnoses.map((d: any) => d.condition).join(', '),
+        treatment: treatment.recommendation
+      };
+
+      const prompt = `Based on the following patient information and treatment recommendation, provide 3-5 specific prescription suggestions with detailed information:
+
+Patient Context:
+- Age: ${patientContext.age}
+- Gender: ${patientContext.gender}
+- Chief Complaint: ${patientContext.chiefComplaint}
+- Symptoms: ${patientContext.symptoms}
+- Likely Diagnoses: ${patientContext.diagnoses}
+- Treatment Recommendation: ${patientContext.treatment}
+
+Please provide prescription suggestions in the following format for each medication:
+- Medication name
+- Exact dosage
+- Frequency (times per day)
+- Duration of treatment
+- Specific instructions for patient
+- Contraindications
+- Drug interactions
+- Confidence level (0-100%)
+- Medical reasoning
+- Category (first-line, second-line, or alternative)
+
+Focus on evidence-based, FDA-approved medications with clear dosing guidelines.`;
+
+      // For now, we'll use mock data instead of the AI service
+      // In a real implementation, you would call the AI service here
+      // const response = await openAIService.generateText(prompt);
+      
+      // Generate patient-specific mock suggestions based on treatment category
+      const suggestions = generatePatientSpecificSuggestions(treatment, patientContext);
+      
+      return suggestions;
+    } catch (error) {
+      console.error('Error generating prescription suggestions:', error);
+      throw error;
+    }
+  };
+
+  const generatePatientSpecificSuggestions = (treatment: Treatment, patientContext: any): PrescriptionSuggestion[] => {
+    // Generate suggestions based on treatment category and patient context
+    const suggestions: PrescriptionSuggestion[] = [];
+    
+    if (treatment.category === 'medication') {
+      // For medication treatments, generate specific drug suggestions
+      if (treatment.recommendation.toLowerCase().includes('aspirin')) {
+        suggestions.push({
+          id: 'rx-1',
+          medication: 'Aspirin',
+          dosage: '81mg',
+          frequency: 'Once daily',
+          duration: 'Long-term',
+          instructions: 'Take with food to reduce stomach irritation',
+          contraindications: ['Active bleeding', 'Aspirin allergy', 'Recent GI bleeding'],
+          interactions: ['Warfarin', 'Methotrexate', 'NSAIDs'],
+          confidence: 95,
+          reasoning: 'Low-dose aspirin for cardioprotective therapy, indicated for patients with cardiovascular risk factors',
+          category: 'first-line'
+        });
+      }
+      
+      if (treatment.recommendation.toLowerCase().includes('proton pump') || treatment.recommendation.toLowerCase().includes('omeprazole')) {
+        suggestions.push({
+          id: 'rx-2',
+          medication: 'Omeprazole',
+          dosage: '20mg',
+          frequency: 'Once daily',
+          duration: '4-8 weeks',
+          instructions: 'Take 30 minutes before breakfast on empty stomach',
+          contraindications: ['Hypersensitivity to PPIs'],
+          interactions: ['Clopidogrel', 'Warfarin', 'Digoxin'],
+          confidence: 92,
+          reasoning: 'Proton pump inhibitor for acid suppression and gastric protection',
+          category: 'first-line'
+        });
+      }
+      
+      if (treatment.recommendation.toLowerCase().includes('anticoagul')) {
+        suggestions.push({
+          id: 'rx-3',
+          medication: 'Apixaban',
+          dosage: '5mg',
+          frequency: 'Twice daily',
+          duration: 'Long-term',
+          instructions: 'Take with or without food, maintain consistent timing',
+          contraindications: ['Active bleeding', 'Severe liver disease'],
+          interactions: ['Strong CYP3A4 inhibitors', 'Rifampin'],
+          confidence: 88,
+          reasoning: 'Direct oral anticoagulant for stroke prevention in atrial fibrillation',
+          category: 'first-line'
+        });
+      }
+    } else if (treatment.category === 'referral') {
+      // For referrals, suggest supportive medications
+      suggestions.push({
+        id: 'rx-4',
+        medication: 'Acetaminophen',
+        dosage: '650mg',
+        frequency: 'Every 6 hours as needed',
+        duration: 'As needed',
+        instructions: 'Do not exceed 3000mg per day, avoid alcohol',
+        contraindications: ['Severe liver disease', 'Acetaminophen allergy'],
+        interactions: ['Warfarin (monitor INR)', 'Chronic alcohol use'],
+        confidence: 85,
+        reasoning: 'Safe analgesic for symptomatic relief while awaiting specialist consultation',
+        category: 'alternative'
+      });
+    }
+    
+    // Add a general suggestion if no specific ones were generated
+    if (suggestions.length === 0) {
+      suggestions.push({
+        id: 'rx-general',
+        medication: 'Ibuprofen',
+        dosage: '400mg',
+        frequency: 'Every 8 hours as needed',
+        duration: 'Short-term (3-5 days)',
+        instructions: 'Take with food, discontinue if GI symptoms occur',
+        contraindications: ['GI bleeding', 'Kidney disease', 'Heart failure'],
+        interactions: ['ACE inhibitors', 'Warfarin', 'Lithium'],
+        confidence: 75,
+        reasoning: 'NSAID for anti-inflammatory and analgesic effects',
+        category: 'alternative'
+      });
+    }
+    
+    return suggestions;
+  };
+
+  const parsePrescriptionResponse = (aiResponse: string): PrescriptionSuggestion[] => {
+    // This method is no longer used but kept for future AI integration
+    const mockSuggestions: PrescriptionSuggestion[] = [];
+    return mockSuggestions;
+  };
+
+  const handlePrescriptionSubmit = () => {
+    if (selectedPrescriptionTab === 0) {
+      // AI suggestions - check if any are selected
+      const hasSelections = prescriptionSuggestions.some(s => s.id); // Add selection logic
+      if (!hasSelections) {
+        setNotification({
+          message: 'Please select at least one prescription suggestion.',
+          type: 'warning'
+        });
+        return;
+      }
+    } else {
+      // Custom prescription
+      if (!customPrescription.medication || !customPrescription.dosage) {
+        setNotification({
+          message: 'Please fill in at least medication and dosage.',
+          type: 'warning'
+        });
+        return;
+      }
+    }
+    
+    setShowPrescriptionDialog(false);
+    setNotification({
+      message: 'Prescription saved successfully.',
+      type: 'success'
+    });
+    
+    // Reset form
+    setCustomPrescription({
+      medication: '',
+      dosage: '',
+      frequency: '',
+      duration: '',
+      instructions: '',
+      notes: ''
+    });
+    setSelectedPrescriptionTab(0);
+  };
+
+  const handleClosePrescriptionDialog = () => {
+    setShowPrescriptionDialog(false);
+    setPrescriptionSuggestions([]);
+    setCustomPrescription({
+      medication: '',
+      dosage: '',
+      frequency: '',
+      duration: '',
+      instructions: '',
+      notes: ''
+    });
+    setSelectedPrescriptionTab(0);
   };
 
   if (isLoading) {
@@ -1361,7 +1617,186 @@ Patient: Yes, I'm allergic to penicillin - I get a rash.`,
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setSelectedTreatment(null)}>Close</Button>
-          <Button variant="contained">Prescribe Treatment</Button>
+          <Button 
+            variant="contained"
+            onClick={() => selectedTreatment && handlePrescribeTreatment(selectedTreatment)}
+          >
+            Prescribe Treatment
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Prescription Dialog */}
+      <Dialog 
+        open={showPrescriptionDialog} 
+        onClose={handleClosePrescriptionDialog}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Prescription Suggestions
+          {selectedTreatment && (
+            <Typography variant="body2" color="text.secondary">
+              Treatment: {selectedTreatment.recommendation}
+            </Typography>
+          )}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+            <Tabs value={selectedPrescriptionTab} onChange={(_, newValue) => setSelectedPrescriptionTab(newValue)}>
+              <Tab label="AI Suggestions" />
+              <Tab label="Custom Prescription" />
+            </Tabs>
+          </Box>
+          
+          {/* AI Suggestions Tab */}
+          {selectedPrescriptionTab === 0 && (
+            <Box>
+              {isGeneratingPrescriptions ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4 }}>
+                  <CircularProgress />
+                  <Typography sx={{ mt: 2 }}>Generating prescription suggestions...</Typography>
+                </Box>
+              ) : (
+                <Grid container spacing={2}>
+                  {prescriptionSuggestions.map((suggestion) => (
+                    <Grid item xs={12} key={suggestion.id}>
+                      <Card variant="outlined" sx={{ p: 2 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                          <Box>
+                            <Typography variant="h6">{suggestion.medication}</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {suggestion.dosage} • {suggestion.frequency} • {suggestion.duration}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Chip 
+                              label={suggestion.category} 
+                              color={suggestion.category === 'first-line' ? 'success' : suggestion.category === 'second-line' ? 'warning' : 'default'} 
+                              size="small" 
+                            />
+                            <Chip 
+                              label={`${suggestion.confidence}% confidence`} 
+                              color="primary" 
+                              size="small" 
+                            />
+                          </Box>
+                        </Box>
+                        
+                        <Typography variant="body2" gutterBottom>
+                          <strong>Instructions:</strong> {suggestion.instructions}
+                        </Typography>
+                        
+                        <Typography variant="body2" gutterBottom>
+                          <strong>Reasoning:</strong> {suggestion.reasoning}
+                        </Typography>
+                        
+                        <Box sx={{ mt: 2 }}>
+                          <Typography variant="body2" gutterBottom>
+                            <strong>Contraindications:</strong>
+                          </Typography>
+                          <Box sx={{ mb: 1 }}>
+                            {suggestion.contraindications.map((contra, index) => (
+                              <Chip key={index} label={contra} size="small" color="error" sx={{ mr: 1, mb: 1 }} />
+                            ))}
+                          </Box>
+                          
+                          <Typography variant="body2" gutterBottom>
+                            <strong>Drug Interactions:</strong>
+                          </Typography>
+                          <Box>
+                            {suggestion.interactions.map((interaction, index) => (
+                              <Chip key={index} label={interaction} size="small" color="warning" sx={{ mr: 1, mb: 1 }} />
+                            ))}
+                          </Box>
+                        </Box>
+                      </Card>
+                    </Grid>
+                  ))}
+                  
+                  {prescriptionSuggestions.length === 0 && !isGeneratingPrescriptions && (
+                    <Grid item xs={12}>
+                      <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                        No prescription suggestions available. Please use the Custom Prescription tab.
+                      </Typography>
+                    </Grid>
+                  )}
+                </Grid>
+              )}
+            </Box>
+          )}
+          
+          {/* Custom Prescription Tab */}
+          {selectedPrescriptionTab === 1 && (
+            <Box>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Medication"
+                    value={customPrescription.medication}
+                    onChange={(e) => setCustomPrescription(prev => ({ ...prev, medication: e.target.value }))}
+                    placeholder="e.g., Aspirin"
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Dosage"
+                    value={customPrescription.dosage}
+                    onChange={(e) => setCustomPrescription(prev => ({ ...prev, dosage: e.target.value }))}
+                    placeholder="e.g., 81mg"
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Frequency"
+                    value={customPrescription.frequency}
+                    onChange={(e) => setCustomPrescription(prev => ({ ...prev, frequency: e.target.value }))}
+                    placeholder="e.g., Once daily"
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Duration"
+                    value={customPrescription.duration}
+                    onChange={(e) => setCustomPrescription(prev => ({ ...prev, duration: e.target.value }))}
+                    placeholder="e.g., 30 days"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Instructions"
+                    value={customPrescription.instructions}
+                    onChange={(e) => setCustomPrescription(prev => ({ ...prev, instructions: e.target.value }))}
+                    placeholder="e.g., Take with food to reduce stomach irritation"
+                    multiline
+                    rows={2}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Additional Notes"
+                    value={customPrescription.notes}
+                    onChange={(e) => setCustomPrescription(prev => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Any additional notes or considerations"
+                    multiline
+                    rows={3}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClosePrescriptionDialog}>Cancel</Button>
+          <Button variant="contained" onClick={handlePrescriptionSubmit}>
+            Save Prescription
+          </Button>
         </DialogActions>
       </Dialog>
 
