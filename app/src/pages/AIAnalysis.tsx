@@ -414,6 +414,73 @@ Patient: Yes, I'm allergic to penicillin - I get a rash.`,
     }
   };
 
+  // Add these handler functions after the existing handlers
+  const handleActNow = (concernId: string) => {
+    setNotification({
+      message: 'Emergency protocol initiated. Provider has been notified.',
+      type: 'warning'
+    });
+    // In a real app, this would trigger emergency protocols
+    console.log('Acting on concern:', concernId);
+  };
+
+  const handleViewTreatmentDetails = (treatmentId: string) => {
+    setNotification({
+      message: 'Treatment details expanded. Consider contraindications and alternatives.',
+      type: 'info'
+    });
+    // In a real app, this would open a detailed treatment view
+    console.log('Viewing treatment details:', treatmentId);
+  };
+
+  const handleExportTranscript = () => {
+    setNotification({
+      message: 'Transcript exported successfully.',
+      type: 'success'
+    });
+    // In a real app, this would trigger a download
+    console.log('Exporting transcript');
+  };
+
+  const handleSaveReview = () => {
+    if (!reviewNotes || !userRating) {
+      setNotification({
+        message: 'Please provide both a rating and review notes.',
+        type: 'warning'
+      });
+      return;
+    }
+    setNotification({
+      message: 'Review saved successfully.',
+      type: 'success'
+    });
+    console.log('Saving review:', { rating: userRating, notes: reviewNotes });
+  };
+
+  const handleApproveAnalysis = () => {
+    setNotification({
+      message: 'Analysis approved and marked as reviewed.',
+      type: 'success'
+    });
+    console.log('Approving analysis');
+  };
+
+  const handleViewSymptomDetails = (symptomId: string) => {
+    setNotification({
+      message: 'Symptom details expanded. Review source text and confidence.',
+      type: 'info'
+    });
+    console.log('Viewing symptom details:', symptomId);
+  };
+
+  const handleViewDiagnosisDetails = (diagnosisId: string) => {
+    setNotification({
+      message: 'Diagnosis details expanded. Review evidence and reasoning.',
+      type: 'info'
+    });
+    console.log('Viewing diagnosis details:', diagnosisId);
+  };
+
   if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
@@ -846,7 +913,10 @@ Patient: Yes, I'm allergic to penicillin - I get a rash.`,
                   </TableCell>
                   <TableCell>
                     <Tooltip title="View Details">
-                      <IconButton size="small">
+                      <IconButton 
+                        size="small"
+                        onClick={() => handleViewTreatmentDetails(treatment.id)}
+                      >
                         <VisibilityIcon />
                       </IconButton>
                     </Tooltip>
@@ -867,7 +937,11 @@ Patient: Yes, I'm allergic to penicillin - I get a rash.`,
                 severity={concern.severity === 'critical' ? 'error' : concern.severity === 'high' ? 'warning' : 'info'}
                 action={
                   concern.requiresImmediateAction && (
-                    <Button color="inherit" size="small">
+                    <Button 
+                      color="inherit" 
+                      size="small"
+                      onClick={() => handleActNow(concern.id)}
+                    >
                       ACT NOW
                     </Button>
                   )
@@ -951,6 +1025,7 @@ Patient: Yes, I'm allergic to penicillin - I get a rash.`,
                   <Button
                     variant="outlined"
                     startIcon={<DownloadIcon />}
+                    onClick={handleExportTranscript}
                   >
                     Export Transcript
                   </Button>
@@ -994,12 +1069,14 @@ Patient: Yes, I'm allergic to penicillin - I get a rash.`,
                   <Button
                     variant="contained"
                     startIcon={<SaveIcon />}
+                    onClick={handleSaveReview}
                   >
                     Save Review
                   </Button>
                   <Button
                     variant="outlined"
                     startIcon={<ThumbUpIcon />}
+                    onClick={handleApproveAnalysis}
                   >
                     Approve Analysis
                   </Button>
