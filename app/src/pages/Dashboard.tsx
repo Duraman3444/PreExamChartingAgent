@@ -24,69 +24,18 @@ import {
   ChevronRight,
   CheckCircle,
   Schedule,
+  LocalHospital,
+  CalendarToday,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants';
 import { useAuthStore } from '@/stores/authStore';
 import { mockVisits } from '@/data/mockData';
+import { format } from 'date-fns';
 
-const recentActivities = [
-  { 
-    id: '1', 
-    action: 'AI analysis completed for John Doe visit', 
-    time: '2 hours ago', 
-    status: 'completed',
-    icon: <CheckCircle color="success" />,
-  },
-  { 
-    id: '2', 
-    action: 'Transcript uploaded for Jane Smith consultation', 
-    time: '4 hours ago', 
-    status: 'processing',
-    icon: <Schedule color="warning" />,
-  },
-  { 
-    id: '3', 
-    action: 'Visit notes generated for Mike Johnson', 
-    time: '6 hours ago', 
-    status: 'completed',
-    icon: <CheckCircle color="success" />,
-  },
-  { 
-    id: '4', 
-    action: 'Diagnosis recommendations reviewed for Sarah Wilson', 
-    time: '8 hours ago', 
-    status: 'reviewed',
-    icon: <Assessment color="info" />,
-  },
-];
 
-const recentVisits = [
-  {
-    id: '1',
-    date: '24 April \'23',
-    type: 'Complete Blood Count (CBC)',
-    doctor: 'Dr. Shimron Hetmyer',
-    status: 'completed',
-    color: '#6C5BD4',
-  },
-  {
-    id: '2',
-    date: '31 May \'23',
-    type: 'Clinic Visit Appointment',
-    doctor: 'Dr. Shilpa Rao',
-    status: 'completed',
-    color: '#FF6000',
-  },
-  {
-    id: '3',
-    date: '02 June \'23',
-    type: 'Video Consultation Chat',
-    doctor: 'Dr. Kartik Aryan',
-    status: 'video_call',
-    color: '#6C5BD4',
-  },
-];
+
+
 
 const quickActions = [
   {
@@ -117,6 +66,60 @@ export const Dashboard: React.FC = () => {
   const { user } = useAuthStore();
   const theme = useTheme();
 
+  // Helper functions defined first
+  const getVisitStatusColor = (status: string, type: string) => {
+    switch (status) {
+      case 'completed':
+        return '#6C5BD4';
+      case 'in_progress':
+        return '#FF6000';
+      case 'scheduled':
+        return '#2E7D32';
+      case 'cancelled':
+        return '#D32F2F';
+      default:
+        // Color based on visit type
+        switch (type) {
+          case 'telemedicine':
+            return '#9C27B0';
+          case 'urgent_care':
+            return '#FF5722';
+          case 'follow_up':
+            return '#795548';
+          default:
+            return '#FF6000';
+        }
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return theme.palette.success.main;
+      case 'processing':
+        return theme.palette.warning.main;
+      case 'reviewed':
+        return theme.palette.info.main;
+      default:
+        return theme.palette.text.secondary;
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircle />;
+      case 'in_progress':
+        return <Schedule />;
+      case 'scheduled':
+        return <CalendarToday />;
+      case 'cancelled':
+        return <Assessment />;
+      default:
+        return <LocalHospital />;
+    }
+  };
+
   // Calculate real-time statistics from actual data
   const totalPatients = new Set(mockVisits.map(visit => visit.patientId)).size;
   const pendingTranscripts = mockVisits.filter(visit => 
@@ -131,6 +134,68 @@ export const Dashboard: React.FC = () => {
   const averageConfidence = analysesWithConfidence.length > 0 
     ? analysesWithConfidence.reduce((sum, visit) => sum + (visit.analysisConfidence || 0), 0) / analysesWithConfidence.length
     : 0;
+
+  // Get recent visits from actual data, sorted by most recent first
+  const recentVisitsData = mockVisits
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 3)
+    .map(visit => ({
+      id: visit.id,
+      date: format(new Date(visit.scheduledDateTime), 'dd MMM yy'),
+      type: visit.chiefComplaint || `${visit.type.replace('_', ' ')} Visit`,
+      doctor: visit.attendingProvider,
+      status: visit.status,
+      color: getVisitStatusColor(visit.status, visit.type),
+      patientName: visit.patientName,
+      department: visit.department,
+    }));
+
+  // Generate recent activities from actual visit data
+  const recentActivities = mockVisits
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 4)
+    .map(visit => {
+      const timeDiff = Math.floor((new Date().getTime() - new Date(visit.updatedAt).getTime()) / (1000 * 60 * 60));
+      const timeAgo = timeDiff < 1 ? 'Just now' : 
+                      timeDiff === 1 ? '1 hour ago' : 
+                      timeDiff < 24 ? `${timeDiff} hours ago` : 
+                      `${Math.floor(timeDiff / 24)} days ago`;
+      
+      // Generate activity based on visit status and available data
+      let action = '';
+      let status = visit.status;
+      let icon = <Assessment color="info" />;
+      
+      if (visit.analysisStatus === 'completed' || visit.analysisStatus === 'reviewed') {
+        action = `AI analysis completed for ${visit.patientName} visit`;
+        status = 'completed';
+        icon = <CheckCircle color="success" />;
+      } else if (visit.transcriptStatus === 'completed') {
+        action = `Transcript processed for ${visit.patientName} consultation`;
+        status = 'completed';
+        icon = <RecordVoiceOver color="success" />;
+      } else if (visit.hasVisitNotes) {
+        action = `Visit notes generated for ${visit.patientName}`;
+        status = 'completed';
+        icon = <CheckCircle color="success" />;
+             } else if (visit.transcriptStatus === 'processing') {
+        action = `Transcript processing for ${visit.patientName} consultation`;
+        status = 'in_progress';
+        icon = <Schedule color="warning" />;
+      } else {
+        action = `${visit.type.replace('_', ' ')} visit completed for ${visit.patientName}`;
+        status = visit.status;
+        icon = <LocalHospital color="info" />;
+      }
+      
+      return {
+        id: visit.id,
+        action,
+        time: timeAgo,
+        status,
+        icon,
+      };
+    });
 
   const statsCards = [
     {
@@ -166,32 +231,6 @@ export const Dashboard: React.FC = () => {
       trend: 'up',
     },
   ];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return theme.palette.success.main;
-      case 'processing':
-        return theme.palette.warning.main;
-      case 'reviewed':
-        return theme.palette.info.main;
-      default:
-        return theme.palette.text.secondary;
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle />;
-      case 'processing':
-        return <Schedule />;
-      case 'video_call':
-        return <VideoCall />;
-      default:
-        return <Assessment />;
-    }
-  };
 
   return (
     <Box sx={{ flexGrow: 1, p: 3 }}>
@@ -378,7 +417,7 @@ export const Dashboard: React.FC = () => {
                 </Button>
               </Box>
               <List disablePadding>
-                {recentVisits.map((visit, index) => (
+                {recentVisitsData.map((visit, index) => (
                   <React.Fragment key={visit.id}>
                     <ListItem sx={{ px: 0 }}>
                       <Avatar
@@ -403,7 +442,7 @@ export const Dashboard: React.FC = () => {
                         }}
                       />
                     </ListItem>
-                    {index < recentVisits.length - 1 && <Divider />}
+                    {index < recentVisitsData.length - 1 && <Divider />}
                   </React.Fragment>
                 ))}
               </List>
