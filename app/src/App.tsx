@@ -26,6 +26,7 @@ import Notes from '@/pages/Notes';
 import { useAuthStore } from '@/stores/authStore';
 import { ROUTES } from '@/constants';
 import { theme } from '@/theme/theme';
+import { mockVisits } from '@/data/mockData';
 
 // Proper page components with visible content
 
@@ -325,63 +326,212 @@ const VisitNotes = () => {
   const [noteType] = useState('soap');
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [visitData, setVisitData] = useState<any>(null);
 
-  useEffect(() => {
-    // Mock data for demonstration
-    const mockNotes = [
-      {
-        id: 'note-1',
-        visitId: id,
-        patientId: 'P001',
-        type: 'soap',
-        status: 'signed',
-        content: `SUBJECTIVE:\nPatient is a 45-year-old male presenting with chest pain and shortness of breath that started 2 hours ago during physical activity.\n\nOBJECTIVE:\nVital signs: BP 140/90, HR 95, RR 20, O2 sat 98% on RA\nPhysical exam: Alert and oriented, mild distress, chest clear to auscultation\n\nASSESSMENT:\nChest pain, likely anxiety-related given normal ECG and vital signs\n\nPLAN:\n- Reassurance and education\n- Follow-up if symptoms worsen\n- Consider anxiety management techniques`,
-        author: 'Dr. Smith',
-        aiGenerated: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        signedAt: new Date(),
-        version: 1,
-        tags: ['chest pain', 'anxiety'],
+  // Function to generate patient-specific notes
+  const generatePatientSpecificNotes = (visit: any) => {
+    const noteTemplates = {
+      'V001': { // John Doe - Chest pain
+        soap: `SUBJECTIVE:
+Patient is a ${visit.patientAge}-year-old ${visit.patientGender} presenting with ${visit.chiefComplaint.toLowerCase()} that started 2 hours ago during physical activity. Patient reports pressure-like sensation, 7/10 intensity, non-radiating. Associated with mild diaphoresis and anxiety about potential cardiac event.
+
+OBJECTIVE:
+Vital signs: BP 140/90, HR 95, RR 20, O2 sat 98% on RA, Temp 98.6°F
+Physical exam: Alert and oriented, mild distress, chest clear to auscultation bilaterally
+ECG: Normal sinus rhythm, no ST changes
+Cardiac enzymes: Pending
+
+ASSESSMENT:
+1. Chest pain, likely anxiety-related given normal ECG and stable vital signs
+2. Rule out acute coronary syndrome - low probability given presentation
+3. Anxiety disorder - patient reports significant worry about heart attack
+
+PLAN:
+- Reassurance and patient education about anxiety vs cardiac symptoms
+- Serial ECGs and cardiac enzymes to rule out ACS
+- Consider anxiolytic if symptoms persist
+- Follow-up with primary care in 1-2 days
+- Return immediately if symptoms worsen`,
+        progress: `Patient reports improvement in chest discomfort after reassurance and education. Denies continued chest pain or shortness of breath. Vital signs remain stable. ECG unchanged from admission. Patient appears more relaxed and understands anxiety component.`
       },
+      'V002': { // Jane Smith - Palpitations
+        soap: `SUBJECTIVE:
+${visit.patientAge}-year-old ${visit.patientGender} with ${visit.chiefComplaint.toLowerCase()} for the past week. Reports irregular heartbeat, especially when lying down. Associated fatigue and mild chest tightness. No syncope or dizziness.
+
+OBJECTIVE:
+Vital signs: BP 160/95, HR 110 irregular, RR 16, O2 sat 97% on RA
+Physical exam: Irregularly irregular rhythm on auscultation, no murmurs
+ECG: Atrial fibrillation with RVR, rate 105-120
+Labs: INR pending, BNP elevated at 450
+
+ASSESSMENT:
+1. New onset atrial fibrillation with rapid ventricular response
+2. Mild heart failure (BNP elevation)
+3. Need anticoagulation risk assessment
+
+PLAN:
+- Initiate rate control with metoprolol
+- Start anticoagulation with apixaban 5mg BID
+- Echocardiogram to assess LV function
+- Cardiology follow-up in 2 weeks
+- Patient education on AFib and anticoagulation`,
+        progress: `Patient's heart rate better controlled on metoprolol 25mg BID. Palpitations significantly improved. Started on anticoagulation. Patient educated on importance of compliance with medications.`
+      },
+      'V003': { // Michael Brown - Abdominal pain
+        soap: `SUBJECTIVE:
+${visit.patientAge}-year-old ${visit.patientGender} with ${visit.chiefComplaint.toLowerCase()} for 2 weeks. Epigastric pain, described as dull and constant, worse after meals. Associated with 10-pound weight loss and night sweats. Denies nausea/vomiting currently.
+
+OBJECTIVE:
+Vital signs: BP 120/80, HR 85, RR 14, O2 sat 99%, Temp 98.8°F, Weight 175 lbs (down from 185)
+Physical exam: Mild epigastric tenderness, no rebound or guarding
+Labs: H. pylori positive, mild anemia (Hgb 11.2)
+
+ASSESSMENT:
+1. Peptic ulcer disease, likely H. pylori-related
+2. Iron deficiency anemia, likely GI blood loss
+3. Weight loss concerning - requires further workup
+
+PLAN:
+- Triple therapy: PPI + clarithromycin + amoxicillin for 14 days
+- Upper endoscopy to evaluate for ulcer and rule out malignancy
+- Iron supplementation for anemia
+- Follow-up in 2 weeks to assess symptom improvement
+- H. pylori breath test 4 weeks after completing antibiotics`,
+        progress: `Patient reports mild improvement in epigastric pain after starting PPI therapy. Tolerating triple therapy well. Scheduled for EGD next week. Weight stable since last visit.`
+      },
+      'V004': { // Sarah Wilson - Headache
+        soap: `SUBJECTIVE:
+${visit.patientAge}-year-old ${visit.patientGender} with ${visit.chiefComplaint.toLowerCase()} for 4 hours. Throbbing frontal and temporal headache, 8/10 intensity. Associated with visual aura (flashing lights), photophobia, and mild nausea. Similar episodes in past.
+
+OBJECTIVE:
+Vital signs: BP 125/75, HR 88, RR 16, O2 sat 99%
+Neurological exam: Alert and oriented x3, visual fields intact now, no focal deficits
+Fundoscopic exam: Normal, no papilledema
+
+ASSESSMENT:
+1. Migraine with aura - classic presentation
+2. No evidence of secondary headache
+
+PLAN:
+- Sumatriptan 6mg SC administered with good response
+- Prescribe sumatriptan tablets for home use
+- Avoid known triggers (stress, certain foods, sleep deprivation)
+- Headache diary to identify patterns
+- Consider preventive therapy if frequency increases`,
+        progress: `Excellent response to sumatriptan. Headache resolved completely. No residual neurological symptoms. Patient educated on proper use of rescue medication.`
+      },
+      'V005': { // Robert Johnson - Knee pain
+        soap: `SUBJECTIVE:
+${visit.patientAge}-year-old ${visit.patientGender} with ${visit.chiefComplaint.toLowerCase()} for 3 days. Right knee pain and swelling, worse with movement and weight-bearing. Difficulty walking and climbing stairs. No history of trauma.
+
+OBJECTIVE:
+Vital signs: Stable
+Knee exam: Moderate effusion, tenderness over medial joint line, limited ROM due to pain
+X-ray: Moderate osteoarthritis, joint space narrowing
+
+ASSESSMENT:
+1. Osteoarthritis of right knee with acute flare
+2. Knee effusion
+
+PLAN:
+- NSAIDs: Ibuprofen 600mg TID with food
+- Physical therapy referral for strengthening exercises
+- Consider knee injection if no improvement in 2 weeks
+- Weight loss counseling
+- Activity modification during acute phase`,
+        progress: `Patient reports good response to NSAIDs. Swelling decreased, mobility improved. Started physical therapy. Able to walk without significant difficulty.`
+      }
+    };
+
+    // Get the specific template for this visit, or create a generic one
+    const template = noteTemplates[visit.id as keyof typeof noteTemplates] || {
+      soap: `SUBJECTIVE:
+${visit.patientAge}-year-old ${visit.patientGender} presenting with ${visit.chiefComplaint}. 
+
+OBJECTIVE:
+Vital signs stable. Physical examination findings consistent with chief complaint.
+
+ASSESSMENT:
+${visit.visitSummary}
+
+PLAN:
+Treatment plan based on assessment findings.`,
+      progress: `Patient progress note for ${visit.patientName}. ${visit.visitSummary}`
+    };
+
+    return [
       {
-        id: 'note-2',
-        visitId: id,
-        patientId: 'P001',
+        id: `note-${visit.id}-1`,
+        visitId: visit.id,
+        patientId: visit.patientId,
+        type: 'soap',
+        status: visit.notesStatus,
+        content: template.soap,
+        author: visit.attendingProvider,
+        aiGenerated: false,
+        createdAt: visit.lastNoteDate || new Date(),
+        updatedAt: visit.lastNoteDate || new Date(),
+        signedAt: visit.notesStatus === 'signed' ? visit.lastNoteDate : undefined,
+        version: 1,
+        tags: [visit.department.toLowerCase(), 'assessment'],
+      },
+      ...(visit.notesCount > 1 ? [{
+        id: `note-${visit.id}-2`,
+        visitId: visit.id,
+        patientId: visit.patientId,
         type: 'progress',
-        status: 'draft',
-        content: `Patient continues to have mild chest discomfort but reports feeling better after reassurance. Vital signs remain stable.`,
-        author: 'Dr. Smith',
+        status: 'signed',
+        content: template.progress,
+        author: visit.attendingProvider,
         aiGenerated: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: new Date(visit.lastNoteDate?.getTime() - 3600000), // 1 hour before
+        updatedAt: new Date(visit.lastNoteDate?.getTime() - 3600000),
+        signedAt: new Date(visit.lastNoteDate?.getTime() - 1800000), // 30 min before
         version: 1,
         tags: ['progress', 'follow-up'],
-      },
+      }] : [])
     ];
-    setNotes(mockNotes);
-    setCurrentNote(mockNotes[0]);
+  };
+
+  useEffect(() => {
+    // Find the specific visit data
+    const visit = mockVisits.find(v => v.id === id);
+    if (visit) {
+      setVisitData(visit);
+      const patientNotes = generatePatientSpecificNotes(visit);
+      setNotes(patientNotes);
+      setCurrentNote(patientNotes[0]);
+    }
     setLoading(false);
   }, [id]);
 
   const handleGenerateNote = async () => {
     setGenerating(true);
     try {
-      // Mock AI generation
+      // Mock AI generation with patient-specific content
       setTimeout(() => {
         const newNote = {
           id: `note-${Date.now()}`,
           visitId: id,
-          patientId: 'P001',
+          patientId: visitData?.patientId,
           type: noteType,
           status: 'draft',
-          content: `Generated ${noteType.toUpperCase()} note based on visit transcript and analysis...`,
+          content: `AI-Generated ${noteType.toUpperCase()} Note for ${visitData?.patientName}:
+
+Based on the visit transcript and analysis for this ${visitData?.patientAge}-year-old ${visitData?.patientGender} patient presenting with ${visitData?.chiefComplaint?.toLowerCase()}, the following clinical assessment has been generated:
+
+${visitData?.visitSummary}
+
+Recommendations:
+- Continue current treatment plan
+- Monitor for symptom improvement
+- Follow-up as scheduled`,
           author: 'System (AI)',
           aiGenerated: true,
           createdAt: new Date(),
           updatedAt: new Date(),
           version: 1,
-          tags: ['ai-generated'],
+          tags: ['ai-generated', visitData?.department?.toLowerCase()],
         };
         setNotes(prev => [newNote, ...prev]);
         setCurrentNote(newNote);
