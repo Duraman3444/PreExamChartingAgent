@@ -21,6 +21,7 @@ import { VisitManagement } from '@/pages/VisitManagement';
 import AIAnalysis from '@/pages/AIAnalysis';
 import AIAnalysisEntry from '@/pages/AIAnalysisEntry';
 import TranscriptUpload from '@/pages/TranscriptUpload';
+import TranscriptEditor from '@/pages/TranscriptEditor';
 import Transcripts from '@/pages/Transcripts';
 import Notes from '@/pages/Notes';
 import { useAuthStore } from '@/stores/authStore';
@@ -869,6 +870,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <TranscriptUpload />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.TRANSCRIPT_EDITOR}
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <TranscriptEditor />
                 </Layout>
               </ProtectedRoute>
             }

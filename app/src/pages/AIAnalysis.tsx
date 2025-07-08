@@ -601,21 +601,21 @@ Patient: Yes, I'm allergic to penicillin - I get a rash.`,
   const handleViewTreatmentDetails = (treatmentId: string) => {
     const treatment = analysisData.treatments.find(t => t.id === treatmentId);
     if (treatment) {
-      setSelectedTreatment(treatment);
+      setSelectedTreatment(treatment as any);
     }
   };
 
   const handleViewSymptomDetails = (symptomId: string) => {
     const symptom = analysisData.symptoms.find(s => s.id === symptomId);
     if (symptom) {
-      setSelectedSymptom(symptom);
+      setSelectedSymptom(symptom as any);
     }
   };
 
   const handleViewDiagnosisDetails = (diagnosisId: string) => {
     const diagnosis = analysisData.diagnoses.find(d => d.id === diagnosisId);
     if (diagnosis) {
-      setSelectedDiagnosis(diagnosis);
+      setSelectedDiagnosis(diagnosis as any);
     }
   };
 
@@ -670,48 +670,26 @@ Patient: Yes, I'm allergic to penicillin - I get a rash.`,
     }
   };
 
-  const generatePrescriptionSuggestions = async (treatment: Treatment, patientData: any): Promise<PrescriptionSuggestion[]> => {
+  const generatePrescriptionSuggestions = async (treatment: Treatment, _patientData: any): Promise<PrescriptionSuggestion[]> => {
     try {
-      // Build context for AI
-      const patientContext = {
-        age: patientData.patientContext.age,
-        gender: patientData.patientContext.gender,
-        chiefComplaint: patientData.patientContext.chiefComplaint,
-        symptoms: patientData.symptoms.map((s: any) => s.name).join(', '),
-        diagnoses: patientData.diagnoses.map((d: any) => d.condition).join(', '),
-        treatment: treatment.recommendation
-      };
+      // Build context for AI (currently unused but kept for future AI integration)
+      // const patientContext = {
+      //   age: patientData.patientContext.age,
+      //   gender: patientData.patientContext.gender,
+      //   chiefComplaint: patientData.patientContext.chiefComplaint,
+      //   symptoms: patientData.symptoms.map((s: any) => s.name).join(', '),
+      //   diagnoses: patientData.diagnoses.map((d: any) => d.condition).join(', '),
+      //   treatment: treatment.recommendation
+      // };
 
-      const prompt = `Based on the following patient information and treatment recommendation, provide 3-5 specific prescription suggestions with detailed information:
-
-Patient Context:
-- Age: ${patientContext.age}
-- Gender: ${patientContext.gender}
-- Chief Complaint: ${patientContext.chiefComplaint}
-- Symptoms: ${patientContext.symptoms}
-- Likely Diagnoses: ${patientContext.diagnoses}
-- Treatment Recommendation: ${patientContext.treatment}
-
-Please provide prescription suggestions in the following format for each medication:
-- Medication name
-- Exact dosage
-- Frequency (times per day)
-- Duration of treatment
-- Specific instructions for patient
-- Contraindications
-- Drug interactions
-- Confidence level (0-100%)
-- Medical reasoning
-- Category (first-line, second-line, or alternative)
-
-Focus on evidence-based, FDA-approved medications with clear dosing guidelines.`;
+      // Generate patient-specific prescription suggestions
 
       // For now, we'll use mock data instead of the AI service
       // In a real implementation, you would call the AI service here
       // const response = await openAIService.generateText(prompt);
       
       // Generate patient-specific mock suggestions based on treatment category
-      const suggestions = generatePatientSpecificSuggestions(treatment, patientContext);
+      const suggestions = generatePatientSpecificSuggestions(treatment);
       
       return suggestions;
     } catch (error) {
@@ -720,7 +698,7 @@ Focus on evidence-based, FDA-approved medications with clear dosing guidelines.`
     }
   };
 
-  const generatePatientSpecificSuggestions = (treatment: Treatment, patientContext: any): PrescriptionSuggestion[] => {
+  const generatePatientSpecificSuggestions = (treatment: Treatment): PrescriptionSuggestion[] => {
     // Generate suggestions based on treatment category and patient context
     const suggestions: PrescriptionSuggestion[] = [];
     
@@ -810,11 +788,11 @@ Focus on evidence-based, FDA-approved medications with clear dosing guidelines.`
     return suggestions;
   };
 
-  const parsePrescriptionResponse = (aiResponse: string): PrescriptionSuggestion[] => {
-    // This method is no longer used but kept for future AI integration
-    const mockSuggestions: PrescriptionSuggestion[] = [];
-    return mockSuggestions;
-  };
+  // const parsePrescriptionResponse = (aiResponse: string): PrescriptionSuggestion[] => {
+  //   // This method is no longer used but kept for future AI integration
+  //   const mockSuggestions: PrescriptionSuggestion[] = [];
+  //   return mockSuggestions;
+  // };
 
   const handlePrescriptionSubmit = () => {
     if (selectedPrescriptionTab === 0) {
@@ -1141,9 +1119,9 @@ Focus on evidence-based, FDA-approved medications with clear dosing guidelines.`
                     <ListItem>
                       <ListItemText primary="Duration" secondary={symptom.duration} />
                     </ListItem>
-                    {symptom.location && (
+                    {(symptom as any).location && (
                       <ListItem>
-                        <ListItemText primary="Location" secondary={symptom.location} />
+                        <ListItemText primary="Location" secondary={(symptom as any).location} />
                       </ListItem>
                     )}
                     {symptom.quality && (

@@ -8,6 +8,7 @@ export const ROUTES = {
   VISITS: '/visits',
   VISIT_DETAIL: '/visits/:id',
   TRANSCRIPT_UPLOAD: '/visits/:id/transcript',
+  TRANSCRIPT_EDITOR: '/visits/:id/transcript/edit',
   TRANSCRIPTS: '/transcripts',
   AI_ANALYSIS: '/ai-analysis',
   AI_ANALYSIS_DETAIL: '/ai-analysis/:id',

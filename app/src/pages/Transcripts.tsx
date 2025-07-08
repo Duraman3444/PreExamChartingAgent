@@ -322,7 +322,7 @@ export const Transcripts: React.FC = () => {
 
   const handleEditTranscript = (visitId: string) => {
     setViewerOpen(false);
-    navigate(ROUTES.TRANSCRIPT_UPLOAD.replace(':id', visitId));
+    navigate(ROUTES.TRANSCRIPT_EDITOR.replace(':id', visitId));
   };
 
   const handlePrintTranscript = () => {
