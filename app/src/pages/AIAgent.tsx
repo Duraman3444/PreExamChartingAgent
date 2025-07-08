@@ -93,6 +93,15 @@ interface NewPatientData {
   additionalInfo: string;
 }
 
+interface ExistingPatientAddition {
+  currentSymptoms: string;
+  newMedicalHistory: string;
+  currentMedications: string;
+  newAllergies: string;
+  chiefComplaint: string;
+  additionalInfo: string;
+}
+
 interface Symptom {
   id: string;
   name: string;
@@ -165,6 +174,14 @@ const AIAgent: React.FC = () => {
     allergies: '',
     additionalInfo: '',
   });
+  const [existingPatientAddition, setExistingPatientAddition] = useState<ExistingPatientAddition>({
+    currentSymptoms: '',
+    newMedicalHistory: '',
+    currentMedications: '',
+    newAllergies: '',
+    chiefComplaint: '',
+    additionalInfo: '',
+  });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<AIAgentAnalysis | null>(null);
   const [tabValue, setTabValue] = useState(0);
@@ -203,6 +220,14 @@ const AIAgent: React.FC = () => {
       allergies: '',
       additionalInfo: '',
     });
+    setExistingPatientAddition({
+      currentSymptoms: '',
+      newMedicalHistory: '',
+      currentMedications: '',
+      newAllergies: '',
+      chiefComplaint: '',
+      additionalInfo: '',
+    });
     setAnalysis(null);
     setTabValue(0);
   };
@@ -218,36 +243,72 @@ const AIAgent: React.FC = () => {
     }));
   };
 
+  const handleExistingPatientAdditionChange = (field: keyof ExistingPatientAddition, value: any) => {
+    setExistingPatientAddition(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
   const generateMockAnalysis = (patientData: any): AIAgentAnalysis => {
     // Generate mock analysis based on patient data
-    const symptoms: Symptom[] = [
+    const isExisting = patientType === 'existing';
+    const chiefComplaint = isExisting 
+      ? patientData.additionalInfo?.chiefComplaint || patientData.recentVisit 
+      : patientData.chiefComplaint;
+    const symptoms = isExisting 
+      ? patientData.additionalInfo?.currentSymptoms 
+      : patientData.symptoms;
+    
+    const symptomsArray: Symptom[] = [
       {
         id: 'sym-1',
-        name: 'Primary symptom',
+        name: chiefComplaint || 'Primary concern',
         severity: 'moderate',
         confidence: 0.95,
         duration: 'Recent onset',
-        location: 'Localized',
-        quality: 'Described as concerning',
-        associatedFactors: ['stress', 'activity'],
-        sourceText: `Patient reports ${patientData.chiefComplaint || 'general symptoms'}`
+        location: 'As described',
+        quality: 'Patient reported',
+        associatedFactors: ['current presentation'],
+        sourceText: `Patient reports: ${chiefComplaint || 'general symptoms'}`
       }
     ];
 
-    const diagnoses: Diagnosis[] = [
-      {
-        id: 'dx-1',
-        condition: 'Primary differential diagnosis',
-        icd10Code: 'Z00.00',
-        probability: 0.85,
-        severity: 'medium',
-        supportingEvidence: ['patient history', 'presenting symptoms'],
-        againstEvidence: ['no contraindications noted'],
-        additionalTestsNeeded: ['laboratory studies', 'imaging if indicated'],
-        reasoning: 'Based on patient presentation and clinical history, this is the most likely diagnosis requiring further evaluation.',
-        urgency: 'routine'
-      }
-    ];
+    // Add additional symptoms if provided
+    if (symptoms && symptoms.trim() !== '') {
+      symptomsArray.push({
+        id: 'sym-2',
+        name: 'Additional symptoms',
+        severity: 'mild',
+        confidence: 0.88,
+        duration: 'Variable',
+        location: 'Multiple',
+        quality: 'Associated symptoms',
+        associatedFactors: ['primary complaint'],
+        sourceText: `Additional symptoms: ${symptoms}`
+      });
+    }
+
+          const diagnoses: Diagnosis[] = [
+        {
+          id: 'dx-1',
+          condition: isExisting ? 'Follow-up assessment' : 'Primary differential diagnosis',
+          icd10Code: 'Z00.00',
+          probability: 0.85,
+          severity: 'medium',
+          supportingEvidence: [
+            'patient history', 
+            'presenting symptoms',
+            ...(isExisting ? ['existing patient records', 'follow-up presentation'] : [])
+          ],
+          againstEvidence: ['no contraindications noted'],
+          additionalTestsNeeded: ['laboratory studies', 'imaging if indicated'],
+          reasoning: isExisting 
+            ? `Based on existing patient history and current presentation: ${chiefComplaint}. Additional information provided helps refine the clinical assessment.`
+            : 'Based on patient presentation and clinical history, this is the most likely diagnosis requiring further evaluation.',
+          urgency: 'routine'
+        }
+      ];
 
     const treatments: Treatment[] = [
       {
@@ -274,20 +335,23 @@ const AIAgent: React.FC = () => {
       }
     ];
 
-    return {
-      symptoms,
-      diagnoses,
-      treatments,
-      concerns,
-      confidenceScore: 0.87,
-      reasoning: 'AI analysis based on provided patient information. Clinical correlation and physician review recommended.',
-      nextSteps: [
-        'Review with attending physician',
-        'Consider additional diagnostic tests',
-        'Monitor patient response to treatment',
-        'Schedule appropriate follow-up'
-      ]
-    };
+          return {
+        symptoms: symptomsArray,
+        diagnoses,
+        treatments,
+        concerns,
+        confidenceScore: 0.87,
+        reasoning: isExisting 
+          ? `AI analysis based on existing patient records and additional information provided. Patient: ${patientData.name}. Current presentation analysis incorporates previous medical history and current symptoms.`
+          : 'AI analysis based on provided patient information. Clinical correlation and physician review recommended.',
+        nextSteps: [
+          'Review with attending physician',
+          'Consider additional diagnostic tests',
+          'Monitor patient response to treatment',
+          'Schedule appropriate follow-up',
+          ...(isExisting ? ['Update patient records with new information'] : [])
+        ]
+      };
   };
 
   const handleRunAnalysis = async () => {
@@ -311,7 +375,10 @@ const AIAgent: React.FC = () => {
       let patientData;
       if (patientType === 'existing') {
         const patient = uniquePatients.find(p => p.id === selectedPatient);
-        patientData = patient;
+        patientData = {
+          ...patient,
+          additionalInfo: existingPatientAddition,
+        };
       } else {
         patientData = newPatientData;
       }
@@ -330,7 +397,10 @@ const AIAgent: React.FC = () => {
 
   const canRunAnalysis = () => {
     if (patientType === 'existing') {
-      return selectedPatient !== '';
+      return selectedPatient !== '' && 
+             (existingPatientAddition.currentSymptoms !== '' || 
+              existingPatientAddition.chiefComplaint !== '' ||
+              existingPatientAddition.additionalInfo !== '');
     } else {
       return newPatientData.firstName !== '' && 
              newPatientData.lastName !== '' && 
@@ -457,20 +527,89 @@ const AIAgent: React.FC = () => {
               </FormControl>
 
               {patientType === 'existing' && (
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Select Patient</InputLabel>
-                  <Select
-                    value={selectedPatient}
-                    label="Select Patient"
-                    onChange={(e) => handlePatientSelect(e.target.value)}
-                  >
-                    {uniquePatients.map((patient) => (
-                      <MenuItem key={patient.id} value={patient.id}>
-                        {patient.name} ({patient.age}y, {patient.gender})
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <InputLabel>Select Patient</InputLabel>
+                    <Select
+                      value={selectedPatient}
+                      label="Select Patient"
+                      onChange={(e) => handlePatientSelect(e.target.value)}
+                    >
+                      {uniquePatients.map((patient) => (
+                        <MenuItem key={patient.id} value={patient.id}>
+                          {patient.name} ({patient.age}y, {patient.gender})
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  {selectedPatient && (
+                    <>
+                      <Typography variant="subtitle2" sx={{ mb: 2, color: 'text.secondary' }}>
+                        Add Additional Information for Analysis
+                      </Typography>
+                      <Stack spacing={2}>
+                        <TextField
+                          fullWidth
+                          label="Current Chief Complaint"
+                          value={existingPatientAddition.chiefComplaint}
+                          onChange={(e) => handleExistingPatientAdditionChange('chiefComplaint', e.target.value)}
+                          multiline
+                          rows={2}
+                          placeholder="Describe the current reason for visit..."
+                        />
+
+                        <TextField
+                          fullWidth
+                          label="Current Symptoms"
+                          value={existingPatientAddition.currentSymptoms}
+                          onChange={(e) => handleExistingPatientAdditionChange('currentSymptoms', e.target.value)}
+                          multiline
+                          rows={3}
+                          placeholder="Describe current symptoms, onset, duration, severity..."
+                        />
+
+                        <TextField
+                          fullWidth
+                          label="Recent Medical History"
+                          value={existingPatientAddition.newMedicalHistory}
+                          onChange={(e) => handleExistingPatientAdditionChange('newMedicalHistory', e.target.value)}
+                          multiline
+                          rows={2}
+                          placeholder="Any new medical conditions or recent changes..."
+                        />
+
+                        <TextField
+                          fullWidth
+                          label="Current Medications"
+                          value={existingPatientAddition.currentMedications}
+                          onChange={(e) => handleExistingPatientAdditionChange('currentMedications', e.target.value)}
+                          multiline
+                          rows={2}
+                          placeholder="List current medications, dosages, and any recent changes..."
+                        />
+
+                        <TextField
+                          fullWidth
+                          label="New Allergies"
+                          value={existingPatientAddition.newAllergies}
+                          onChange={(e) => handleExistingPatientAdditionChange('newAllergies', e.target.value)}
+                          placeholder="Any new allergies or reactions..."
+                        />
+
+                        <TextField
+                          fullWidth
+                          label="Additional Information"
+                          value={existingPatientAddition.additionalInfo}
+                          onChange={(e) => handleExistingPatientAdditionChange('additionalInfo', e.target.value)}
+                          multiline
+                          rows={2}
+                          placeholder="Any other relevant information for this visit..."
+                        />
+                      </Stack>
+                    </>
+                  )}
+                </>
               )}
 
               {patientType === 'new' && (
