@@ -34,7 +34,6 @@ import {
 import {
   ExpandMore,
   Palette,
-  Language,
   Notifications,
   Security,
   Psychology,

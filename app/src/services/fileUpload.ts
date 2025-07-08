@@ -2,7 +2,7 @@ import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebas
 import { collection, addDoc, updateDoc, doc, getDoc, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { storage, db } from './firebase';
 import { APP_SETTINGS } from '@/constants';
-import { FileUpload, VisitTranscript, TranscriptSegment } from '@/types';
+import { VisitTranscript, TranscriptSegment } from '@/types';
 
 // File validation constants
 export const ACCEPTED_AUDIO_TYPES = [

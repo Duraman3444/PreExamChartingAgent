@@ -20,7 +20,6 @@ import {
   MenuItem,
   Stack,
   Tooltip,
-  useTheme,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -34,9 +33,6 @@ import {
   Avatar,
   TableSortLabel,
   TablePagination,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   Alert,
 } from '@mui/material';
 import {
@@ -51,7 +47,6 @@ import {
   RecordVoiceOver as TranscriptIcon,
   LocalHospital as HospitalIcon,
   CalendarToday as CalendarIcon,
-  ExpandMore as ExpandMoreIcon,
   Close as CloseIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
@@ -821,8 +816,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ open, onClose, patient 
 };
 
 export const PatientManagement: React.FC = () => {
-  const theme = useTheme();
-  const [patients, setPatients] = useState<PatientRecord[]>(mockPatientData);
+  const [patients] = useState<PatientRecord[]>(mockPatientData);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterAnchorEl, setFilterAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
@@ -1118,7 +1112,7 @@ export const PatientManagement: React.FC = () => {
           count={filteredPatients.length}
           rowsPerPage={rowsPerPage}
           page={page}
-          onPageChange={(event, newPage) => setPage(newPage)}
+          onPageChange={(_, newPage) => setPage(newPage)}
           onRowsPerPageChange={(event) => {
             setRowsPerPage(parseInt(event.target.value, 10));
             setPage(0);

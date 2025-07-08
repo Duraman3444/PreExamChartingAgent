@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -15,7 +15,6 @@ import {
   Chip,
   IconButton,
   Stack,
-  Divider,
   TextField,
   Select,
   MenuItem,
@@ -27,7 +26,6 @@ import {
   ListItemSecondaryAction,
   Grid,
   Paper,
-  Tooltip,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -43,26 +41,22 @@ import {
   AudioFile as AudioIcon,
   TextFields as TextIcon,
   Close as CloseIcon,
-  PlayArrow as PlayIcon,
-  Stop as StopIcon,
   GetApp as DownloadIcon,
   Edit as EditIcon,
   Search as SearchIcon,
   History as HistoryIcon,
   Check as CheckIcon,
   Error as ErrorIcon,
-  Warning as WarningIcon,
   Info as InfoIcon,
   ExpandMore as ExpandMoreIcon,
   Mic as MicIcon,
   Person as PersonIcon,
-  Schedule as ScheduleIcon,
 } from '@mui/icons-material';
 import { useDropzone } from 'react-dropzone';
 import { format } from 'date-fns';
 import { useAuthStore } from '@/stores/authStore';
 import { APP_SETTINGS, ROUTES } from '@/constants';
-import { FileUpload, VisitTranscript, TranscriptSegment } from '@/types';
+import { FileUpload, TranscriptSegment } from '@/types';
 import {
   uploadFileToStorage,
   transcribeAudio,
@@ -72,10 +66,8 @@ import {
   updateTranscript,
   getTranscriptByVisitId,
   exportTranscript,
-  searchTranscript,
   formatFileSize,
   ACCEPTED_AUDIO_TYPES,
-  ACCEPTED_TEXT_TYPES,
 } from '@/services/fileUpload';
 
 // File validation constants for dropzone
@@ -136,17 +128,11 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [transcription, setTranscription] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [currentTranscript, setCurrentTranscript] = useState<VisitTranscript | null>(null);
   const [showEditor, setShowEditor] = useState(false);
   const [editableTranscript, setEditableTranscript] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [versions, setVersions] = useState<TranscriptVersion[]>([]);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
-  const [selectedSegment, setSelectedSegment] = useState<TranscriptSegment | null>(null);
-  const [speakerTags, setSpeakerTags] = useState<{ [key: string]: string }>({});
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
   const [exportDialog, setExportDialog] = useState(false);
   const [exportFormat, setExportFormat] = useState('pdf');
   const [notification, setNotification] = useState<{
@@ -209,7 +195,7 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
       ));
 
       // Upload to Firebase Storage
-      const downloadURL = await uploadFileToStorage(
+      await uploadFileToStorage(
         fileData.file,
         currentVisitId,
         user.id,
@@ -380,7 +366,8 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
   };
 
   // Handle search results
-  const searchResults = searchQuery.trim() ? searchTranscript(transcription, searchQuery) : [];
+  // Search functionality for future use
+  // const searchResults = searchQuery.trim() ? searchTranscript(transcription, searchQuery) : [];
 
   // Notification helper
   const showNotification = (message: string, type: 'success' | 'error' | 'warning' | 'info') => {

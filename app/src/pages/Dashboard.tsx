@@ -11,11 +11,8 @@ import {
   ListItemText,
   Chip,
   Avatar,
-  Stack,
   useTheme,
-  LinearProgress,
   Divider,
-  IconButton,
 } from '@mui/material';
 import {
   People,
@@ -28,7 +25,6 @@ import {
   ChevronRight,
   CheckCircle,
   Schedule,
-  Warning,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants';

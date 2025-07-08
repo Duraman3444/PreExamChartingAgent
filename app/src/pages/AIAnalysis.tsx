@@ -30,14 +30,7 @@ import {
   IconButton,
   Tooltip,
   Avatar,
-  Badge,
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   CircularProgress,
   Stepper,
   Step,
@@ -53,13 +46,10 @@ import {
   Warning as WarningIcon,
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
-  Lightbulb as LightbulbIcon,
   LocalHospital as LocalHospitalIcon,
   Medication as MedicationIcon,
-  MonitorHeart as MonitorHeartIcon,
   CalendarMonth as CalendarMonthIcon,
   Person as PersonIcon,
-  RecordVoiceOver as TranscriptIcon,
   Refresh as RefreshIcon,
   Download as DownloadIcon,
   Share as ShareIcon,
@@ -67,8 +57,6 @@ import {
   ThumbUp as ThumbUpIcon,
   ThumbDown as ThumbDownIcon,
   Schedule as ScheduleIcon,
-  Send as SendIcon,
-  Clear as ClearIcon,
   Email as EmailIcon,
   Link as LinkIcon,
   ContentCopy as ContentCopyIcon,
@@ -603,7 +591,6 @@ export default function AIAnalysisPage() {
     setIsRefreshing(true);
     try {
       // In a real app, this would fetch the original transcript and re-analyze
-      const mockTranscript = "Doctor: Good morning. Patient: Hi Doctor. I've been having chest pain...";
       
       // Show progressive analysis steps
       const steps = ['Refreshing Data', 'Re-analyzing Transcript', 'Updating Results'];

@@ -20,22 +20,16 @@ import {
   MenuItem,
   Stack,
   Tooltip,
-  useTheme,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
   Divider,
   Grid,
   Avatar,
   TableSortLabel,
   TablePagination,
   Badge,
-  LinearProgress,
   Alert,
   FormControl,
   InputLabel,
@@ -54,13 +48,9 @@ import {
   RecordVoiceOver as TranscriptIcon,
   LocalHospital as HospitalIcon,
   CalendarToday as CalendarIcon,
-  AccessTime as TimeIcon,
-  Person as PersonIcon,
   VideoCall as VideoCallIcon,
-  Phone as PhoneIcon,
   Upload as UploadIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon,
   Schedule as ScheduleIcon,
   CheckCircle as CheckCircleIcon,
   Warning as WarningIcon,
@@ -482,7 +472,6 @@ const VisitDetails: React.FC<VisitDetailsProps> = ({ open, onClose, visit }) => 
 };
 
 export const VisitManagement: React.FC = () => {
-  const theme = useTheme();
   const navigate = useNavigate();
   const [visits, setVisits] = useState<VisitRecord[]>(mockVisitData);
   const [searchTerm, setSearchTerm] = useState('');
@@ -1122,7 +1111,7 @@ export const VisitManagement: React.FC = () => {
           count={filteredVisits.length}
           rowsPerPage={rowsPerPage}
           page={page}
-          onPageChange={(event, newPage) => setPage(newPage)}
+          onPageChange={(_, newPage) => setPage(newPage)}
           onRowsPerPageChange={(event) => {
             setRowsPerPage(parseInt(event.target.value, 10));
             setPage(0);
