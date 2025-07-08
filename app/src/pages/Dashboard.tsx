@@ -20,7 +20,6 @@ import {
   Psychology,
   TrendingUp,
   VideoCall,
-  LocalHospital,
   Assessment,
   ChevronRight,
   CheckCircle,
@@ -29,41 +28,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants';
 import { useAuthStore } from '@/stores/authStore';
-
-const statsCards = [
-  {
-    title: 'Active Patients',
-    value: '156',
-    icon: <People />,
-    color: '#FF6000',
-    change: '+12%',
-    trend: 'up',
-  },
-  {
-    title: 'Pending Transcripts',
-    value: '12',
-    icon: <RecordVoiceOver />,
-    color: '#6C5BD4',
-    change: '-3%',
-    trend: 'down',
-  },
-  {
-    title: 'AI Analysis Complete',
-    value: '34',
-    icon: <Psychology />,
-    color: '#FF6000',
-    change: '+8%',
-    trend: 'up',
-  },
-  {
-    title: 'Analysis Accuracy',
-    value: '92%',
-    icon: <TrendingUp />,
-    color: '#6C5BD4',
-    change: '+2%',
-    trend: 'up',
-  },
-];
+import { mockVisits } from '@/data/mockData';
 
 const recentActivities = [
   { 
@@ -151,6 +116,56 @@ export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const theme = useTheme();
+
+  // Calculate real-time statistics from actual data
+  const totalPatients = new Set(mockVisits.map(visit => visit.patientId)).size;
+  const pendingTranscripts = mockVisits.filter(visit => 
+    visit.transcriptStatus === 'none' || visit.transcriptStatus === 'uploaded' || visit.transcriptStatus === 'processing'
+  ).length;
+  const completedAnalyses = mockVisits.filter(visit => 
+    visit.analysisStatus === 'completed' || visit.analysisStatus === 'reviewed'
+  ).length;
+  
+  // Calculate analysis accuracy from confidence scores
+  const analysesWithConfidence = mockVisits.filter(visit => visit.analysisConfidence);
+  const averageConfidence = analysesWithConfidence.length > 0 
+    ? analysesWithConfidence.reduce((sum, visit) => sum + (visit.analysisConfidence || 0), 0) / analysesWithConfidence.length
+    : 0;
+
+  const statsCards = [
+    {
+      title: 'Active Patients',
+      value: totalPatients.toString(),
+      icon: <People />,
+      color: '#FF6000',
+      change: '+12%',
+      trend: 'up',
+    },
+    {
+      title: 'Pending Transcripts',
+      value: pendingTranscripts.toString(),
+      icon: <RecordVoiceOver />,
+      color: '#6C5BD4',
+      change: '-3%',
+      trend: 'down',
+    },
+    {
+      title: 'AI Analysis Complete',
+      value: completedAnalyses.toString(),
+      icon: <Psychology />,
+      color: '#FF6000',
+      change: '+8%',
+      trend: 'up',
+    },
+    {
+      title: 'Analysis Accuracy',
+      value: `${Math.round(averageConfidence * 100)}%`,
+      icon: <TrendingUp />,
+      color: '#6C5BD4',
+      change: '+2%',
+      trend: 'up',
+    },
+  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -346,73 +361,6 @@ export const Dashboard: React.FC = () => {
 
         {/* Sidebar */}
         <Grid item xs={12} md={4}>
-          {/* Health Summary */}
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Health Summary
-              </Typography>
-              <Box
-                sx={{
-                  backgroundColor: theme.palette.primary.main,
-                  borderRadius: 2,
-                  p: 3,
-                  color: 'white',
-                  mb: 2,
-                }}
-              >
-                <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 1 }}>
-                  120 bpm
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box sx={{ 
-                    width: 40, 
-                    height: 40, 
-                    backgroundColor: 'rgba(255,255,255,0.2)', 
-                    borderRadius: '50%', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center' 
-                  }}>
-                    <LocalHospital />
-                  </Box>
-                  <Box>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      Heartbeat Monitor
-                    </Typography>
-                    <Typography variant="caption" color="rgba(255,255,255,0.8)">
-                      NORMAL
-                    </Typography>
-                  </Box>
-                </Box>
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="body2">
-                  Blood Pressure
-                </Typography>
-                <Typography variant="body2" fontWeight="bold">
-                  120/80 mmHg
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="body2">
-                  Temperature
-                </Typography>
-                <Typography variant="body2" fontWeight="bold">
-                  98.6°F
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography variant="body2">
-                  Oxygen Level
-                </Typography>
-                <Typography variant="body2" fontWeight="bold">
-                  98%
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-
           {/* Recent Visits */}
           <Card>
             <CardContent>
