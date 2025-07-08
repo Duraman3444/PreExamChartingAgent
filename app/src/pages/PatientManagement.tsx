@@ -54,6 +54,7 @@ import {
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { exportTranscript } from '@/services/fileUpload';
+import { mockVisits, Visit } from '@/data/mockData';
 
 // Extended patient interface for the management view
 interface PatientRecord {
@@ -80,285 +81,61 @@ interface PatientRecord {
   phoneNumber?: string;
 }
 
-// Mock data for demonstration
-const mockPatientData: PatientRecord[] = [
-  {
-    id: '1',
-    firstName: 'John',
-    lastName: 'Doe',
-    patientId: 'P001',
-    caseNumber: 'CS-2024-001',
-    dateIncharged: new Date('2024-01-15'),
-    dateDischarged: new Date('2024-01-20'),
-    status: 'discharged',
-    department: 'Emergency',
-    attendingProvider: 'Dr. Smith',
-    documents: {
-      symptoms: true,
-      diagnosis: true,
-      visitTranscripts: true,
-      aiAnalysis: true,
-      visitNotes: true,
-    },
-    lastVisitDate: new Date('2024-01-20'),
-    age: 45,
-    gender: 'male',
-    phoneNumber: '555-0123',
-  },
-  {
-    id: '2',
-    firstName: 'Jane',
-    lastName: 'Smith',
-    patientId: 'P002',
-    caseNumber: 'CS-2024-002',
-    dateIncharged: new Date('2024-01-18'),
-    dateDischarged: null,
-    status: 'active',
-    department: 'Cardiology',
-    attendingProvider: 'Dr. Johnson',
-    documents: {
-      symptoms: true,
-      diagnosis: true,
-      visitTranscripts: true,
-      aiAnalysis: true,
-      visitNotes: true,
-    },
-    lastVisitDate: new Date('2024-01-18'),
-    age: 62,
-    gender: 'female',
-    phoneNumber: '555-0456',
-  },
-  {
-    id: '3',
-    firstName: 'Michael',
-    lastName: 'Brown',
-    patientId: 'P003',
-    caseNumber: 'CS-2024-003',
-    dateIncharged: new Date('2024-01-20'),
-    dateDischarged: null,
-    status: 'active',
-    department: 'Internal Medicine',
-    attendingProvider: 'Dr. Davis',
-    documents: {
-      symptoms: true,
-      diagnosis: true,
-      visitTranscripts: true,
-      aiAnalysis: true,
-      visitNotes: true,
-    },
-    lastVisitDate: new Date('2024-01-20'),
-    age: 38,
-    gender: 'male',
-    phoneNumber: '555-0789',
-  },
-  {
-    id: '4',
-    firstName: 'Sarah',
-    lastName: 'Wilson',
-    patientId: 'P004',
-    caseNumber: 'CS-2024-004',
-    dateIncharged: new Date('2024-01-16'),
-    dateDischarged: new Date('2024-01-22'),
-    status: 'discharged',
-    department: 'Neurology',
-    attendingProvider: 'Dr. Thompson',
-    documents: {
-      symptoms: true,
-      diagnosis: true,
-      visitTranscripts: true,
-      aiAnalysis: true,
-      visitNotes: true,
-    },
-    lastVisitDate: new Date('2024-01-22'),
-    age: 29,
-    gender: 'female',
-    phoneNumber: '555-0321',
-  },
-  {
-    id: '5',
-    firstName: 'Robert',
-    lastName: 'Johnson',
-    patientId: 'P005',
-    caseNumber: 'CS-2024-005',
-    dateIncharged: new Date('2024-01-19'),
-    dateDischarged: null,
-    status: 'active',
-    department: 'Orthopedics',
-    attendingProvider: 'Dr. Lee',
-    documents: {
-      symptoms: true,
-      diagnosis: true,
-      visitTranscripts: true,
-      aiAnalysis: true,
-      visitNotes: true,
-    },
-    lastVisitDate: new Date('2024-01-19'),
-    age: 55,
-    gender: 'male',
-    phoneNumber: '555-0654',
-  },
-  {
-    id: '6',
-    firstName: 'Emily',
-    lastName: 'Davis',
-    patientId: 'P006',
-    caseNumber: 'CS-2024-006',
-    dateIncharged: new Date('2024-01-21'),
-    dateDischarged: null,
-    status: 'active',
-    department: 'Pediatrics',
-    attendingProvider: 'Dr. Miller',
-    documents: {
-      symptoms: true,
-      diagnosis: true,
-      visitTranscripts: true,
-      aiAnalysis: true,
-      visitNotes: true,
-    },
-    lastVisitDate: new Date('2024-01-21'),
-    age: 8,
-    gender: 'female',
-    phoneNumber: '555-0987',
-  },
-  {
-    id: '7',
-    firstName: 'David',
-    lastName: 'Anderson',
-    patientId: 'P007',
-    caseNumber: 'CS-2024-007',
-    dateIncharged: new Date('2024-01-17'),
-    dateDischarged: new Date('2024-01-23'),
-    status: 'discharged',
-    department: 'Surgery',
-    attendingProvider: 'Dr. Garcia',
-    documents: {
-      symptoms: true,
-      diagnosis: true,
-      visitTranscripts: true,
-      aiAnalysis: true,
-      visitNotes: true,
-    },
-    lastVisitDate: new Date('2024-01-23'),
-    age: 42,
-    gender: 'male',
-    phoneNumber: '555-0432',
-  },
-  {
-    id: '8',
-    firstName: 'Lisa',
-    lastName: 'Martinez',
-    patientId: 'P008',
-    caseNumber: 'CS-2024-008',
-    dateIncharged: new Date('2024-01-22'),
-    dateDischarged: null,
-    status: 'active',
-    department: 'Obstetrics',
-    attendingProvider: 'Dr. Rodriguez',
-    documents: {
-      symptoms: true,
-      diagnosis: true,
-      visitTranscripts: true,
-      aiAnalysis: true,
-      visitNotes: true,
-    },
-    lastVisitDate: new Date('2024-01-22'),
-    age: 28,
-    gender: 'female',
-    phoneNumber: '555-0876',
-  },
-  {
-    id: '9',
-    firstName: 'James',
-    lastName: 'Taylor',
-    patientId: 'P009',
-    caseNumber: 'CS-2024-009',
-    dateIncharged: new Date('2024-01-14'),
-    dateDischarged: new Date('2024-01-21'),
-    status: 'discharged',
-    department: 'Psychiatry',
-    attendingProvider: 'Dr. Wilson',
-    documents: {
-      symptoms: true,
-      diagnosis: true,
-      visitTranscripts: true,
-      aiAnalysis: true,
-      visitNotes: true,
-    },
-    lastVisitDate: new Date('2024-01-21'),
-    age: 34,
-    gender: 'male',
-    phoneNumber: '555-0765',
-  },
-  {
-    id: '10',
-    firstName: 'Maria',
-    lastName: 'Gonzalez',
-    patientId: 'P010',
-    caseNumber: 'CS-2024-010',
-    dateIncharged: new Date('2024-01-23'),
-    dateDischarged: null,
-    status: 'active',
-    department: 'Endocrinology',
-    attendingProvider: 'Dr. Chen',
-    documents: {
-      symptoms: true,
-      diagnosis: true,
-      visitTranscripts: true,
-      aiAnalysis: true,
-      visitNotes: true,
-    },
-    lastVisitDate: new Date('2024-01-23'),
-    age: 51,
-    gender: 'female',
-    phoneNumber: '555-0543',
-  },
-  {
-    id: '11',
-    firstName: 'Christopher',
-    lastName: 'White',
-    patientId: 'P011',
-    caseNumber: 'CS-2024-011',
-    dateIncharged: new Date('2024-01-20'),
-    dateDischarged: null,
-    status: 'active',
-    department: 'Dermatology',
-    attendingProvider: 'Dr. Patel',
-    documents: {
-      symptoms: true,
-      diagnosis: true,
-      visitTranscripts: true,
-      aiAnalysis: true,
-      visitNotes: true,
-    },
-    lastVisitDate: new Date('2024-01-20'),
-    age: 39,
-    gender: 'male',
-    phoneNumber: '555-0321',
-  },
-  {
-    id: '12',
-    firstName: 'Amanda',
-    lastName: 'Thompson',
-    patientId: 'P012',
-    caseNumber: 'CS-2024-012',
-    dateIncharged: new Date('2024-01-19'),
-    dateDischarged: new Date('2024-01-24'),
-    status: 'discharged',
-    department: 'Oncology',
-    attendingProvider: 'Dr. Kumar',
-    documents: {
-      symptoms: true,
-      diagnosis: true,
-      visitTranscripts: true,
-      aiAnalysis: true,
-      visitNotes: true,
-    },
-    lastVisitDate: new Date('2024-01-24'),
-    age: 47,
-    gender: 'female',
-    phoneNumber: '555-0198',
-  },
-];
+// Convert shared Visit data to PatientRecord format
+const convertVisitsToPatients = (visits: Visit[]): PatientRecord[] => {
+  const patientMap = new Map<string, PatientRecord>();
+  
+  visits.forEach((visit, index) => {
+    const patientId = visit.patientId;
+    const nameParts = visit.patientName.split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    
+    if (!patientMap.has(patientId)) {
+      // Create new patient record
+      patientMap.set(patientId, {
+        id: (index + 1).toString(),
+        firstName,
+        lastName,
+        patientId,
+        caseNumber: `CS-2024-${patientId.replace('P', '').padStart(3, '0')}`,
+        dateIncharged: visit.scheduledDateTime,
+        dateDischarged: visit.status === 'completed' ? visit.updatedAt : null,
+        status: visit.status === 'completed' ? 'discharged' : 'active',
+        department: visit.department,
+        attendingProvider: visit.attendingProvider,
+        documents: {
+          symptoms: true,
+          diagnosis: true,
+          visitTranscripts: visit.hasTranscript,
+          aiAnalysis: visit.hasAiAnalysis,
+          visitNotes: visit.hasVisitNotes,
+        },
+        lastVisitDate: visit.scheduledDateTime,
+        age: visit.patientAge,
+        gender: visit.patientGender,
+        phoneNumber: `555-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
+      });
+    } else {
+      // Update existing patient record with latest visit info
+      const existingPatient = patientMap.get(patientId)!;
+      if (visit.scheduledDateTime > existingPatient.lastVisitDate) {
+        existingPatient.lastVisitDate = visit.scheduledDateTime;
+        existingPatient.department = visit.department;
+        existingPatient.attendingProvider = visit.attendingProvider;
+        existingPatient.documents.visitTranscripts = existingPatient.documents.visitTranscripts || visit.hasTranscript;
+        existingPatient.documents.aiAnalysis = existingPatient.documents.aiAnalysis || visit.hasAiAnalysis;
+        existingPatient.documents.visitNotes = existingPatient.documents.visitNotes || visit.hasVisitNotes;
+      }
+    }
+  });
+  
+  return Array.from(patientMap.values());
+};
+
+// Use shared mock data - converted to PatientRecord format
+const mockPatientData: PatientRecord[] = convertVisitsToPatients(mockVisits);
+
 
 // Mock document content data
 const mockDocumentContent = {

@@ -1,4 +1,17 @@
-// Shared mock data for consistent patient/visit information across all pages
+// **SINGLE SOURCE OF TRUTH FOR PATIENT DATA**
+// 
+// This file contains all patient and visit data used throughout the application.
+// ALL pages should import and use this data to ensure consistency.
+// 
+// 🚨 IMPORTANT: When adding new patients, add them here ONLY.
+// The following pages automatically use this data:
+// - Transcripts page
+// - Notes page  
+// - AI Analysis Entry page
+// - Visit Management page (updated to use this)
+// - Patient Management page (derives patients from this data)
+//
+// DO NOT create separate mock data in individual page files.
 
 export interface Visit {
   id: string;
