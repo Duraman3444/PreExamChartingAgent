@@ -21,6 +21,7 @@ import {
   Description,
   Upload,
   SmartToy,
+  Assessment,
 } from '@mui/icons-material';
 import { ROUTES } from '@/constants';
 import { useAuthStore } from '@/stores/authStore';
@@ -65,6 +66,11 @@ const navigationItems = [
     text: 'AI Agent',
     icon: <SmartToy />,
     path: ROUTES.AI_AGENT,
+  },
+  {
+    text: 'AI Evaluation',
+    icon: <Assessment />,
+    path: '/evaluation',
   },
 ];
 

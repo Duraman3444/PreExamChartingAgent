@@ -25,6 +25,7 @@ import TranscriptUpload from '@/pages/TranscriptUpload';
 import TranscriptEditor from '@/pages/TranscriptEditor';
 import Transcripts from '@/pages/Transcripts';
 import Notes from '@/pages/Notes';
+import { EvaluationDashboard } from '@/pages/EvaluationDashboard';
 import { useAuthStore } from '@/stores/authStore';
 import { useAppStore } from '@/stores/appStore';
 import { ROUTES } from '@/constants';
@@ -981,6 +982,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <Settings />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/evaluation"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <EvaluationDashboard />
                 </Layout>
               </ProtectedRoute>
             }
