@@ -11,9 +11,9 @@ const brandColors = {
   lightGray: '#E9ECEF',
 };
 
-export const theme = createTheme({
+export const createAppTheme = (mode: 'light' | 'dark') => createTheme({
   palette: {
-    mode: 'light',
+    mode,
     primary: {
       main: brandColors.orange,
       light: '#FF8533',
@@ -27,14 +27,14 @@ export const theme = createTheme({
       contrastText: '#FFFFFF',
     },
     background: {
-      default: '#F8F9FA',
-      paper: '#FFFFFF',
+      default: mode === 'light' ? '#F8F9FA' : '#121212',
+      paper: mode === 'light' ? '#FFFFFF' : '#1E1E1E',
     },
     text: {
-      primary: '#212529',
-      secondary: '#6C757D',
+      primary: mode === 'light' ? '#212529' : '#FFFFFF',
+      secondary: mode === 'light' ? '#6C757D' : '#AAAAAA',
     },
-    divider: '#DEE2E6',
+    divider: mode === 'light' ? '#DEE2E6' : '#333333',
     success: {
       main: '#28A745',
       light: '#71DD8A',
@@ -63,54 +63,46 @@ export const theme = createTheme({
       fontWeight: 600,
       fontSize: '2.5rem',
       lineHeight: 1.2,
-      color: '#212529',
     },
     h2: {
       fontFamily: '"Clash Display", sans-serif',
       fontWeight: 600,
       fontSize: '2rem',
       lineHeight: 1.3,
-      color: '#212529',
     },
     h3: {
       fontFamily: '"Clash Display", sans-serif',
       fontWeight: 600,
       fontSize: '1.75rem',
       lineHeight: 1.3,
-      color: '#212529',
     },
     h4: {
       fontFamily: '"Clash Display", sans-serif',
       fontWeight: 600,
       fontSize: '1.5rem',
       lineHeight: 1.4,
-      color: '#212529',
     },
     h5: {
       fontFamily: '"Clash Display", sans-serif',
       fontWeight: 600,
       fontSize: '1.25rem',
       lineHeight: 1.4,
-      color: '#212529',
     },
     h6: {
       fontFamily: '"Clash Display", sans-serif',
       fontWeight: 600,
       fontSize: '1.125rem',
       lineHeight: 1.4,
-      color: '#212529',
     },
     body1: {
       fontFamily: 'Manrope, system-ui, sans-serif',
       fontSize: '1rem',
       lineHeight: 1.5,
-      color: '#212529',
     },
     body2: {
       fontFamily: 'Manrope, system-ui, sans-serif',
       fontSize: '0.875rem',
       lineHeight: 1.4,
-      color: '#6C757D',
     },
     button: {
       fontFamily: 'Manrope, system-ui, sans-serif',
@@ -124,15 +116,15 @@ export const theme = createTheme({
   components: {
     MuiCard: {
       styleOverrides: {
-        root: {
-          backgroundColor: '#FFFFFF',
-          border: '1px solid #E9ECEF',
+        root: ({ theme }) => ({
+          backgroundColor: theme.palette.background.paper,
+          border: `1px solid ${theme.palette.divider}`,
           borderRadius: 16,
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          boxShadow: mode === 'light' ? '0 2px 4px rgba(0,0,0,0.1)' : '0 2px 4px rgba(255,255,255,0.1)',
           '&:hover': {
-            boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
+            boxShadow: mode === 'light' ? '0 4px 8px rgba(0,0,0,0.15)' : '0 4px 8px rgba(255,255,255,0.15)',
           },
-        },
+        }),
       },
     },
     MuiButton: {
@@ -144,9 +136,9 @@ export const theme = createTheme({
           textTransform: 'none',
         },
         contained: {
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          boxShadow: mode === 'light' ? '0 2px 4px rgba(0,0,0,0.1)' : '0 2px 4px rgba(255,255,255,0.1)',
           '&:hover': {
-            boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
+            boxShadow: mode === 'light' ? '0 4px 8px rgba(0,0,0,0.15)' : '0 4px 8px rgba(255,255,255,0.15)',
           },
         },
       },
@@ -161,63 +153,66 @@ export const theme = createTheme({
     },
     MuiAppBar: {
       styleOverrides: {
-        root: {
-          backgroundColor: '#FFFFFF',
-          color: '#212529',
+        root: ({ theme }) => ({
+          backgroundColor: theme.palette.background.paper,
+          color: theme.palette.text.primary,
           border: 'none',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          borderBottom: '1px solid #E9ECEF',
-        },
+          boxShadow: mode === 'light' ? '0 2px 4px rgba(0,0,0,0.1)' : '0 2px 4px rgba(255,255,255,0.1)',
+          borderBottom: `1px solid ${theme.palette.divider}`,
+        }),
       },
     },
     MuiDrawer: {
       styleOverrides: {
-        paper: {
-          backgroundColor: '#FFFFFF',
-          borderRight: '1px solid #E9ECEF',
-          boxShadow: '2px 0 4px rgba(0,0,0,0.1)',
-        },
+        paper: ({ theme }) => ({
+          backgroundColor: theme.palette.background.paper,
+          borderRight: `1px solid ${theme.palette.divider}`,
+          boxShadow: mode === 'light' ? '2px 0 4px rgba(0,0,0,0.1)' : '2px 0 4px rgba(255,255,255,0.1)',
+        }),
       },
     },
     MuiListItemText: {
       styleOverrides: {
-        primary: {
-          color: '#212529',
+        primary: ({ theme }) => ({
+          color: theme.palette.text.primary,
           fontWeight: 500,
-        },
-        secondary: {
-          color: '#6C757D',
-        },
+        }),
+        secondary: ({ theme }) => ({
+          color: theme.palette.text.secondary,
+        }),
       },
     },
     MuiListItemButton: {
       styleOverrides: {
-        root: {
+        root: () => ({
           borderRadius: 8,
           margin: '4px 8px',
           '&.Mui-selected': {
-            backgroundColor: '#FFF3E0',
+            backgroundColor: mode === 'light' ? '#FFF3E0' : '#2D1B0D',
             color: brandColors.orange,
             '& .MuiListItemIcon-root': {
               color: brandColors.orange,
             },
             '&:hover': {
-              backgroundColor: '#FFE0B2',
+              backgroundColor: mode === 'light' ? '#FFE0B2' : '#3D2B1D',
             },
           },
           '&:hover': {
-            backgroundColor: '#F8F9FA',
+            backgroundColor: mode === 'light' ? '#F8F9FA' : '#2A2A2A',
           },
-        },
+        }),
       },
     },
     MuiListItemIcon: {
       styleOverrides: {
-        root: {
-          color: '#6C757D',
+        root: ({ theme }) => ({
+          color: theme.palette.text.secondary,
           minWidth: 40,
-        },
+        }),
       },
     },
   },
-}); 
+});
+
+// Default light theme for initial load
+export const theme = createAppTheme('light'); 

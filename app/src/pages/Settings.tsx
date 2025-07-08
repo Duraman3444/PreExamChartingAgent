@@ -44,10 +44,12 @@ import {
   Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { useAuthStore } from '@/stores/authStore';
+import { useAppStore } from '@/stores/appStore';
 import { UserPreferences } from '@/types';
 
 export const Settings: React.FC = () => {
   const { user, setUser } = useAuthStore();
+  const { theme: currentTheme, setTheme } = useAppStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -56,7 +58,7 @@ export const Settings: React.FC = () => {
   
   const [preferences, setPreferences] = useState<UserPreferences>(
     user?.preferences || {
-      theme: 'light',
+      theme: currentTheme,
       language: 'en',
       autoSave: true,
       notificationsEnabled: true,
@@ -67,6 +69,11 @@ export const Settings: React.FC = () => {
 
   const handlePreferenceChange = (key: keyof UserPreferences, value: any) => {
     setPreferences(prev => ({ ...prev, [key]: value }));
+    
+    // Update theme immediately in app store
+    if (key === 'theme') {
+      setTheme(value);
+    }
   };
 
   const handleSave = async () => {

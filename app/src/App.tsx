@@ -26,8 +26,9 @@ import TranscriptEditor from '@/pages/TranscriptEditor';
 import Transcripts from '@/pages/Transcripts';
 import Notes from '@/pages/Notes';
 import { useAuthStore } from '@/stores/authStore';
+import { useAppStore } from '@/stores/appStore';
 import { ROUTES } from '@/constants';
-import { theme } from '@/theme/theme';
+import { createAppTheme } from '@/theme/theme';
 import { mockVisits } from '@/data/mockData';
 
 // Proper page components with visible content
@@ -800,6 +801,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
 function App() {
   const { initialize, isAuthenticated, isLoading } = useAuthStore();
+  const { theme: themeMode } = useAppStore();
+  
+  const theme = createAppTheme(themeMode);
 
   useEffect(() => {
     initialize();
