@@ -226,6 +226,30 @@ flowchart TD
 
 </details>
 
+<details>
+<summary>Future n8n Automation Workflow (Roadmap)</summary>
+
+```mermaid
+flowchart TD
+    A[Webhook: Transcript Upload] --> B[Validate File]
+    B --> C{File Type?}
+    C -->|Audio| D[STT: Whisper Node]
+    C -->|Text| E[Text Validation Node]
+    D --> F[Store Raw Transcript → Firebase]
+    E --> F
+    F --> G[AI Analysis (OpenAI GPT-4 Node)]
+    G --> H[Parse JSON Results]
+    H --> I[Save Structured Chart → Firestore]
+    I --> J[Trigger Decision Branch]
+    J -->|Critical Findings| K[Send Slack Alert 📣]
+    J -->|Routine| L[Generate Provider Email Summary ✉️]
+    I --> M[Update Analytics Dashboard]
+    I --> N[Schedule Follow-up Task → EHR (FHIR)]
+    M --> O[BigQuery Sync]
+```
+
+</details>
+
 ---
 
 ## 🛠️ **Technology Stack**
