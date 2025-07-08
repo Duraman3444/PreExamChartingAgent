@@ -66,6 +66,11 @@ export interface Visit {
   aiAnalysis?: AIAnalysis;
   createdAt: Date;
   updatedAt: Date;
+  _synthetic?: {
+    originalQuestion: string;
+    expectedAnswer: string;
+    datasetSource: string;
+  };
 }
 
 export interface VisitTranscript {

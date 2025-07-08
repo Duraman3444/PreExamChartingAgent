@@ -453,3 +453,261 @@ Doctor: Based on your symptoms, I'd like to run some tests to rule out any serio
     }
   });
 }); 
+
+// AI Evaluation function
+export const evaluateQuestion = functions.https.onRequest(async (request, response) => {
+  return corsHandler(request, response, async () => {
+    try {
+      // Check authentication
+      const authHeader = request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        response.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      const token = authHeader.split('Bearer ')[1];
+      
+      try {
+        await admin.auth().verifyIdToken(token);
+      } catch (error) {
+        response.status(401).json({ error: 'Invalid token' });
+        return;
+      }
+
+      const { question, expectedAnswer, aiAnalysis, evaluationPrompt } = request.body;
+      
+      if (!question || !expectedAnswer || !aiAnalysis) {
+        response.status(400).json({ error: 'Question, expectedAnswer, and aiAnalysis are required' });
+        return;
+      }
+
+      // Call OpenAI API for evaluation
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: evaluationPrompt },
+          { 
+            role: 'user', 
+            content: `ORIGINAL QUESTION: ${question}\n\nEXPECTED ANSWER: ${expectedAnswer}\n\nAI ANALYSIS: ${JSON.stringify(aiAnalysis)}`
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 1000,
+        response_format: { type: 'json_object' }
+      });
+
+      const evaluationText = completion.choices[0]?.message?.content;
+      
+      if (!evaluationText) {
+        throw new Error('No evaluation received from OpenAI');
+      }
+
+      // Parse the JSON response
+      let evaluation;
+      try {
+        evaluation = JSON.parse(evaluationText);
+      } catch (parseError) {
+        throw new Error('Failed to parse evaluation response');
+      }
+
+      response.json(evaluation);
+
+    } catch (error) {
+      console.error('Error evaluating question:', error);
+      response.status(500).json({ 
+        error: 'Failed to evaluate question',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+});
+
+// Batch Analysis function for evaluation
+export const batchAnalyzeQuestions = functions.https.onRequest(async (request, response) => {
+  return corsHandler(request, response, async () => {
+    try {
+      // Check authentication
+      const authHeader = request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        response.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      const token = authHeader.split('Bearer ')[1];
+      
+      try {
+        await admin.auth().verifyIdToken(token);
+      } catch (error) {
+        response.status(401).json({ error: 'Invalid token' });
+        return;
+      }
+
+      const { questions, analysisPrompt } = request.body;
+      
+      if (!questions || !Array.isArray(questions)) {
+        response.status(400).json({ error: 'Questions array is required' });
+        return;
+      }
+
+      const results = [];
+      
+      for (const question of questions) {
+        try {
+          const completion = await openai.chat.completions.create({
+            model: 'gpt-4o',
+            messages: [
+              { role: 'system', content: analysisPrompt },
+              { role: 'user', content: question }
+            ],
+            temperature: 0.1,
+            max_tokens: 1000,
+            response_format: { type: 'json_object' }
+          });
+
+          const analysisText = completion.choices[0]?.message?.content;
+          
+          if (analysisText) {
+            try {
+              const analysis = JSON.parse(analysisText);
+              results.push({
+                question,
+                analysis,
+                success: true
+              });
+            } catch (parseError) {
+              results.push({
+                question,
+                analysis: null,
+                success: false,
+                error: 'Failed to parse analysis'
+              });
+            }
+          } else {
+            results.push({
+              question,
+              analysis: null,
+              success: false,
+              error: 'No analysis received'
+            });
+          }
+        } catch (error) {
+          results.push({
+            question,
+            analysis: null,
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }
+      }
+
+      response.json({ results });
+
+    } catch (error) {
+      console.error('Error in batch analysis:', error);
+      response.status(500).json({ 
+        error: 'Failed to perform batch analysis',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+});
+
+// Enhanced Analysis function with O1 reasoning support
+export const analyzeWithReasoning = functions.https.onRequest(async (request, response) => {
+  return corsHandler(request, response, async () => {
+    try {
+      // Check authentication
+      const authHeader = request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        response.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      const token = authHeader.split('Bearer ')[1];
+      
+      try {
+        await admin.auth().verifyIdToken(token);
+      } catch (error) {
+        response.status(401).json({ error: 'Invalid token' });
+        return;
+      }
+
+      const { transcript, patientContext, modelType = 'o1-mini', analysisPrompt } = request.body;
+      
+      if (!transcript) {
+        response.status(400).json({ error: 'Transcript is required' });
+        return;
+      }
+
+      // Determine model to use
+      const model = modelType === 'o1' ? 'o1-preview' : 'o1-mini';
+      
+      // Call OpenAI API with O1 reasoning
+      const completion = await openai.chat.completions.create({
+        model: model,
+        messages: [
+          { 
+            role: 'user', 
+            content: `${analysisPrompt}\n\nTranscript: ${transcript}\n\nPatient Context: ${JSON.stringify(patientContext || {})}` 
+          }
+        ],
+        temperature: 1.0, // O1 models use temperature 1.0
+        max_completion_tokens: 4000,
+      });
+
+      const analysisText = completion.choices[0]?.message?.content;
+      
+      if (!analysisText) {
+        throw new Error('No analysis received from OpenAI');
+      }
+
+      // Parse the JSON response
+      let analysis;
+      try {
+        analysis = JSON.parse(analysisText);
+      } catch (parseError) {
+        // If JSON parsing fails, create a structured response
+        analysis = {
+          symptoms: [],
+          diagnoses: [],
+          treatments: [],
+          concerns: [],
+          reasoning: analysisText,
+          confidenceScore: 0
+        };
+      }
+
+      // Add reasoning trace information
+      const reasoningTrace = {
+        sessionId: `session-${Date.now()}`,
+        totalSteps: 1,
+        steps: [{
+          id: 'reasoning-1',
+          timestamp: Date.now(),
+          type: 'analysis',
+          title: 'Medical Analysis with Reasoning',
+          content: analysisText,
+          confidence: 0.9
+        }],
+        startTime: Date.now(),
+        endTime: Date.now(),
+        model: model,
+        reasoning: analysisText
+      };
+
+      response.json({
+        ...analysis,
+        reasoningTrace,
+        modelUsed: modelType,
+        thinkingTime: completion.usage?.completion_tokens || 0
+      });
+
+    } catch (error) {
+      console.error('Error analyzing with reasoning:', error);
+      response.status(500).json({ 
+        error: 'Failed to analyze with reasoning',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+}); 

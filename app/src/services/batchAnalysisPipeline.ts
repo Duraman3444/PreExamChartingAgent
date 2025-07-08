@@ -98,7 +98,9 @@ class BatchAnalysisPipeline {
     const processingTimes: number[] = [];
 
     for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-      if (session.status === 'cancelled') break;
+      // Refresh session state to check for cancellation
+      const currentSession = this.activeSessions.get(sessionId);
+      if (currentSession?.status === 'cancelled') break;
 
       const batch = batches[batchIndex];
       session.progress.currentBatch = batchIndex + 1;
@@ -140,8 +142,10 @@ class BatchAnalysisPipeline {
       }
     }
 
-    if (session.status !== 'cancelled') {
-      session.status = 'completed';
+    // Check final status before completion
+    const finalSession = this.activeSessions.get(sessionId);
+    if (finalSession && finalSession.status !== 'cancelled') {
+      finalSession.status = 'completed';
     }
     session.endTime = new Date();
 

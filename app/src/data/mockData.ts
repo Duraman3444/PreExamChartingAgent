@@ -42,6 +42,11 @@ export interface Visit {
   updatedAt: Date;
   lastNoteDate?: Date;
   lastAnalysisDate?: Date;
+  _synthetic?: {
+    originalQuestion: string;
+    expectedAnswer: string;
+    datasetSource: string;
+  };
 }
 
 // Comprehensive mock data with all 12 patients - used across all pages for consistency

@@ -1,11 +1,28 @@
 import OpenAI from 'openai';
 import { medicalResearchService } from './medicalResearch';
 
-// OpenAI Configuration
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true // Note: In production, API calls should go through your backend
-});
+// OpenAI Configuration - Lazy initialization to handle missing API keys gracefully
+let openai: OpenAI | null = null;
+
+const getOpenAIClient = (): OpenAI => {
+  if (!openai) {
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+    if (!apiKey) {
+      console.warn('⚠️ OpenAI API key not found. Using Firebase Functions for AI operations.');
+      // Return a dummy client that will fail gracefully
+      openai = new OpenAI({
+        apiKey: 'placeholder-key-use-firebase-functions',
+        dangerouslyAllowBrowser: true
+      });
+    } else {
+      openai = new OpenAI({
+        apiKey,
+        dangerouslyAllowBrowser: true // Note: In production, API calls should go through your backend
+      });
+    }
+  }
+  return openai;
+};
 
 // Console logging utility for GPT operations
 const logGPTOperation = {
@@ -431,7 +448,7 @@ Please provide a comprehensive medical analysis with detailed reasoning for each
         maxTokens: completionParams.max_completion_tokens || completionParams.max_tokens
       });
 
-      const completion = await openai.chat.completions.create(completionParams);
+      const completion = await getOpenAIClient().chat.completions.create(completionParams);
 
       const processingTime = Date.now() - startTime;
       logGPTOperation.progress(operation, 'API call completed, processing response');
@@ -728,7 +745,7 @@ Please provide a comprehensive medical analysis integrating the research evidenc
         researchEvidenceCount: researchContext.evidence.length
       });
 
-      const completion = await openai.chat.completions.create(completionParams);
+      const completion = await getOpenAIClient().chat.completions.create(completionParams);
 
       const apiCallTime = Date.now() - startTime;
       logGPTOperation.progress(operation, 'API call completed, processing deep analysis response');
@@ -897,7 +914,7 @@ Please provide a comprehensive medical analysis integrating the research evidenc
       logGPTOperation.progress(operation, 'Uploading audio file to OpenAI');
 
       // Use OpenAI Whisper for transcription
-      const transcription = await openai.audio.transcriptions.create({
+      const transcription = await getOpenAIClient().audio.transcriptions.create({
         file: audioFile,
         model: 'whisper-1',
         response_format: 'verbose_json',
@@ -1039,7 +1056,7 @@ Be thorough but concise. Focus on most likely diagnoses and key clinical actions
 
       // Race between OpenAI call and timeout
       const completion = await Promise.race([
-        openai.chat.completions.create({
+        getOpenAIClient().chat.completions.create({
           model: 'gpt-4o',
           messages: [
             { role: 'system', content: systemPrompt },
@@ -1143,7 +1160,7 @@ Be thorough but concise. Focus on most likely diagnoses and key clinical actions
       logGPTOperation.progress(operation, 'Calling OpenAI API with 15s timeout');
 
       const completion = await Promise.race([
-        openai.chat.completions.create({
+        getOpenAIClient().chat.completions.create({
           model: 'gpt-4o',
           messages: [
             { role: 'system', content: systemPrompt },
@@ -1250,7 +1267,7 @@ Be thorough but concise. Focus on most likely diagnoses and key clinical actions
         summaryType: type
       });
 
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAIClient().chat.completions.create({
         model: 'gpt-4o',
         messages: [
           {
@@ -1302,7 +1319,7 @@ Be thorough but concise. Focus on most likely diagnoses and key clinical actions
         requestedModel: model
       });
 
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAIClient().chat.completions.create({
         model: actualModel,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
@@ -1535,7 +1552,7 @@ JSON structure:
       
       Please provide a comprehensive medical analysis integrating the research evidence with clinical reasoning. Focus on evidence-based medicine and current best practices.`;
 
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAIClient().chat.completions.create({
         model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
@@ -1662,7 +1679,7 @@ Focus on:
 - Risk factors
 - Complications`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAIClient().chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
@@ -1693,7 +1710,7 @@ Focus on:
 - Medical conditions mentioned
 - Related disease states`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAIClient().chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
@@ -1733,7 +1750,7 @@ Focus on:
 - Clinical applicability
 - Guidelines from major medical organizations`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAIClient().chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
@@ -1771,7 +1788,7 @@ Return JSON with:
   "recommendations": ["evidence-based recommendations"]
 }`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAIClient().chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
@@ -1822,7 +1839,7 @@ Return JSON with:
   "evidenceLevel": "Overall evidence quality assessment"
 }`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAIClient().chat.completions.create({
       model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
