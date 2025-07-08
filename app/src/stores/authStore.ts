@@ -74,20 +74,35 @@ export const useAuthStore = create<AuthStore>()(
       initialize: async () => {
         set({ isLoading: true });
         
-        // Initialize Firebase auth service
         try {
+          // First, check if there's already a current user in Firebase
+          const currentUser = authService.getCurrentUser();
+          if (currentUser) {
+            // User is already signed in, get their profile
+            const user = await authService.getUserProfile(currentUser.uid);
+            set({ user, isAuthenticated: true, isLoading: false });
+          } else {
+            // No current user, set up the auth state listener
+            set({ user: null, isAuthenticated: false, isLoading: false });
+          }
+          
+          // Set up auth state change listener for future changes
           authService.onAuthStateChanged((user) => {
-            set({ user, isAuthenticated: !!user, isLoading: false });
+            set({ user, isAuthenticated: !!user });
           });
         } catch (error: any) {
           console.error('Firebase auth initialization failed:', error);
-          set({ error: error.message, isLoading: false });
+          set({ error: error.message, isLoading: false, user: null, isAuthenticated: false });
         }
       },
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
+      // Only persist user data, not authentication state
+      // This prevents conflicts with Firebase auth state
+      partialize: (state) => ({ 
+        user: state.user 
+      }),
     }
   )
 ); 

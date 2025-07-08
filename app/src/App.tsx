@@ -776,9 +776,25 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isLoading } = useAuthStore();
   
-  return isAuthenticated ? <>{children}</> : <Navigate to={ROUTES.LOGIN} />;
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '100vh',
+        }}
+      >
+        <Typography variant="h6">Loading...</Typography>
+      </Box>
+    );
+  }
+  
+  return isAuthenticated ? <>{children}</> : <Navigate to={ROUTES.LOGIN} replace />;
 };
 
 function App() {
