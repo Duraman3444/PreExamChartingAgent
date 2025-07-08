@@ -40,12 +40,15 @@ export const Notes: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [showNotesOnly, setShowNotesOnly] = useState(false);
+  const [showNotesOnly, setShowNotesOnly] = useState(true);
 
   useEffect(() => {
     // Use shared mock data for consistency across all pages
     setVisits(mockVisits);
-    setFilteredVisits(mockVisits);
+    
+    // Apply initial filter for notes only
+    const initialFiltered = mockVisits.filter(visit => visit.hasVisitNotes);
+    setFilteredVisits(initialFiltered);
     
     // Debug: Log the visits data
     console.log('Total visits loaded:', mockVisits.length);
@@ -134,25 +137,39 @@ export const Notes: React.FC = () => {
       </Typography>
       
       {/* Debug Summary */}
-      <Box sx={{ mb: 3, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
-        <Typography variant="h6" gutterBottom>
-          Data Summary
+      <Box sx={{ mb: 3, p: 2, bgcolor: 'info.light', borderRadius: 1, border: '1px solid', borderColor: 'info.main' }}>
+        <Typography variant="h6" gutterBottom color="info.contrastText">
+          📊 Notes Overview
         </Typography>
-        <Typography variant="body2" sx={{ mb: 2 }}>
-          Total visits: {visits.length} | 
-          Filtered visits: {filteredVisits.length} | 
-          Visits with notes: {visits.filter(v => v.hasVisitNotes).length}
+        <Typography variant="body2" sx={{ mb: 2 }} color="info.contrastText">
+          <strong>Total visits:</strong> {visits.length} | 
+          <strong> Currently showing:</strong> {filteredVisits.length} | 
+          <strong> Visits with notes:</strong> {visits.filter(v => v.hasVisitNotes).length}
         </Typography>
-        <Typography variant="body2" sx={{ mb: 2 }}>
-          <strong>Patients with notes:</strong> {visits.filter(v => v.hasVisitNotes).map(v => v.patientName).join(', ')}
+        <Typography variant="body2" sx={{ mb: 2 }} color="info.contrastText">
+          <strong>Patients with notes:</strong><br/>
+          {visits.filter(v => v.hasVisitNotes).map((v, index) => (
+            <span key={v.id}>
+              {v.patientName} ({v.notesCount} {v.notesCount === 1 ? 'note' : 'notes'} - {v.notesStatus})
+              {index < visits.filter(v => v.hasVisitNotes).length - 1 ? ', ' : ''}
+            </span>
+          ))}
         </Typography>
-        <Button
-          variant={showNotesOnly ? 'contained' : 'outlined'}
-          size="small"
-          onClick={() => setShowNotesOnly(!showNotesOnly)}
-        >
-          {showNotesOnly ? 'Show All Visits' : 'Show Only Visits with Notes'}
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Button
+            variant={showNotesOnly ? 'contained' : 'outlined'}
+            size="small"
+            onClick={() => setShowNotesOnly(!showNotesOnly)}
+            color="primary"
+          >
+            {showNotesOnly ? 'Show All Visits' : 'Show Only Visits with Notes'}
+          </Button>
+          {showNotesOnly && (
+            <Typography variant="body2" color="info.contrastText" sx={{ fontWeight: 'bold' }}>
+              ✅ Currently filtering to show only visits with notes
+            </Typography>
+          )}
+        </Box>
       </Box>
 
       {/* Filters */}

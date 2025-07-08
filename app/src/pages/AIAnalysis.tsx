@@ -139,6 +139,9 @@ const AIAnalysisPage: React.FC = () => {
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [reviewNotes, setReviewNotes] = useState('');
   const [userRating, setUserRating] = useState<number | null>(null);
+  const [selectedTreatment, setSelectedTreatment] = useState<Treatment | null>(null);
+  const [selectedSymptom, setSelectedSymptom] = useState<Symptom | null>(null);
+  const [selectedDiagnosis, setSelectedDiagnosis] = useState<Diagnosis | null>(null);
   
   // Comprehensive mock analysis data
   const [analysisData] = useState({
@@ -425,12 +428,24 @@ Patient: Yes, I'm allergic to penicillin - I get a rash.`,
   };
 
   const handleViewTreatmentDetails = (treatmentId: string) => {
-    setNotification({
-      message: 'Treatment details expanded. Consider contraindications and alternatives.',
-      type: 'info'
-    });
-    // In a real app, this would open a detailed treatment view
-    console.log('Viewing treatment details:', treatmentId);
+    const treatment = analysisData.treatments.find(t => t.id === treatmentId);
+    if (treatment) {
+      setSelectedTreatment(treatment);
+    }
+  };
+
+  const handleViewSymptomDetails = (symptomId: string) => {
+    const symptom = analysisData.symptoms.find(s => s.id === symptomId);
+    if (symptom) {
+      setSelectedSymptom(symptom);
+    }
+  };
+
+  const handleViewDiagnosisDetails = (diagnosisId: string) => {
+    const diagnosis = analysisData.diagnoses.find(d => d.id === diagnosisId);
+    if (diagnosis) {
+      setSelectedDiagnosis(diagnosis);
+    }
   };
 
   const handleExportTranscript = () => {
@@ -463,22 +478,6 @@ Patient: Yes, I'm allergic to penicillin - I get a rash.`,
       type: 'success'
     });
     console.log('Approving analysis');
-  };
-
-  const handleViewSymptomDetails = (symptomId: string) => {
-    setNotification({
-      message: 'Symptom details expanded. Review source text and confidence.',
-      type: 'info'
-    });
-    console.log('Viewing symptom details:', symptomId);
-  };
-
-  const handleViewDiagnosisDetails = (diagnosisId: string) => {
-    setNotification({
-      message: 'Diagnosis details expanded. Review evidence and reasoning.',
-      type: 'info'
-    });
-    console.log('Viewing diagnosis details:', diagnosisId);
   };
 
   if (isLoading) {
@@ -774,6 +773,17 @@ Patient: Yes, I'm allergic to penicillin - I get a rash.`,
                   <Typography variant="body2" color="text.secondary">
                     <strong>Source:</strong> {symptom.sourceText}
                   </Typography>
+                  
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<VisibilityIcon />}
+                      onClick={() => handleViewSymptomDetails(symptom.id)}
+                    >
+                      View Details
+                    </Button>
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>
@@ -809,6 +819,16 @@ Patient: Yes, I'm allergic to penicillin - I get a rash.`,
                     color={diagnosis.urgency === 'emergent' ? 'error' : diagnosis.urgency === 'urgent' ? 'warning' : 'default'}
                     size="small"
                   />
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewDiagnosisDetails(diagnosis.id);
+                    }}
+                    sx={{ ml: 1 }}
+                  >
+                    <VisibilityIcon />
+                  </IconButton>
                 </Box>
               </Box>
             </AccordionSummary>
@@ -1125,6 +1145,274 @@ Patient: Yes, I'm allergic to penicillin - I get a rash.`,
           </Grid>
         </Grid>
       </TabPanel>
+
+      {/* Treatment Details Modal */}
+      <Dialog 
+        open={!!selectedTreatment} 
+        onClose={() => setSelectedTreatment(null)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Treatment Details: {selectedTreatment?.recommendation || 'Unknown Treatment'}
+        </DialogTitle>
+        <DialogContent>
+          {selectedTreatment && (
+            <Grid container spacing={3} sx={{ mt: 1 }}>
+              <Grid item xs={12} md={6}>
+                <Typography variant="h6" gutterBottom>General Information</Typography>
+                <List dense>
+                  <ListItem>
+                    <ListItemText 
+                      primary="Category" 
+                      secondary={selectedTreatment.category}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText 
+                      primary="Priority" 
+                      secondary={
+                        <Chip 
+                          label={selectedTreatment.priority} 
+                          color={getPriorityColor(selectedTreatment.priority) as any}
+                          size="small"
+                        />
+                      }
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText 
+                      primary="Timeframe" 
+                      secondary={selectedTreatment.timeframe}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText 
+                      primary="Evidence Level" 
+                      secondary={
+                        <Chip 
+                          label={`Level ${selectedTreatment.evidenceLevel}`}
+                          color={getEvidenceColor(selectedTreatment.evidenceLevel) as any}
+                          size="small"
+                        />
+                      }
+                    />
+                  </ListItem>
+                </List>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <Typography variant="h6" gutterBottom>Clinical Details</Typography>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>Expected Outcome:</Typography>
+                  <Typography variant="body2">{selectedTreatment.expectedOutcome}</Typography>
+                </Box>
+                
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>Contraindications:</Typography>
+                  {selectedTreatment.contraindications.map((item, index) => (
+                    <Chip key={index} label={item} size="small" color="error" sx={{ mr: 1, mb: 1 }} />
+                  ))}
+                </Box>
+                
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom>Alternatives:</Typography>
+                  {selectedTreatment.alternatives.map((item, index) => (
+                    <Chip key={index} label={item} size="small" color="info" sx={{ mr: 1, mb: 1 }} />
+                  ))}
+                </Box>
+              </Grid>
+            </Grid>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSelectedTreatment(null)}>Close</Button>
+          <Button variant="contained">Prescribe Treatment</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Symptom Details Modal */}
+      <Dialog 
+        open={!!selectedSymptom} 
+        onClose={() => setSelectedSymptom(null)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Symptom Details: {selectedSymptom?.name}
+        </DialogTitle>
+        <DialogContent>
+          {selectedSymptom && (
+            <Box sx={{ mt: 1 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <Typography variant="subtitle2">Severity:</Typography>
+                  <Chip 
+                    label={selectedSymptom.severity} 
+                    color={getSeverityColor(selectedSymptom.severity) as any}
+                    size="small"
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="subtitle2">Confidence:</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={selectedSymptom.confidence * 100} 
+                      sx={{ flexGrow: 1, mr: 1 }}
+                    />
+                    <Typography variant="body2">{(selectedSymptom.confidence * 100).toFixed(0)}%</Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="subtitle2">Duration:</Typography>
+                  <Typography variant="body2">{selectedSymptom.duration}</Typography>
+                </Grid>
+                {selectedSymptom.location && (
+                  <Grid item xs={6}>
+                    <Typography variant="subtitle2">Location:</Typography>
+                    <Typography variant="body2">{selectedSymptom.location}</Typography>
+                  </Grid>
+                )}
+                {selectedSymptom.quality && (
+                  <Grid item xs={12}>
+                    <Typography variant="subtitle2">Quality:</Typography>
+                    <Typography variant="body2">{selectedSymptom.quality}</Typography>
+                  </Grid>
+                )}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2">Associated Factors:</Typography>
+                  <Box>
+                    {selectedSymptom.associatedFactors.map((factor, index) => (
+                      <Chip key={index} label={factor} size="small" sx={{ mr: 1, mb: 1 }} />
+                    ))}
+                  </Box>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2">Source Text:</Typography>
+                  <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
+                    <Typography variant="body2" style={{ fontStyle: 'italic' }}>
+                      "{selectedSymptom.sourceText}"
+                    </Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSelectedSymptom(null)}>Close</Button>
+          <Button variant="contained">Add to Assessment</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Diagnosis Details Modal */}
+      <Dialog 
+        open={!!selectedDiagnosis} 
+        onClose={() => setSelectedDiagnosis(null)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Diagnosis Details: {selectedDiagnosis?.condition}
+        </DialogTitle>
+        <DialogContent>
+          {selectedDiagnosis && (
+            <Box sx={{ mt: 1 }}>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="h6" gutterBottom>Assessment</Typography>
+                  <List dense>
+                    <ListItem>
+                      <ListItemText 
+                        primary="ICD-10 Code" 
+                        secondary={selectedDiagnosis.icd10Code}
+                      />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText 
+                        primary="Probability" 
+                        secondary={`${(selectedDiagnosis.probability * 100).toFixed(1)}%`}
+                      />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText 
+                        primary="Severity" 
+                        secondary={
+                          <Chip 
+                            label={selectedDiagnosis.severity} 
+                            color={getSeverityColor(selectedDiagnosis.severity) as any}
+                            size="small"
+                          />
+                        }
+                      />
+                    </ListItem>
+                    <ListItem>
+                      <ListItemText 
+                        primary="Urgency" 
+                        secondary={selectedDiagnosis.urgency}
+                      />
+                    </ListItem>
+                  </List>
+                  
+                  <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Reasoning</Typography>
+                  <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
+                    <Typography variant="body2">
+                      {selectedDiagnosis.reasoning}
+                    </Typography>
+                  </Paper>
+                </Grid>
+                
+                <Grid item xs={12} md={6}>
+                  <Typography variant="h6" gutterBottom>Supporting Evidence</Typography>
+                  <List dense>
+                    {selectedDiagnosis.supportingEvidence.map((evidence, index) => (
+                      <ListItem key={index}>
+                        <ListItemIcon>
+                          <CheckCircleIcon color="success" fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary={evidence} />
+                      </ListItem>
+                    ))}
+                  </List>
+                  
+                  {selectedDiagnosis.againstEvidence.length > 0 && (
+                    <>
+                      <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Against Evidence</Typography>
+                      <List dense>
+                        {selectedDiagnosis.againstEvidence.map((evidence, index) => (
+                          <ListItem key={index}>
+                            <ListItemIcon>
+                              <ErrorIcon color="error" fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText primary={evidence} />
+                          </ListItem>
+                        ))}
+                      </List>
+                    </>
+                  )}
+                  
+                  <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Additional Tests Needed</Typography>
+                  <List dense>
+                    {selectedDiagnosis.additionalTestsNeeded.map((test, index) => (
+                      <ListItem key={index}>
+                        <ListItemIcon>
+                          <MedicalServicesIcon color="primary" fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText primary={test} />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSelectedDiagnosis(null)}>Close</Button>
+          <Button variant="contained">Add to Plan</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Export Dialog */}
       <Dialog open={showExportDialog} onClose={() => setShowExportDialog(false)}>
