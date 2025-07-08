@@ -3,6 +3,9 @@ import { collection, addDoc, updateDoc, doc, getDoc, query, where, orderBy, getD
 import { storage, db } from './firebase';
 import { APP_SETTINGS } from '@/constants';
 import { VisitTranscript, TranscriptSegment } from '@/types';
+import { jsPDF } from 'jspdf';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
+import { saveAs } from 'file-saver';
 
 // File validation constants
 export const ACCEPTED_AUDIO_TYPES = [
@@ -437,16 +440,151 @@ export const exportTranscript = async (
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } else if (format === 'pdf') {
-      // TODO: Implement PDF export using jsPDF or similar
-      throw new Error('PDF export not yet implemented');
+      // Export as PDF using jsPDF
+      const pdf = new jsPDF();
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 20;
+      const lineHeight = 7;
+      const maxWidth = pageWidth - 2 * margin;
+      
+      // Add title
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Medical Visit Transcript', margin, margin);
+      
+      // Add metadata
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Generated: ${new Date().toLocaleString()}`, margin, margin + 15);
+      pdf.text(`Document: ${filename}`, margin, margin + 22);
+      
+      // Add transcript content
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      
+      const lines = transcript.split('\n');
+      let yPosition = margin + 35;
+      
+      for (const line of lines) {
+        if (yPosition > pageHeight - margin) {
+          pdf.addPage();
+          yPosition = margin;
+        }
+        
+        if (line.trim()) {
+          const splitLines = pdf.splitTextToSize(line, maxWidth);
+          for (const splitLine of splitLines) {
+            if (yPosition > pageHeight - margin) {
+              pdf.addPage();
+              yPosition = margin;
+            }
+            pdf.text(splitLine, margin, yPosition);
+            yPosition += lineHeight;
+          }
+        } else {
+          yPosition += lineHeight / 2; // Smaller spacing for empty lines
+        }
+      }
+      
+      // Save the PDF
+      pdf.save(`${filename}.pdf`);
     } else if (format === 'docx') {
-      // TODO: Implement DOCX export using docx library
-      throw new Error('DOCX export not yet implemented');
+      // Export as DOCX using docx library
+      const lines = transcript.split('\n');
+      const paragraphs = [];
+      
+      // Add title
+      paragraphs.push(
+        new Paragraph({
+          text: 'Medical Visit Transcript',
+          heading: HeadingLevel.HEADING_1,
+        })
+      );
+      
+      // Add metadata
+      paragraphs.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `Generated: ${new Date().toLocaleString()}`,
+              size: 20,
+              color: '666666',
+            }),
+          ],
+        })
+      );
+      
+      paragraphs.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `Document: ${filename}`,
+              size: 20,
+              color: '666666',
+            }),
+          ],
+        })
+      );
+      
+      // Add empty line
+      paragraphs.push(new Paragraph({ text: '' }));
+      
+      // Add transcript content
+      for (const line of lines) {
+        if (line.trim()) {
+          // Check if line starts with "Doctor:" or "Patient:" to make it bold
+          if (line.startsWith('Doctor:') || line.startsWith('Patient:')) {
+            const [speaker, ...rest] = line.split(':');
+            paragraphs.push(
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: speaker + ':',
+                    bold: true,
+                    size: 22,
+                  }),
+                  new TextRun({
+                    text: rest.join(':'),
+                    size: 22,
+                  }),
+                ],
+              })
+            );
+          } else {
+            paragraphs.push(
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: line,
+                    size: 22,
+                  }),
+                ],
+              })
+            );
+          }
+        } else {
+          paragraphs.push(new Paragraph({ text: '' }));
+        }
+      }
+      
+      const doc = new Document({
+        sections: [
+          {
+            properties: {},
+            children: paragraphs,
+          },
+        ],
+      });
+      
+      const blob = await Packer.toBlob(doc);
+      saveAs(blob, `${filename}.docx`);
     } else {
       throw new Error('Unsupported export format');
     }
   } catch (error) {
-    throw new Error(`Export failed: ${error}`);
+    console.error('Export error:', error);
+    throw new Error(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 

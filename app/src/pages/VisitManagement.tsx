@@ -61,6 +61,7 @@ import {
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants';
+import { exportTranscript } from '@/services/fileUpload';
 
 // Extended visit interface for the management view
 interface VisitRecord {
@@ -123,20 +124,23 @@ const mockVisitData: VisitRecord[] = [
     patientAge: 62,
     patientGender: 'female',
     type: 'follow_up',
-    status: 'in_progress',
+    status: 'completed',
     scheduledDateTime: new Date('2024-01-18T14:00:00'),
     startTime: new Date('2024-01-18T14:02:00'),
+    endTime: new Date('2024-01-18T14:30:00'),
+    duration: 28,
     attendingProvider: 'Dr. Johnson',
     department: 'Cardiology',
-    chiefComplaint: 'Follow-up for hypertension',
+    chiefComplaint: 'Palpitations and fatigue',
+    visitSummary: 'Diagnosed with atrial fibrillation. Started on anticoagulation.',
     priority: 'medium',
-    hasTranscript: false,
-    hasAiAnalysis: false,
-    hasVisitNotes: false,
-    transcriptProcessingStatus: 'pending',
-    aiAnalysisStatus: 'pending',
+    hasTranscript: true,
+    hasAiAnalysis: true,
+    hasVisitNotes: true,
+    transcriptProcessingStatus: 'completed',
+    aiAnalysisStatus: 'completed',
     createdAt: new Date('2024-01-17T10:00:00'),
-    updatedAt: new Date('2024-01-18T14:02:00'),
+    updatedAt: new Date('2024-01-18T14:30:00'),
   },
   {
     id: '3',
@@ -144,20 +148,24 @@ const mockVisitData: VisitRecord[] = [
     patientName: 'Michael Brown',
     patientAge: 38,
     patientGender: 'male',
-    type: 'telemedicine',
-    status: 'scheduled',
+    type: 'consultation',
+    status: 'completed',
     scheduledDateTime: new Date('2024-01-20T10:30:00'),
+    startTime: new Date('2024-01-20T10:35:00'),
+    endTime: new Date('2024-01-20T11:00:00'),
+    duration: 25,
     attendingProvider: 'Dr. Davis',
     department: 'Internal Medicine',
-    chiefComplaint: 'Routine checkup',
-    priority: 'low',
-    hasTranscript: false,
-    hasAiAnalysis: false,
-    hasVisitNotes: false,
-    transcriptProcessingStatus: 'pending',
-    aiAnalysisStatus: 'pending',
+    chiefComplaint: 'Fatigue and gastrointestinal symptoms',
+    visitSummary: 'Epigastric pain with weight loss. Endoscopy scheduled.',
+    priority: 'high',
+    hasTranscript: true,
+    hasAiAnalysis: true,
+    hasVisitNotes: true,
+    transcriptProcessingStatus: 'completed',
+    aiAnalysisStatus: 'completed',
     createdAt: new Date('2024-01-19T09:00:00'),
-    updatedAt: new Date('2024-01-19T09:00:00'),
+    updatedAt: new Date('2024-01-20T11:00:00'),
   },
   {
     id: '4',
@@ -191,19 +199,198 @@ const mockVisitData: VisitRecord[] = [
     patientAge: 55,
     patientGender: 'male',
     type: 'consultation',
-    status: 'cancelled',
+    status: 'completed',
     scheduledDateTime: new Date('2024-01-19T11:00:00'),
+    startTime: new Date('2024-01-19T11:05:00'),
+    endTime: new Date('2024-01-19T11:45:00'),
+    duration: 40,
     attendingProvider: 'Dr. Lee',
     department: 'Orthopedics',
-    chiefComplaint: 'Knee pain',
+    chiefComplaint: 'Knee pain and swelling',
+    visitSummary: 'Osteoarthritis with acute flare. Started NSAIDs and PT.',
     priority: 'medium',
-    hasTranscript: false,
+    hasTranscript: true,
+    hasAiAnalysis: true,
+    hasVisitNotes: true,
+    transcriptProcessingStatus: 'completed',
+    aiAnalysisStatus: 'completed',
+    createdAt: new Date('2024-01-18T14:00:00'),
+    updatedAt: new Date('2024-01-19T11:45:00'),
+  },
+  {
+    id: '6',
+    patientId: 'P006',
+    patientName: 'Emily Davis',
+    patientAge: 8,
+    patientGender: 'female',
+    type: 'consultation',
+    status: 'completed',
+    scheduledDateTime: new Date('2024-01-21T14:30:00'),
+    startTime: new Date('2024-01-21T14:35:00'),
+    endTime: new Date('2024-01-21T15:00:00'),
+    duration: 25,
+    attendingProvider: 'Dr. Miller',
+    department: 'Pediatrics',
+    chiefComplaint: 'Fever and cough',
+    visitSummary: 'Viral upper respiratory infection. Supportive care recommended.',
+    priority: 'low',
+    hasTranscript: true,
     hasAiAnalysis: false,
     hasVisitNotes: false,
+    transcriptProcessingStatus: 'completed',
+    aiAnalysisStatus: 'pending',
+    createdAt: new Date('2024-01-21T14:00:00'),
+    updatedAt: new Date('2024-01-21T15:00:00'),
+  },
+  {
+    id: '7',
+    patientId: 'P007',
+    patientName: 'David Anderson',
+    patientAge: 42,
+    patientGender: 'male',
+    type: 'urgent_care',
+    status: 'completed',
+    scheduledDateTime: new Date('2024-01-17T16:00:00'),
+    startTime: new Date('2024-01-17T16:05:00'),
+    endTime: new Date('2024-01-17T18:30:00'),
+    duration: 145,
+    attendingProvider: 'Dr. Garcia',
+    department: 'Surgery',
+    chiefComplaint: 'Severe abdominal pain',
+    visitSummary: 'Acute appendicitis. Emergency appendectomy performed successfully.',
+    priority: 'urgent',
+    hasTranscript: true,
+    hasAiAnalysis: true,
+    hasVisitNotes: true,
+    transcriptProcessingStatus: 'completed',
+    aiAnalysisStatus: 'completed',
+    createdAt: new Date('2024-01-17T15:30:00'),
+    updatedAt: new Date('2024-01-17T19:00:00'),
+  },
+  {
+    id: '8',
+    patientId: 'P008',
+    patientName: 'Lisa Martinez',
+    patientAge: 28,
+    patientGender: 'female',
+    type: 'follow_up',
+    status: 'completed',
+    scheduledDateTime: new Date('2024-01-22T10:00:00'),
+    startTime: new Date('2024-01-22T10:05:00'),
+    endTime: new Date('2024-01-22T10:45:00'),
+    duration: 40,
+    attendingProvider: 'Dr. Rodriguez',
+    department: 'Obstetrics',
+    chiefComplaint: 'Decreased fetal movement at 32 weeks',
+    visitSummary: 'Fetal monitoring reassuring. Kick count instructions provided.',
+    priority: 'medium',
+    hasTranscript: true,
+    hasAiAnalysis: false,
+    hasVisitNotes: true,
+    transcriptProcessingStatus: 'completed',
+    aiAnalysisStatus: 'processing',
+    createdAt: new Date('2024-01-22T09:30:00'),
+    updatedAt: new Date('2024-01-22T10:45:00'),
+  },
+  {
+    id: '9',
+    patientId: 'P009',
+    patientName: 'James Taylor',
+    patientAge: 34,
+    patientGender: 'male',
+    type: 'consultation',
+    status: 'completed',
+    scheduledDateTime: new Date('2024-01-14T13:00:00'),
+    startTime: new Date('2024-01-14T13:05:00'),
+    endTime: new Date('2024-01-14T14:00:00'),
+    duration: 55,
+    attendingProvider: 'Dr. Wilson',
+    department: 'Psychiatry',
+    chiefComplaint: 'Depression and anxiety symptoms',
+    visitSummary: 'Major depressive disorder diagnosed. Started sertraline and therapy.',
+    priority: 'medium',
+    hasTranscript: true,
+    hasAiAnalysis: true,
+    hasVisitNotes: true,
+    transcriptProcessingStatus: 'completed',
+    aiAnalysisStatus: 'completed',
+    createdAt: new Date('2024-01-14T12:30:00'),
+    updatedAt: new Date('2024-01-14T14:30:00'),
+  },
+  {
+    id: '10',
+    patientId: 'P010',
+    patientName: 'Maria Gonzalez',
+    patientAge: 51,
+    patientGender: 'female',
+    type: 'consultation',
+    status: 'completed',
+    scheduledDateTime: new Date('2024-01-23T09:00:00'),
+    startTime: new Date('2024-01-23T09:05:00'),
+    endTime: new Date('2024-01-23T10:00:00'),
+    duration: 55,
+    attendingProvider: 'Dr. Chen',
+    department: 'Endocrinology',
+    chiefComplaint: 'Polyuria, polydipsia, and fatigue',
+    visitSummary: 'New diagnosis of Type 2 diabetes. Started metformin and education.',
+    priority: 'high',
+    hasTranscript: false,
+    hasAiAnalysis: false,
+    hasVisitNotes: true,
     transcriptProcessingStatus: 'pending',
     aiAnalysisStatus: 'pending',
-    createdAt: new Date('2024-01-18T14:00:00'),
-    updatedAt: new Date('2024-01-19T10:30:00'),
+    createdAt: new Date('2024-01-23T08:30:00'),
+    updatedAt: new Date('2024-01-23T10:15:00'),
+  },
+  {
+    id: '11',
+    patientId: 'P011',
+    patientName: 'Christopher White',
+    patientAge: 39,
+    patientGender: 'male',
+    type: 'consultation',
+    status: 'completed',
+    scheduledDateTime: new Date('2024-01-20T15:00:00'),
+    startTime: new Date('2024-01-20T15:05:00'),
+    endTime: new Date('2024-01-20T15:30:00'),
+    duration: 25,
+    attendingProvider: 'Dr. Patel',
+    department: 'Dermatology',
+    chiefComplaint: 'Generalized rash and itching',
+    visitSummary: 'Contact dermatitis from new detergent. Topical steroid prescribed.',
+    priority: 'low',
+    hasTranscript: true,
+    hasAiAnalysis: true,
+    hasVisitNotes: true,
+    transcriptProcessingStatus: 'completed',
+    aiAnalysisStatus: 'completed',
+    createdAt: new Date('2024-01-20T14:30:00'),
+    updatedAt: new Date('2024-01-20T15:45:00'),
+  },
+  {
+    id: '12',
+    patientId: 'P012',
+    patientName: 'Amanda Thompson',
+    patientAge: 47,
+    patientGender: 'female',
+    type: 'consultation',
+    status: 'completed',
+    scheduledDateTime: new Date('2024-01-19T11:00:00'),
+    startTime: new Date('2024-01-19T11:05:00'),
+    endTime: new Date('2024-01-19T12:00:00'),
+    duration: 55,
+    attendingProvider: 'Dr. Kumar',
+    department: 'Oncology',
+    chiefComplaint: 'Persistent cough with hemoptysis and weight loss',
+    visitSummary: 'Lung adenocarcinoma diagnosed. Oncology treatment planning initiated.',
+    priority: 'urgent',
+    hasTranscript: true,
+    hasAiAnalysis: true,
+    hasVisitNotes: true,
+    transcriptProcessingStatus: 'completed',
+    aiAnalysisStatus: 'completed',
+    createdAt: new Date('2024-01-19T10:30:00'),
+    updatedAt: new Date('2024-01-19T12:30:00'),
   },
 ];
 
@@ -215,6 +402,83 @@ interface VisitDetailsProps {
 
 const VisitDetails: React.FC<VisitDetailsProps> = ({ open, onClose, visit }) => {
   const navigate = useNavigate();
+  
+  const handleDownloadTranscript = async (visitRecord: VisitRecord) => {
+    try {
+      // Generate mock transcript content for download
+      const transcriptContent = `
+**Visit Transcript**
+**Patient:** ${visitRecord.patientName} (${visitRecord.patientId})
+**Date:** ${format(visitRecord.scheduledDateTime, 'PPP')}
+**Provider:** ${visitRecord.attendingProvider}
+**Department:** ${visitRecord.department}
+**Type:** ${visitRecord.type.replace('_', ' ').toUpperCase()}
+**Duration:** ${visitRecord.duration || 'N/A'} minutes
+
+**Chief Complaint:** ${visitRecord.chiefComplaint || 'N/A'}
+
+**Visit Summary:** ${visitRecord.visitSummary || 'N/A'}
+
+**Transcript Status:** ${visitRecord.transcriptProcessingStatus}
+**AI Analysis Status:** ${visitRecord.aiAnalysisStatus}
+
+Generated on: ${format(new Date(), 'PPpp')}
+      `.trim();
+      
+      const filename = `visit-transcript-${visitRecord.patientId}-${format(visitRecord.scheduledDateTime, 'yyyy-MM-dd')}`;
+      await exportTranscript(transcriptContent, 'pdf', filename);
+    } catch (error) {
+      console.error('Failed to download transcript:', error);
+      // You might want to show an error message here
+    }
+  };
+  
+  const handleDownloadAiAnalysis = async (visitRecord: VisitRecord) => {
+    try {
+      // Generate mock AI analysis content for download
+      const aiAnalysisContent = `
+**AI Analysis Report**
+**Patient:** ${visitRecord.patientName} (${visitRecord.patientId})
+**Visit Date:** ${format(visitRecord.scheduledDateTime, 'PPP')}
+**Provider:** ${visitRecord.attendingProvider}
+**Generated:** ${format(new Date(), 'PPpp')}
+
+**VISIT OVERVIEW**
+• Type: ${visitRecord.type.replace('_', ' ').toUpperCase()}
+• Department: ${visitRecord.department}
+• Duration: ${visitRecord.duration || 'N/A'} minutes
+• Priority: ${visitRecord.priority.toUpperCase()}
+
+**CHIEF COMPLAINT**
+${visitRecord.chiefComplaint || 'No chief complaint documented'}
+
+**VISIT SUMMARY**
+${visitRecord.visitSummary || 'No visit summary available'}
+
+**AI ANALYSIS STATUS**
+Processing Status: ${visitRecord.aiAnalysisStatus}
+Transcript Status: ${visitRecord.transcriptProcessingStatus}
+
+**DOCUMENTATION STATUS**
+• Transcript Available: ${visitRecord.hasTranscript ? 'Yes' : 'No'}
+• AI Analysis Complete: ${visitRecord.hasAiAnalysis ? 'Yes' : 'No'}
+• Visit Notes Available: ${visitRecord.hasVisitNotes ? 'Yes' : 'No'}
+
+**RECOMMENDATIONS**
+• Follow up with patient as needed
+• Review analysis results with attending physician
+• Ensure all documentation is complete
+
+Generated by Care Plus AI Analysis System
+      `.trim();
+      
+      const filename = `ai-analysis-${visitRecord.patientId}-${format(visitRecord.scheduledDateTime, 'yyyy-MM-dd')}`;
+      await exportTranscript(aiAnalysisContent, 'pdf', filename);
+    } catch (error) {
+      console.error('Failed to download AI analysis:', error);
+      // You might want to show an error message here
+    }
+  };
   
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -388,6 +652,14 @@ const VisitDetails: React.FC<VisitDetailsProps> = ({ open, onClose, visit }) => 
                         >
                           View Transcript
                         </Button>
+                        <Button
+                          size="small"
+                          startIcon={<DownloadIcon />}
+                          onClick={() => handleDownloadTranscript(visit)}
+                          sx={{ ml: 1 }}
+                        >
+                          Download
+                        </Button>
                       </Box>
                     )}
                   </CardContent>
@@ -413,6 +685,14 @@ const VisitDetails: React.FC<VisitDetailsProps> = ({ open, onClose, visit }) => 
                           onClick={() => navigate(ROUTES.AI_ANALYSIS)}
                         >
                           View Analysis
+                        </Button>
+                        <Button
+                          size="small"
+                          startIcon={<DownloadIcon />}
+                          onClick={() => handleDownloadAiAnalysis(visit)}
+                          sx={{ ml: 1 }}
+                        >
+                          Download
                         </Button>
                       </Box>
                     )}
