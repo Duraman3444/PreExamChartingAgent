@@ -42,6 +42,7 @@ import {
   Security as SecurityIcon,
 } from '@mui/icons-material';
 import { mockVisits } from '@/data/mockData';
+import { validateAIIntegration, type AIValidationResult } from '@/utils/aiTestUtils';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -125,6 +126,27 @@ interface ConcernFlag {
   requiresImmediateAction: boolean;
 }
 
+interface ReasoningStep {
+  id: string;
+  timestamp: number;
+  type: 'analysis' | 'research' | 'evaluation' | 'synthesis' | 'decision' | 'validation';
+  title: string;
+  content: string;
+  confidence: number;
+  evidence?: string[];
+  considerations?: string[];
+}
+
+interface ReasoningTrace {
+  sessionId: string;
+  totalSteps: number;
+  steps: ReasoningStep[];
+  startTime: number;
+  endTime?: number;
+  model: string;
+  reasoning: string;
+}
+
 interface AIAgentAnalysis {
   symptoms: Symptom[];
   diagnoses: Diagnosis[];
@@ -133,6 +155,9 @@ interface AIAgentAnalysis {
   confidenceScore: number;
   reasoning: string;
   nextSteps: string[];
+  reasoningTrace?: ReasoningTrace;
+  modelUsed?: 'o1' | 'o1-mini' | 'gpt-4o';
+  thinkingTime?: number;
 }
 
 const AIAgent: React.FC = () => {
@@ -163,6 +188,9 @@ const AIAgent: React.FC = () => {
   const [analysis, setAnalysis] = useState<AIAgentAnalysis | null>(null);
   const [tabValue, setTabValue] = useState(0);
   const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [testResult, setTestResult] = useState<AIValidationResult | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
+  const [analysisMode, setAnalysisMode] = useState<'quick' | 'o1_deep_reasoning'>('quick');
 
   const patients = mockVisits.map(visit => ({
     id: visit.patientId,
@@ -227,8 +255,7 @@ const AIAgent: React.FC = () => {
     }));
   };
 
-  const generateMockAnalysis = (patientData: any): AIAgentAnalysis => {
-    // Generate mock analysis based on patient data
+  const generatePatientTranscript = (patientData: any): string => {
     const isExisting = patientType === 'existing';
     const hasAdditionalInfo = isExisting && patientData.additionalInfo && 
       Object.values(patientData.additionalInfo).some((value: any) => value && value.trim !== '' && value.trim && value.trim() !== '');
@@ -242,104 +269,47 @@ const AIAgent: React.FC = () => {
       ? patientData.additionalInfo?.currentSymptoms 
       : patientData.symptoms;
     
-    const symptomsArray: Symptom[] = [
-      {
-        id: 'sym-1',
-        name: chiefComplaint || 'Primary concern',
-        severity: 'moderate',
-        confidence: 0.95,
-        duration: 'Recent onset',
-        location: 'As described',
-        quality: 'Patient reported',
-        associatedFactors: ['current presentation'],
-        sourceText: `Patient reports: ${chiefComplaint || 'general symptoms'}`
-      }
-    ];
-
-    // Add additional symptoms if provided
-    if (symptoms && symptoms.trim() !== '') {
-      symptomsArray.push({
-        id: 'sym-2',
-        name: 'Additional symptoms',
-        severity: 'mild',
-        confidence: 0.88,
-        duration: 'Variable',
-        location: 'Multiple',
-        quality: 'Associated symptoms',
-        associatedFactors: ['primary complaint'],
-        sourceText: `Additional symptoms: ${symptoms}`
-      });
-    }
-
-          const diagnoses: Diagnosis[] = [
-        {
-          id: 'dx-1',
-          condition: isExisting ? 'Follow-up assessment' : 'Primary differential diagnosis',
-          icd10Code: 'Z00.00',
-          probability: 0.85,
-          severity: 'medium',
-          supportingEvidence: [
-            'patient history', 
-            'presenting symptoms',
-            ...(isExisting && hasAdditionalInfo ? ['existing patient records', 'follow-up presentation'] : []),
-            ...(isExisting && !hasAdditionalInfo ? ['existing patient records', 'historical data'] : [])
-          ],
-          againstEvidence: ['no contraindications noted'],
-          additionalTestsNeeded: ['laboratory studies', 'imaging if indicated'],
-          reasoning: isExisting 
-            ? (hasAdditionalInfo 
-                ? `Based on existing patient history and current presentation: ${chiefComplaint}. Additional information provided helps refine the clinical assessment.`
-                : `Based on existing patient history for ${patientData.name}. Previous visit: ${patientData.recentVisit}. Analysis uses historical data; current symptoms would enhance accuracy.`)
-            : 'Based on patient presentation and clinical history, this is the most likely diagnosis requiring further evaluation.',
-          urgency: 'routine'
+    let transcript = `Patient Visit Summary\n\n`;
+    
+    if (isExisting) {
+      transcript += `Patient: ${patientData.name}\n`;
+      transcript += `Age: ${patientData.age}\n`;
+      transcript += `Gender: ${patientData.gender}\n`;
+      transcript += `Previous Medical History: ${patientData.medicalHistory}\n`;
+      transcript += `Known Allergies: ${patientData.allergies}\n`;
+      transcript += `Current Medications: ${patientData.medications}\n`;
+      transcript += `Recent Visit: ${patientData.recentVisit}\n\n`;
+      
+      if (hasAdditionalInfo) {
+        transcript += `Current Visit Information:\n`;
+        transcript += `Chief Complaint: ${chiefComplaint}\n`;
+        if (symptoms) transcript += `Current Symptoms: ${symptoms}\n`;
+        if (patientData.additionalInfo.newMedicalHistory) {
+          transcript += `New Medical History: ${patientData.additionalInfo.newMedicalHistory}\n`;
         }
-      ];
-
-    const treatments: Treatment[] = [
-      {
-        id: 'tx-1',
-        category: 'medication',
-        recommendation: 'Symptomatic treatment as appropriate',
-        priority: 'medium',
-        timeframe: 'As needed',
-        contraindications: ['known allergies'],
-        alternatives: ['lifestyle modifications'],
-        expectedOutcome: 'Symptom improvement expected',
-        evidenceLevel: 'B'
+        if (patientData.additionalInfo.currentMedications) {
+          transcript += `Current Medications: ${patientData.additionalInfo.currentMedications}\n`;
+        }
+        if (patientData.additionalInfo.newAllergies) {
+          transcript += `New Allergies: ${patientData.additionalInfo.newAllergies}\n`;
+        }
+        if (patientData.additionalInfo.additionalInfo) {
+          transcript += `Additional Information: ${patientData.additionalInfo.additionalInfo}\n`;
+        }
       }
-    ];
-
-    const concerns: ConcernFlag[] = [
-      {
-        id: 'flag-1',
-        type: 'red_flag',
-        severity: 'medium',
-        message: 'Monitor for symptom progression',
-        recommendation: 'Regular follow-up recommended',
-        requiresImmediateAction: false
-      }
-    ];
-
-          return {
-        symptoms: symptomsArray,
-        diagnoses,
-        treatments,
-        concerns,
-        confidenceScore: 0.87,
-        reasoning: isExisting 
-          ? (hasAdditionalInfo 
-              ? `AI analysis based on existing patient records and additional information provided. Patient: ${patientData.name}. Current presentation analysis incorporates previous medical history and current symptoms.`
-              : `AI analysis based on existing patient records for ${patientData.name}. Analysis uses historical data from previous visits. Additional current information would enhance assessment accuracy.`)
-          : 'AI analysis based on provided patient information. Clinical correlation and physician review recommended.',
-        nextSteps: [
-          'Review with attending physician',
-          'Consider additional diagnostic tests',
-          'Monitor patient response to treatment',
-          'Schedule appropriate follow-up',
-          ...(isExisting && hasAdditionalInfo ? ['Update patient records with new information'] : []),
-          ...(isExisting && !hasAdditionalInfo ? ['Consider gathering current symptoms and presentation details'] : [])
-        ]
-      };
+    } else {
+      transcript += `Patient: ${patientData.firstName} ${patientData.lastName}\n`;
+      transcript += `Age: ${patientData.age}\n`;
+      transcript += `Gender: ${patientData.gender}\n`;
+      transcript += `Chief Complaint: ${chiefComplaint}\n`;
+      if (symptoms) transcript += `Symptoms: ${symptoms}\n`;
+      if (patientData.medicalHistory) transcript += `Medical History: ${patientData.medicalHistory}\n`;
+      if (patientData.medications) transcript += `Current Medications: ${patientData.medications}\n`;
+      if (patientData.allergies) transcript += `Known Allergies: ${patientData.allergies}\n`;
+      if (patientData.additionalInfo) transcript += `Additional Information: ${patientData.additionalInfo}\n`;
+    }
+    
+    return transcript;
   };
 
   const handleRunAnalysis = async () => {
@@ -347,7 +317,7 @@ const AIAgent: React.FC = () => {
     setAnalysisProgress(0);
 
     try {
-      // Simulate analysis progress
+      // Progress tracking
       const progressInterval = setInterval(() => {
         setAnalysisProgress(prev => {
           if (prev >= 90) {
@@ -356,10 +326,9 @@ const AIAgent: React.FC = () => {
           }
           return prev + 10;
         });
-      }, 200);
+      }, 300);
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
+      // Get patient data
       let patientData;
       if (patientType === 'existing') {
         const patient = uniquePatients.find(p => p.id === selectedPatient);
@@ -371,13 +340,184 @@ const AIAgent: React.FC = () => {
         patientData = newPatientData;
       }
 
-      const analysisResult = generateMockAnalysis(patientData);
-      setAnalysis(analysisResult);
+      // Generate transcript from patient data
+      const transcript = generatePatientTranscript(patientData);
+      
+      // Import OpenAI service
+      const { openAIService } = await import('../services/openai');
+      
+      // Check if OpenAI is configured
+      if (!openAIService.isConfigured()) {
+        console.warn('OpenAI not configured, falling back to mock analysis');
+        
+        // Generate fallback mock analysis
+        const mockAnalysis: AIAgentAnalysis = {
+          symptoms: [{
+            id: 'sym-1',
+            name: 'Primary concern (Mock Analysis)',
+            severity: 'moderate',
+            confidence: 0.85,
+            duration: 'Recent onset',
+            location: 'As described',
+            quality: 'Patient reported',
+            associatedFactors: ['current presentation'],
+            sourceText: `Patient reports symptoms - OpenAI API not configured`
+          }],
+          diagnoses: [{
+            id: 'dx-1',
+            condition: 'Requires real OpenAI API for analysis',
+            icd10Code: 'Z00.00',
+            probability: 0.5,
+            severity: 'medium',
+            supportingEvidence: ['patient history', 'presenting symptoms'],
+            againstEvidence: ['OpenAI API not configured'],
+            additionalTestsNeeded: ['Configure OpenAI API key'],
+            reasoning: 'OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your .env file for real analysis.',
+            urgency: 'routine'
+          }],
+          treatments: [{
+            id: 'tx-1',
+            category: 'medication',
+            recommendation: 'Configure OpenAI API for real treatment recommendations',
+            priority: 'high',
+            timeframe: 'Immediate',
+            contraindications: ['Missing API configuration'],
+            alternatives: ['Set up OpenAI API key'],
+            expectedOutcome: 'Real AI analysis capabilities',
+            evidenceLevel: 'A'
+          }],
+          concerns: [{
+            id: 'flag-1',
+            type: 'red_flag',
+            severity: 'high',
+            message: 'OpenAI API not configured',
+            recommendation: 'Add VITE_OPENAI_API_KEY to .env file',
+            requiresImmediateAction: true
+          }],
+          confidenceScore: 0.1,
+          reasoning: 'This is a mock analysis because OpenAI API is not configured. To get real medical AI analysis, please configure your OpenAI API key.',
+          nextSteps: [
+            'Configure OpenAI API key in .env file',
+            'Restart the application',
+            'Run analysis again for real AI insights'
+          ]
+        };
+        
+        clearInterval(progressInterval);
+        setAnalysis(mockAnalysis);
+        setAnalysisProgress(100);
+        setTabValue(1);
+        return;
+      }
+
+      // Prepare patient context for OpenAI
+      const patientContext = {
+        age: (patientData as any).age,
+        gender: (patientData as any).gender,
+        medicalHistory: (patientData as any).medicalHistory,
+        medications: (patientData as any).medications,
+        allergies: (patientData as any).allergies,
+        familyHistory: (patientData as any).familyHistory || '',
+        socialHistory: (patientData as any).socialHistory || ''
+      };
+
+      // Use real OpenAI analysis with appropriate model
+      let aiAnalysis: AIAgentAnalysis;
+      
+      if (analysisMode === 'quick') {
+        const analysisResult = await openAIService.quickAnalyzeTranscript(transcript);
+        aiAnalysis = {
+          symptoms: analysisResult.symptoms,
+          diagnoses: analysisResult.diagnoses,
+          treatments: analysisResult.treatments,
+          concerns: analysisResult.concerns,
+          confidenceScore: analysisResult.confidenceScore,
+          reasoning: analysisResult.reasoning,
+          nextSteps: analysisResult.nextSteps,
+          modelUsed: 'gpt-4o'
+        };
+      } else {
+        // O1 Deep Reasoning
+        const o1DeepResult = await openAIService.deepMedicalAnalysisWithReasoning(transcript, patientContext, 'o1');
+        aiAnalysis = {
+          symptoms: [], // Will be populated from deep analysis
+          diagnoses: [o1DeepResult.primaryDiagnosis, ...o1DeepResult.differentialDiagnoses],
+          treatments: o1DeepResult.clinicalRecommendations,
+          concerns: o1DeepResult.emergencyFlags,
+          confidenceScore: o1DeepResult.confidenceAssessment.consistencyScore,
+          reasoning: `Deep O1 analysis with evidence integration. Evidence quality: ${o1DeepResult.confidenceAssessment.evidenceQuality}. Research evidence: ${o1DeepResult.researchEvidence.map(e => e.source).join(', ')}`,
+          nextSteps: o1DeepResult.followUpProtocol,
+          reasoningTrace: o1DeepResult.reasoningTrace,
+          modelUsed: o1DeepResult.modelUsed,
+          thinkingTime: o1DeepResult.thinkingTime
+        };
+      }
+
+      clearInterval(progressInterval);
+      setAnalysis(aiAnalysis);
       setAnalysisProgress(100);
       setTabValue(1);
 
     } catch (error) {
       console.error('Analysis failed:', error);
+      
+      // Fallback to mock analysis on error
+      const errorAnalysis: AIAgentAnalysis = {
+        symptoms: [{
+          id: 'sym-error',
+          name: 'Analysis Error',
+          severity: 'critical',
+          confidence: 0.1,
+          duration: 'System error',
+          location: 'API service',
+          quality: 'Error condition',
+          associatedFactors: ['API failure'],
+          sourceText: `Error occurred during analysis: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        diagnoses: [{
+          id: 'dx-error',
+          condition: 'Analysis service error',
+          icd10Code: 'Z99.9',
+          probability: 0.1,
+          severity: 'critical',
+          supportingEvidence: ['system error'],
+          againstEvidence: ['normal operation'],
+          additionalTestsNeeded: ['check API configuration', 'verify network connectivity'],
+          reasoning: `Failed to complete AI analysis: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          urgency: 'urgent'
+        }],
+        treatments: [{
+          id: 'tx-error',
+          category: 'monitoring',
+          recommendation: 'Check system configuration and try again',
+          priority: 'urgent',
+          timeframe: 'Immediate',
+          contraindications: ['system errors'],
+          alternatives: ['manual analysis', 'retry with different parameters'],
+          expectedOutcome: 'System restoration',
+          evidenceLevel: 'D'
+        }],
+        concerns: [{
+          id: 'flag-error',
+          type: 'red_flag',
+          severity: 'critical',
+          message: 'Analysis system error',
+          recommendation: 'Contact system administrator',
+          requiresImmediateAction: true
+        }],
+        confidenceScore: 0.1,
+        reasoning: 'Analysis could not be completed due to system error. Please check configuration and try again.',
+        nextSteps: [
+          'Verify OpenAI API key configuration',
+          'Check network connectivity',
+          'Review error logs',
+          'Contact technical support if issue persists'
+        ]
+      };
+      
+      setAnalysis(errorAnalysis);
+      setAnalysisProgress(100);
+      setTabValue(1);
     } finally {
       setIsAnalyzing(false);
     }
@@ -421,6 +561,19 @@ const AIAgent: React.FC = () => {
       case 'C': return 'warning';
       case 'D': return 'error';
       default: return 'default';
+    }
+  };
+
+  const handleTestAI = async () => {
+    setIsTesting(true);
+    try {
+      const result = await validateAIIntegration();
+      setTestResult(result);
+      console.log('AI Test Results:', result);
+    } catch (error) {
+      console.error('AI Test Failed:', error);
+    } finally {
+      setIsTesting(false);
     }
   };
 
@@ -702,6 +855,37 @@ const AIAgent: React.FC = () => {
                 </Stack>
               )}
 
+              <FormControl fullWidth sx={{ mt: 2 }}>
+                <InputLabel>Analysis Mode</InputLabel>
+                <Select
+                  value={analysisMode}
+                  label="Analysis Mode"
+                  onChange={(e) => setAnalysisMode(e.target.value as 'quick' | 'o1_deep_reasoning')}
+                  disabled={isAnalyzing}
+                >
+                  <MenuItem value="quick">
+                    <Box>
+                      <Typography variant="body2" fontWeight="bold">
+                        Quick Analysis (5-15 seconds)
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Rapid assessment with core diagnoses - GPT-4o
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="o1_deep_reasoning">
+                    <Box>
+                      <Typography variant="body2" fontWeight="bold">
+                        🧠🔬 O1 Deep Research + Reasoning (60-120 seconds)
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Advanced reasoning + research integration with full thinking process - O1
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                </Select>
+              </FormControl>
+
               <Button
                 fullWidth
                 variant="contained"
@@ -709,10 +893,57 @@ const AIAgent: React.FC = () => {
                 startIcon={<PsychologyIcon />}
                 onClick={handleRunAnalysis}
                 disabled={!canRunAnalysis() || isAnalyzing}
-                sx={{ mt: 3 }}
+                sx={{ mt: 2 }}
               >
-                {isAnalyzing ? 'Analyzing...' : 'Run AI Analysis'}
+                {isAnalyzing ? 'Analyzing...' : `Run ${
+                  analysisMode === 'quick' ? 'Quick' : 'O1 Deep Research'
+                } AI Analysis`}
               </Button>
+
+              <Button
+                fullWidth
+                variant="outlined"
+                size="medium"
+                startIcon={<SecurityIcon />}
+                onClick={handleTestAI}
+                disabled={isTesting}
+                sx={{ mt: 2 }}
+              >
+                {isTesting ? 'Testing AI...' : 'Test AI Integration'}
+              </Button>
+
+              {testResult && (
+                <Alert 
+                  severity={testResult.isWorking && testResult.isRealAI ? 'success' : 'warning'}
+                  sx={{ mt: 2 }}
+                >
+                  <Typography variant="body2" gutterBottom>
+                    <strong>AI Integration Test Results:</strong>
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    • API Working: {testResult.isWorking ? '✅' : '❌'}
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    • Real AI: {testResult.isRealAI ? '✅' : '❌'}
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    • Medical Accuracy: {testResult.medicalAccuracy.toUpperCase()}
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    • Full Analysis Time: {testResult.testResults.responseTime}ms
+                  </Typography>
+                  {testResult.testResults.quickResponseTime && (
+                    <Typography variant="body2" gutterBottom>
+                      • Quick Analysis Time: {testResult.testResults.quickResponseTime}ms
+                    </Typography>
+                  )}
+                  {testResult.issues.length > 0 && (
+                    <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                      Issues: {testResult.issues.join(', ')}
+                    </Typography>
+                  )}
+                </Alert>
+              )}
             </CardContent>
           </Card>
         </Grid>
@@ -728,6 +959,7 @@ const AIAgent: React.FC = () => {
                     <Tab label="Differential Diagnoses" />
                     <Tab label="Treatment Recommendations" />
                     <Tab label="Clinical Concerns" />
+                    {analysis.reasoningTrace && <Tab label="🧠 Reasoning Process" />}
                   </Tabs>
                 </Box>
 
@@ -741,6 +973,15 @@ const AIAgent: React.FC = () => {
                       <Alert severity="info" sx={{ mb: 2 }}>
                         <Typography variant="body2">
                           <strong>Analysis Confidence:</strong> {Math.round(analysis.confidenceScore * 100)}%
+                          {analysis.modelUsed && (
+                            <> | <strong>Model:</strong> {analysis.modelUsed.toUpperCase()}</>
+                          )}
+                          {analysis.thinkingTime && (
+                            <> | <strong>Processing Time:</strong> {(analysis.thinkingTime / 1000).toFixed(1)}s</>
+                          )}
+                          {analysis.reasoningTrace && (
+                            <> | <strong>Reasoning Steps:</strong> {analysis.reasoningTrace.totalSteps}</>
+                          )}
                         </Typography>
                       </Alert>
                       <Typography variant="body1" paragraph>
@@ -983,6 +1224,128 @@ const AIAgent: React.FC = () => {
                     ))}
                   </Stack>
                 </TabPanel>
+
+                {/* Reasoning Process Tab Panel */}
+                {analysis.reasoningTrace && (
+                  <TabPanel value={tabValue} index={4}>
+                    <Stack spacing={3}>
+                      <Box>
+                        <Typography variant="h6" gutterBottom>
+                          <PsychologyIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                          O1 Model Reasoning Process
+                        </Typography>
+                        <Alert severity="info" sx={{ mb: 2 }}>
+                          <Typography variant="body2">
+                            <strong>Model:</strong> {analysis.modelUsed?.toUpperCase()} | 
+                            <strong> Thinking Time:</strong> {analysis.thinkingTime ? `${(analysis.thinkingTime / 1000).toFixed(1)}s` : 'N/A'} |
+                            <strong> Steps:</strong> {analysis.reasoningTrace.totalSteps}
+                          </Typography>
+                        </Alert>
+                      </Box>
+
+                      <Box>
+                        <Typography variant="h6" gutterBottom>
+                          <TimelineIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                          Step-by-Step Reasoning
+                        </Typography>
+                        
+                        {analysis.reasoningTrace.steps.length > 0 ? (
+                          <Stack spacing={2}>
+                            {analysis.reasoningTrace.steps.map((step, index) => (
+                              <Card key={step.id} variant="outlined">
+                                <CardContent>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                    <Typography variant="h6" sx={{ flexGrow: 1 }}>
+                                      Step {index + 1}: {step.title}
+                                    </Typography>
+                                    <Chip
+                                      label={step.type}
+                                      color={
+                                        step.type === 'analysis' ? 'primary' :
+                                        step.type === 'research' ? 'secondary' :
+                                        step.type === 'evaluation' ? 'info' :
+                                        step.type === 'synthesis' ? 'success' :
+                                        step.type === 'decision' ? 'warning' :
+                                        'default'
+                                      }
+                                      size="small"
+                                      sx={{ mr: 1 }}
+                                    />
+                                    <Chip
+                                      label={`${Math.round(step.confidence * 100)}% confidence`}
+                                      variant="outlined"
+                                      size="small"
+                                    />
+                                  </Box>
+                                  
+                                  <Typography variant="body1" paragraph>
+                                    {step.content}
+                                  </Typography>
+                                  
+                                  {step.evidence && step.evidence.length > 0 && (
+                                    <Box sx={{ mt: 2 }}>
+                                      <Typography variant="subtitle2" gutterBottom>
+                                        Evidence Considered:
+                                      </Typography>
+                                      <List dense>
+                                        {step.evidence.map((evidence, evidenceIndex) => (
+                                          <ListItem key={evidenceIndex}>
+                                            <ListItemIcon>
+                                              <CheckCircleIcon color="success" />
+                                            </ListItemIcon>
+                                            <ListItemText primary={evidence} />
+                                          </ListItem>
+                                        ))}
+                                      </List>
+                                    </Box>
+                                  )}
+                                  
+                                  {step.considerations && step.considerations.length > 0 && (
+                                    <Box sx={{ mt: 2 }}>
+                                      <Typography variant="subtitle2" gutterBottom>
+                                        Key Considerations:
+                                      </Typography>
+                                      <Stack direction="row" spacing={1} flexWrap="wrap">
+                                        {step.considerations.map((consideration, considerationIndex) => (
+                                          <Chip 
+                                            key={considerationIndex} 
+                                            label={consideration} 
+                                            variant="outlined" 
+                                            size="small"
+                                          />
+                                        ))}
+                                      </Stack>
+                                    </Box>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </Stack>
+                        ) : (
+                          <Alert severity="info">
+                            <Typography variant="body2">
+                              No detailed reasoning steps available. The model may not have provided structured reasoning output.
+                            </Typography>
+                          </Alert>
+                        )}
+                      </Box>
+
+                      {analysis.reasoningTrace.reasoning && (
+                        <Box>
+                          <Typography variant="h6" gutterBottom>
+                            <AutoAwesomeIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                            Full Reasoning Content
+                          </Typography>
+                          <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
+                            <Typography variant="body2" component="pre" sx={{ whiteSpace: 'pre-wrap' }}>
+                              {analysis.reasoningTrace.reasoning}
+                            </Typography>
+                          </Paper>
+                        </Box>
+                      )}
+                    </Stack>
+                  </TabPanel>
+                )}
               </CardContent>
             </Card>
           ) : (

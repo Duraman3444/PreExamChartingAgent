@@ -546,7 +546,7 @@ Patient: Yes, I'm allergic to penicillin - I get a rash.`,
     }, 200);
     
     try {
-      await openAIService.analyzeTranscript(transcriptData.content, visitId);
+      await openAIService.analyzeTranscript(transcriptData.content, undefined);
       setNotification({ message: 'Analysis completed successfully', type: 'success' });
     } catch (error) {
       setNotification({ message: 'Error running analysis', type: 'error' });

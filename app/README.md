@@ -346,4 +346,172 @@ This application is for educational and demonstration purposes only. It is not i
 
 **Live Demo**: [https://medicalchartingapp.web.app](https://medicalchartingapp.web.app)
 
-*Transforming healthcare documentation through intelligent AI analysis and modern web technologies.* 
+*Transforming healthcare documentation through intelligent AI analysis and modern web technologies.*
+
+## 🔧 Setup Instructions
+
+### Prerequisites
+
+- Node.js 18+ and npm
+- Firebase account and project
+- **OpenAI API account and API key**
+
+### 1. Clone and Install
+
+```bash
+git clone [repository-url]
+cd PreExamChartingAgent
+npm install
+cd app
+npm install
+```
+
+### 2. Configure OpenAI API (Required for AI Features)
+
+1. **Get your OpenAI API key**:
+   - Sign up at [https://platform.openai.com](https://platform.openai.com)
+   - Navigate to API Keys section
+   - Create a new secret key
+   - Copy the key (starts with `sk-`)
+
+2. **Add to environment variables**:
+   ```bash
+   # In app/.env file
+   VITE_OPENAI_API_KEY=your_actual_openai_api_key_here
+   ```
+
+3. **Verify your OpenAI account has access to**:
+   - GPT-4 (for medical analysis)
+   - Whisper (for speech-to-text)
+
+### 3. Configure Firebase (Already set up)
+
+The Firebase configuration is already included in the `.env` file.
+
+### 4. Run the Application
+
+```bash
+# From the app directory
+npm run dev
+```
+
+### 5. Test AI Integration
+
+1. **Test AI Agent**:
+   - Navigate to AI Agent tab
+   - Select an existing patient or create new patient
+   - Fill in symptoms/complaints
+   - Click "Run AI Analysis"
+   - Should see real GPT-4 analysis results
+
+2. **Test Speech-to-Text**:
+   - Go to Transcripts → Upload
+   - Upload an audio file (.mp3, .wav, .m4a)
+   - Should see real Whisper transcription
+
+3. **Test Transcript Analysis**:
+   - Go to AI Analysis
+   - Upload or paste a medical transcript
+   - Should see comprehensive GPT-4 analysis
+
+## 🔍 AI Integration Features
+
+### Real OpenAI Integration
+
+- **GPT-4 Medical Analysis**: 
+  - Symptom extraction with confidence scores
+  - Differential diagnosis with ICD-10 codes
+  - Treatment recommendations with evidence levels
+  - Clinical concerns and red flags
+
+- **Whisper Speech-to-Text**:
+  - High-accuracy medical transcription
+  - Speaker identification
+  - Timestamp segmentation
+  - Medical terminology tagging
+
+### Fallback Behavior
+
+- If OpenAI API key is not configured, the system shows helpful error messages
+- If API calls fail, graceful fallback to mock data with clear error indicators
+- Clear instructions for configuration in the UI
+
+## 🚨 Important Notes
+
+### Security Considerations
+
+⚠️ **Current Implementation**: The OpenAI API is called directly from the browser with `dangerouslyAllowBrowser: true`. This is for demonstration purposes only.
+
+**For Production**: 
+- Move OpenAI API calls to a secure backend service
+- Never expose API keys in client-side code
+- Implement proper rate limiting and usage monitoring
+
+### API Usage & Costs
+
+- GPT-4 API calls cost approximately $0.01-0.06 per analysis
+- Whisper API calls cost $0.006 per minute of audio
+- Monitor your OpenAI usage dashboard regularly
+- Consider implementing usage limits for cost control
+
+### Medical Disclaimer
+
+This application is for educational/demonstration purposes only. AI-generated medical analysis should always be reviewed by qualified healthcare professionals. Not intended for actual medical diagnosis or treatment.
+
+## 📊 Testing the Integration
+
+### Expected Behavior
+
+1. **With API Key Configured**:
+   - Real AI analysis with medical insights
+   - Accurate audio transcription
+   - Confidence scores from actual AI models
+
+2. **Without API Key**:
+   - Clear error messages prompting configuration
+   - Fallback to mock data with configuration instructions
+   - System remains functional for testing UI
+
+### Common Issues
+
+1. **"OpenAI API key not configured"**: Add your API key to `.env` file
+2. **API errors**: Check your OpenAI account has sufficient credits
+3. **Rate limiting**: OpenAI has rate limits - wait a moment and retry
+4. **Audio format errors**: Ensure audio files are in supported formats
+
+## 🛠 Development
+
+### File Structure
+
+```
+app/src/services/
+├── openai.ts          # Real OpenAI integration
+├── fileUpload.ts      # File processing with Whisper
+└── auth.ts           # Authentication service
+
+app/src/pages/
+├── AIAgent.tsx       # Real AI analysis interface
+├── AIAnalysis.tsx    # Transcript analysis
+└── TranscriptUpload.tsx  # Audio transcription
+```
+
+### Key Implementation Details
+
+- **Real vs Mock**: System automatically detects API configuration
+- **Error Handling**: Comprehensive error handling with user-friendly messages
+- **Type Safety**: Full TypeScript support for OpenAI responses
+- **Performance**: Efficient API usage with progress indicators
+
+## 🎯 Next Steps
+
+1. **Configure your OpenAI API key** (most important)
+2. **Test all AI features** to ensure integration works
+3. **Monitor API usage** to control costs
+4. **Consider backend implementation** for production use
+5. **Customize analysis prompts** for specific medical specialties
+
+---
+
+**Ready to use real medical AI!** 🎉
+
+Configure your OpenAI API key and experience the power of GPT-4 medical analysis and Whisper speech-to-text integration. 

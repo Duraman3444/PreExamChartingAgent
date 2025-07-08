@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Grid,
@@ -25,18 +25,25 @@ import {
   Schedule,
   LocalHospital,
   CalendarToday,
+  CloudUpload,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants';
 import { useAuthStore } from '@/stores/authStore';
 import { mockVisits } from '@/data/mockData';
 import { format } from 'date-fns';
+import FileProcessingTest from '../components/common/FileProcessingTest';
 
+interface QuickAction {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  color: string;
+  route?: string;
+  action?: string;
+}
 
-
-
-
-const quickActions = [
+const quickActions: QuickAction[] = [
   {
     title: 'Manage Transcripts',
     description: 'Upload and manage visit transcripts for analysis',
@@ -58,12 +65,20 @@ const quickActions = [
     color: '#FF6000',
     route: ROUTES.AI_ANALYSIS,
   },
+  {
+    title: 'Test File Processing',
+    description: 'Test PDF and DOCX text extraction',
+    icon: <CloudUpload />,
+    color: '#4CAF50',
+    action: 'fileTest',
+  },
 ];
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const theme = useTheme();
+  const [showFileTest, setShowFileTest] = useState(false);
 
   // Helper functions defined first
   const getVisitStatusColor = (status: string, type: string) => {
@@ -317,7 +332,13 @@ export const Dashboard: React.FC = () => {
                           transform: 'translateY(-2px)',
                         },
                       }}
-                      onClick={() => navigate(action.route)}
+                      onClick={() => {
+                        if (action.action === 'fileTest') {
+                          setShowFileTest(true);
+                        } else if (action.route) {
+                          navigate(action.route);
+                        }
+                      }}
                     >
                       <CardContent sx={{ textAlign: 'center', py: 3 }}>
                         <Box
@@ -449,6 +470,11 @@ export const Dashboard: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
+      
+      {/* File Processing Test Modal */}
+      {showFileTest && (
+        <FileProcessingTest onClose={() => setShowFileTest(false)} />
+      )}
     </Box>
   );
 }; 

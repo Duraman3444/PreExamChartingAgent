@@ -6,6 +6,11 @@ import { VisitTranscript, TranscriptSegment } from '@/types';
 import { jsPDF } from 'jspdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { saveAs } from 'file-saver';
+import * as pdfjsLib from 'pdfjs-dist';
+import mammoth from 'mammoth';
+
+// Configure PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 // File validation constants
 export const ACCEPTED_AUDIO_TYPES = [
@@ -149,11 +154,29 @@ export const processTextFile = async (file: File): Promise<string> => {
     if (file.type === 'text/plain') {
       return await file.text();
     } else if (file.type === 'application/pdf') {
-      // TODO: Implement PDF text extraction
-      throw new Error('PDF text extraction not yet implemented');
+      // PDF text extraction using PDF.js
+      const arrayBuffer = await file.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      const pdf = await loadingTask.promise;
+      
+      let fullText = '';
+      
+      // Extract text from each page
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ');
+        fullText += pageText + '\n';
+      }
+      
+      return fullText.trim();
     } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-      // TODO: Implement DOCX text extraction
-      throw new Error('DOCX text extraction not yet implemented');
+      // DOCX text extraction using mammoth
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+      return result.value;
     } else {
       throw new Error('Unsupported text file type');
     }
@@ -162,7 +185,7 @@ export const processTextFile = async (file: File): Promise<string> => {
   }
 };
 
-// Audio transcription service (placeholder for OpenAI Whisper integration)
+// Audio transcription service using OpenAI Whisper
 export const transcribeAudio = async (file: File): Promise<{
   text: string;
   segments: TranscriptSegment[];
@@ -178,12 +201,41 @@ export const transcribeAudio = async (file: File): Promise<{
   }
 
   try {
-    // TODO: Implement OpenAI Whisper API integration
-    // For now, return mock data
-    await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate processing time
+    // Import the OpenAI service
+    const { openAIService } = await import('./openai');
+    
+    // Check if OpenAI is configured
+    if (!openAIService.isConfigured()) {
+      throw new Error('OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your .env file.');
+    }
+
+    // Use real OpenAI Whisper transcription
+    const result = await openAIService.transcribeAudio(file);
+    
+    // Convert to the expected format
+    return {
+      text: result.text,
+      segments: result.segments.map(segment => ({
+        id: segment.id,
+        speaker: segment.speaker === 'unknown' ? 'other' : segment.speaker,
+        timestamp: segment.timestamp,
+        text: segment.text,
+        confidence: segment.confidence,
+        tags: segment.tags
+      })),
+      confidence: result.confidence
+    };
+  } catch (error) {
+    console.error('Real audio transcription failed:', error);
+    
+    // Fallback to mock data if OpenAI fails (for development)
+    console.warn('Falling back to mock transcription data due to error:', error);
+    
+    // Simulate processing time
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
     return {
-      text: `[Mock Transcription for ${file.name}]
+      text: `[Fallback Mock Transcription for ${file.name} - OpenAI transcription failed]
       
 Patient: Good morning, Doctor. I've been experiencing some chest pain for the past few days.
 
@@ -328,8 +380,6 @@ Doctor: Based on your symptoms, I'd like to run some tests to rule out any serio
       ],
       confidence: 0.92
     };
-  } catch (error) {
-    throw new Error(`Audio transcription failed: ${error}`);
   }
 };
 
