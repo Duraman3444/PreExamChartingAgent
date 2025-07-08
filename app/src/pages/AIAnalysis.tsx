@@ -31,7 +31,6 @@ import {
   Divider,
   IconButton,
   Tooltip,
-  Badge,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -50,28 +49,21 @@ import {
   AutoAwesome as AutoAwesomeIcon,
   RecordVoiceOver as TranscriptionIcon,
   Comment as CommentIcon,
-  History as HistoryIcon,
   ExpandMore as ExpandMoreIcon,
   LocalHospital as HospitalIcon,
   MedicalServices as MedicalServicesIcon,
   Download as DownloadIcon,
-  Share as ShareIcon,
   Edit as EditIcon,
   Save as SaveIcon,
   ThumbUp as ThumbUpIcon,
-  ThumbDown as ThumbDownIcon,
-  Flag as FlagIcon,
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
   Visibility as VisibilityIcon,
-  Print as PrintIcon,
-  Star as StarIcon,
   Timeline as TimelineIcon,
   TrendingUp as TrendingUpIcon,
   Security as SecurityIcon,
   HealthAndSafety as HealthAndSafetyIcon,
 } from '@mui/icons-material';
-import { useAuthStore } from '@/stores/authStore';
 import { openAIService } from '@/services/openai';
 import { ROUTES } from '@/constants';
 
@@ -138,7 +130,6 @@ interface ConcernFlag {
 const AIAnalysisPage: React.FC = () => {
   const { id: visitId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuthStore();
   
   const [currentTabValue, setCurrentTabValue] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
