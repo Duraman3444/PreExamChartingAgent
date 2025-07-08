@@ -253,8 +253,13 @@ const AIAgent: React.FC = () => {
   const generateMockAnalysis = (patientData: any): AIAgentAnalysis => {
     // Generate mock analysis based on patient data
     const isExisting = patientType === 'existing';
+    const hasAdditionalInfo = isExisting && patientData.additionalInfo && 
+      Object.values(patientData.additionalInfo).some((value: any) => value && value.trim !== '' && value.trim && value.trim() !== '');
+    
     const chiefComplaint = isExisting 
-      ? patientData.additionalInfo?.chiefComplaint || patientData.recentVisit 
+      ? (patientData.additionalInfo?.chiefComplaint && patientData.additionalInfo.chiefComplaint.trim() !== '' 
+          ? patientData.additionalInfo.chiefComplaint 
+          : patientData.recentVisit)
       : patientData.chiefComplaint;
     const symptoms = isExisting 
       ? patientData.additionalInfo?.currentSymptoms 
@@ -299,12 +304,15 @@ const AIAgent: React.FC = () => {
           supportingEvidence: [
             'patient history', 
             'presenting symptoms',
-            ...(isExisting ? ['existing patient records', 'follow-up presentation'] : [])
+            ...(isExisting && hasAdditionalInfo ? ['existing patient records', 'follow-up presentation'] : []),
+            ...(isExisting && !hasAdditionalInfo ? ['existing patient records', 'historical data'] : [])
           ],
           againstEvidence: ['no contraindications noted'],
           additionalTestsNeeded: ['laboratory studies', 'imaging if indicated'],
           reasoning: isExisting 
-            ? `Based on existing patient history and current presentation: ${chiefComplaint}. Additional information provided helps refine the clinical assessment.`
+            ? (hasAdditionalInfo 
+                ? `Based on existing patient history and current presentation: ${chiefComplaint}. Additional information provided helps refine the clinical assessment.`
+                : `Based on existing patient history for ${patientData.name}. Previous visit: ${patientData.recentVisit}. Analysis uses historical data; current symptoms would enhance accuracy.`)
             : 'Based on patient presentation and clinical history, this is the most likely diagnosis requiring further evaluation.',
           urgency: 'routine'
         }
@@ -342,14 +350,17 @@ const AIAgent: React.FC = () => {
         concerns,
         confidenceScore: 0.87,
         reasoning: isExisting 
-          ? `AI analysis based on existing patient records and additional information provided. Patient: ${patientData.name}. Current presentation analysis incorporates previous medical history and current symptoms.`
+          ? (hasAdditionalInfo 
+              ? `AI analysis based on existing patient records and additional information provided. Patient: ${patientData.name}. Current presentation analysis incorporates previous medical history and current symptoms.`
+              : `AI analysis based on existing patient records for ${patientData.name}. Analysis uses historical data from previous visits. Additional current information would enhance assessment accuracy.`)
           : 'AI analysis based on provided patient information. Clinical correlation and physician review recommended.',
         nextSteps: [
           'Review with attending physician',
           'Consider additional diagnostic tests',
           'Monitor patient response to treatment',
           'Schedule appropriate follow-up',
-          ...(isExisting ? ['Update patient records with new information'] : [])
+          ...(isExisting && hasAdditionalInfo ? ['Update patient records with new information'] : []),
+          ...(isExisting && !hasAdditionalInfo ? ['Consider gathering current symptoms and presentation details'] : [])
         ]
       };
   };
@@ -397,10 +408,7 @@ const AIAgent: React.FC = () => {
 
   const canRunAnalysis = () => {
     if (patientType === 'existing') {
-      return selectedPatient !== '' && 
-             (existingPatientAddition.currentSymptoms !== '' || 
-              existingPatientAddition.chiefComplaint !== '' ||
-              existingPatientAddition.additionalInfo !== '');
+      return selectedPatient !== '';
     } else {
       return newPatientData.firstName !== '' && 
              newPatientData.lastName !== '' && 
@@ -545,8 +553,11 @@ const AIAgent: React.FC = () => {
 
                   {selectedPatient && (
                     <>
-                      <Typography variant="subtitle2" sx={{ mb: 2, color: 'text.secondary' }}>
+                      <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
                         Add Additional Information for Analysis
+                      </Typography>
+                      <Typography variant="caption" sx={{ mb: 2, color: 'text.secondary', fontStyle: 'italic' }}>
+                        Optional: You can run analysis with existing patient data only, or add current visit information below
                       </Typography>
                       <Stack spacing={2}>
                         <TextField
