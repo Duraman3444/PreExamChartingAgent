@@ -19,7 +19,7 @@ export interface MedicalResearchService {
 }
 
 class WebMedicalResearchService implements MedicalResearchService {
-  private readonly MEDICAL_SITES = [
+  /* private readonly MEDICAL_SITES = [
     'pubmed.ncbi.nlm.nih.gov',
     'nejm.org',
     'jamanetwork.com',
@@ -33,7 +33,7 @@ class WebMedicalResearchService implements MedicalResearchService {
     'clevelandclinic.org',
     'medscape.com',
     'nih.gov'
-  ];
+  ]; */
 
   /**
    * Search medical literature using web search
@@ -76,7 +76,7 @@ class WebMedicalResearchService implements MedicalResearchService {
   /**
    * Analyze search results and convert to medical evidence
    */
-  async analyzeSearchResults(results: SearchResult[], context: string): Promise<MedicalEvidence[]> {
+  async analyzeSearchResults(results: SearchResult[], _context: string): Promise<MedicalEvidence[]> {
     const evidence: MedicalEvidence[] = [];
     
     for (const result of results) {
@@ -342,8 +342,8 @@ export class EnhancedMedicalResearchService {
    */
   private identifyGaps(
     evidence: MedicalEvidence[],
-    symptoms: string[],
-    diagnoses: string[]
+    _symptoms: string[],
+    _diagnoses: string[]
   ): string[] {
     const gaps: string[] = [];
     

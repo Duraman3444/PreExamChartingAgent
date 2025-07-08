@@ -285,7 +285,7 @@ class OpenAIService {
     const steps: ReasoningStep[] = [];
     
     if (reasoningContent) {
-      const reasoningLines = reasoningContent.split('\n').filter(line => line.trim());
+      const reasoningLines = reasoningContent.split('\n').filter((line: string) => line.trim());
       let stepCount = 0;
       
       for (let i = 0; i < reasoningLines.length; i++) {
@@ -787,8 +787,6 @@ Please provide a comprehensive medical analysis integrating the research evidenc
           clinicalReasoning: analysisContent // Include raw content for debugging
         };
       }
-      
-      const processingTime = Date.now() - startTime;
 
       // Convert to deep analysis format
       const result: O1DeepAnalysisResult = {
@@ -906,7 +904,6 @@ Please provide a comprehensive medical analysis integrating the research evidenc
         timestamp_granularities: ['segment']
       });
 
-      const processingTime = Date.now() - startTime;
       logGPTOperation.progress(operation, 'Processing transcription segments');
 
       // Process the transcription into our format
@@ -926,7 +923,8 @@ Please provide a comprehensive medical analysis integrating the research evidenc
         duration: transcription.duration || 0
       };
 
-      logGPTOperation.success(operation, 'whisper-1', processingTime, {
+      const finalProcessingTime = Date.now() - startTime;
+      logGPTOperation.success(operation, 'whisper-1', finalProcessingTime, {
         textLength: result.text.length,
         segmentsCount: result.segments.length,
         duration: result.duration,
@@ -1426,7 +1424,7 @@ Be thorough but concise. Focus on most likely diagnoses and key clinical actions
     this.validateApiKey();
     
     try {
-      const startTime = Date.now();
+      // const startTime = Date.now();
       
       // Step 1: Perform research on the patient's symptoms and conditions
       const researchContext = await this.performMedicalResearch(transcript, patientContext);
@@ -1713,7 +1711,7 @@ Focus on:
   /**
    * Search medical literature (simulated with AI knowledge)
    */
-  private async searchMedicalLiterature(query: string): Promise<MedicalEvidence[]> {
+  /* private async searchMedicalLiterature(query: string): Promise<MedicalEvidence[]> {
     const systemPrompt = `You are a medical literature search engine. For the given query, provide relevant medical evidence from recent research, guidelines, and clinical studies.
 
 Return JSON array of evidence with the following structure:
@@ -1751,12 +1749,12 @@ Focus on:
       id: `evidence-${query}-${index}`,
       ...evidence
     }));
-  }
+  } */
 
   /**
    * Analyze evidence for contradictions and gaps
    */
-  private async analyzeEvidence(evidence: MedicalEvidence[], transcript: string): Promise<{
+  /* private async analyzeEvidence(evidence: MedicalEvidence[], transcript: string): Promise<{
     contradictions: string[];
     gaps: string[];
     recommendations: string[];
@@ -1786,7 +1784,7 @@ Return JSON with:
 
     const result = JSON.parse(completion.choices[0]?.message?.content || '{"contradictions": [], "gaps": [], "recommendations": []}');
     return result;
-  }
+  } */
 
   /**
    * Generate evidence-based treatment protocols

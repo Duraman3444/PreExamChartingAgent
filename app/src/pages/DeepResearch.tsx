@@ -19,10 +19,8 @@ import {
   ListItemText,
   ListItemIcon,
   LinearProgress,
-  Divider,
   Link,
   IconButton,
-  Tooltip,
   Badge,
 } from '@mui/material';
 import {
@@ -41,11 +39,9 @@ import {
   Article as ArticleIcon,
   Verified as VerifiedIcon,
   TrendingUp as TrendingUpIcon,
-  Link as LinkIcon,
   OpenInNew as OpenInNewIcon,
 } from '@mui/icons-material';
-import { openAIService, DeepAnalysisResult, MedicalEvidence } from '@/services/openai';
-import { medicalResearchService } from '@/services/medicalResearch';
+import { openAIService, DeepAnalysisResult } from '@/services/openai';
 
 interface ResearchSession {
   id: string;
@@ -60,7 +56,7 @@ const DeepResearch: React.FC = () => {
   const [query, setQuery] = useState('');
   const [currentSession, setCurrentSession] = useState<ResearchSession | null>(null);
   const [sessions, setSessions] = useState<ResearchSession[]>([]);
-  const [selectedTab, setSelectedTab] = useState(0);
+  // const [selectedTab, setSelectedTab] = useState(0);
 
   const handleStartResearch = async () => {
     if (!query.trim()) return;
@@ -258,7 +254,7 @@ const DeepResearch: React.FC = () => {
                   </Typography>
                   
                   <Grid container spacing={2}>
-                    {currentSession.results.researchEvidence.map((evidence, index) => (
+                    {currentSession.results.researchEvidence.map((evidence, _index) => (
                       <Grid item xs={12} md={6} key={evidence.id}>
                         <Card variant="outlined">
                           <CardContent>
@@ -373,7 +369,7 @@ const DeepResearch: React.FC = () => {
                   </Typography>
                   
                   <Stack spacing={2}>
-                    {currentSession.results.clinicalRecommendations.map((rec, index) => (
+                    {currentSession.results.clinicalRecommendations.map((rec, _index) => (
                       <Accordion key={rec.id}>
                         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                           <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
