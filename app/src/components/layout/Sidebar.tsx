@@ -20,6 +20,7 @@ import {
   Person,
   Description,
   Upload,
+  SmartToy,
 } from '@mui/icons-material';
 import { ROUTES } from '@/constants';
 import { useAuthStore } from '@/stores/authStore';
@@ -59,6 +60,11 @@ const navigationItems = [
     text: 'AI Analysis',
     icon: <Psychology />,
     path: ROUTES.AI_ANALYSIS,
+  },
+  {
+    text: 'AI Agent',
+    icon: <SmartToy />,
+    path: ROUTES.AI_AGENT,
   },
 ];
 

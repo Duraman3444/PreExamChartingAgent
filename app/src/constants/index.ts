@@ -12,6 +12,7 @@ export const ROUTES = {
   TRANSCRIPTS: '/transcripts',
   AI_ANALYSIS: '/ai-analysis',
   AI_ANALYSIS_DETAIL: '/ai-analysis/:id',
+  AI_AGENT: '/ai-agent',
   VISIT_NOTES: '/visits/:id/notes',
   NOTES: '/notes',
   PROFILE: '/profile',

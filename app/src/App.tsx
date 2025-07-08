@@ -20,6 +20,7 @@ import { PatientManagement } from '@/pages/PatientManagement';
 import { VisitManagement } from '@/pages/VisitManagement';
 import AIAnalysis from '@/pages/AIAnalysis';
 import AIAnalysisEntry from '@/pages/AIAnalysisEntry';
+import AIAgent from '@/pages/AIAgent';
 import TranscriptUpload from '@/pages/TranscriptUpload';
 import TranscriptEditor from '@/pages/TranscriptEditor';
 import Transcripts from '@/pages/Transcripts';
@@ -916,6 +917,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <AIAnalysis />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.AI_AGENT}
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <AIAgent />
                 </Layout>
               </ProtectedRoute>
             }
