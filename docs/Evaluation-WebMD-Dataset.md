@@ -22,67 +22,50 @@ The two prompt families below let us:
 1. **Expand** each review into a realistic clinical *visit note* (“patient prompt”).
 2. **Evaluate** the agent’s structured output against ground truth we embed.
 
-### 2-A  ⬆️  *Reviewer-text → Visit Transcript*
-*(Use with GPT-4 or `gpt-4o-mini` for speed)*
+### 2-A  ⬆️  *Raw Review → Patient Utterance*
+*(We now keep the original text.  No hallucinated details.)*
 ```text
 SYSTEM:
-You are a medical scribe.  Turn a short consumer WebMD review into a first-person visit transcript spoken by a patient.  Make the language natural, keep the clinical facts.
+You are PreExamChartingAgent.  A patient wrote the following public WebMD review about their experience with a drug.  Treat the review itself as the patient’s utterance in triage.
 
-USER:
+USER (patient):
 <review_text>
-—
-Required format:
-VISIT_NOTE:
-<≈150-250 word transcript>
-STRUCTURED:
-{"drug":"<drugName>","condition":"<condition>","rating":<rating>}
 ```
-**Why this works**  ▸ The model preserves the key metadata while giving us a richly-worded transcript that the agent can later process.
+The agent should parse the review, extract key symptoms, drug efficacy sentiment (0-10), side-effects, and populate the pre-exam chart.
 
-### 2-B  ⬇️  *Transcript → Pre-Exam Chart*  
-*(Run by PreExamChartingAgent during benchmarking)*
-```text
-SYSTEM:
-You are PreExamChartingAgent.  Given a patient transcript, extract vitals, HPI, medication list, drug efficacy sentiment (0-10) and create a pre-exam chart JSON.
-
-USER:
-<transcript>
+> We purposely do **not** expand or paraphrase the text – reviews are first-hand accounts from real (already anonymised) individuals.
 ```
 
 ---
-## 3. Generating “a few thousand patients”
+## 3. Building an evaluation set of “a few thousand” *real* patients
 ```python
 from datasets import load_dataset
-import openai, json, pathlib, time
+import json, pathlib
 
-ds = load_dataset("shefali2023/webmd-data", split="train").shuffle(seed=42).select(range(3000))
-pathlib.Path("synthetic_patients").mkdir(exist_ok=True)
+raw = load_dataset("shefali2023/webmd-data", split="train").shuffle(seed=7).select(range(3000))
+pathlib.Path("evaluation/datasets").mkdir(parents=True, exist_ok=True)
 
-SYSTEM_PROMPT = "You are a medical scribe..."  # see 2-A above
-for i, row in enumerate(ds):
-    msg = [
-        {"role":"system", "content": SYSTEM_PROMPT},
-        {"role":"user", "content": row["review"]}
-    ]
-    while True:
-        try:
-            rsp = openai.chat.completions.create(model="gpt-4o-mini", messages=msg)
-            break
-        except openai.RateLimitError:
-            time.sleep(2)
-    out = rsp.choices[0].message.content
-    with open(f"synthetic_patients/patient_{i:04}.txt", "w") as f:
-        f.write(out)
+with open("evaluation/datasets/webmd_reviews.jsonl", "w") as f:
+    for row in raw:
+        # minimal PII scrub: remove any emails / phone numbers with regex if present
+        import re
+        clean_review = re.sub(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+", "[EMAIL]", row["review"], flags=re.I)
+        clean_review = re.sub(r"\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b", "[PHONE]", clean_review)
+        f.write(json.dumps({
+            "review": clean_review,
+            "drug": row["drugName"],
+            "condition": row["condition"],
+            "rating": row["rating"]
+        })+"\n")
 ```
-*Cost*: ~US$1.10 per 1 k patients with `gpt-4o-mini` (June-2025 price).
+This produces a **real-patient** test set in one file ready for the benchmark runner.
 
 ---
 ## 4. Feedback-driven prompt tuning
-| Symptom | Fix | Example |
-|---------|-----|---------|
-| Transcript repeats review verbatim | Add *“paraphrase in first person, do **not** copy sentences”* to the system prompt. | 🔄 |
-| Missing rating field | Include explicit schema lines in *Required format* section. | 🔄 |
-| Unrealistic medical jargon | Add *“Use plain language a real patient would use.”* | 🔄 |
+| Issue | Fix |
+|-------|-----|
+| Agent misses important side-effects expressed in casual language | Add examples of slang ("felt icky", "the sweats") to few-shot prompt |
+| Agent mis-reads the 0-10 sentiment | Convert WebMD 1-10 score to 0-10 scale and pass explicitly | 
 
 Iterate: sample 50 cases ➜ run agent ➜ inspect JSON / errors ➜ refine prompts.
 
