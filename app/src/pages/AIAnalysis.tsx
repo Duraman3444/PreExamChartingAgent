@@ -994,7 +994,7 @@ Focus on evidence-based, FDA-approved medications with clear dosing guidelines.`
           <Card>
             <CardContent sx={{ textAlign: 'center' }}>
               <TimelineIcon color="primary" sx={{ fontSize: 40 }} />
-              <Typography variant="h4">{analysisData.processingTime}s</Typography>
+              <Typography variant="h4">{analysisData.processingTime.toFixed(2)}s</Typography>
               <Typography variant="body2">Process Time</Typography>
             </CardContent>
           </Card>
@@ -1103,7 +1103,7 @@ Focus on evidence-based, FDA-approved medications with clear dosing guidelines.`
                   <ListItem>
                     <ListItemText 
                       primary="Processing Time" 
-                      secondary={`${analysisData.processingTime} seconds`} 
+                      secondary={`${analysisData.processingTime.toFixed(2)} seconds`} 
                     />
                   </ListItem>
                 </List>
