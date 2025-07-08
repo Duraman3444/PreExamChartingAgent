@@ -155,21 +155,21 @@ const generatePatientAnalysisData = (visitId: string) => {
     },
     'V002': { // Jane Smith - Palpitations and fatigue
       symptoms: [
-        { id: 'sym-1', name: 'Palpitations', severity: 'moderate', confidence: 0.92, duration: '3 days', location: 'cardiac', quality: 'irregular heartbeat', associatedFactors: ['fatigue', 'stress'], sourceText: 'Patient reports irregular heartbeat sensations over the past 3 days' },
-        { id: 'sym-2', name: 'Fatigue', severity: 'moderate', confidence: 0.88, duration: '1 week', quality: 'generalized weakness', associatedFactors: ['palpitations', 'sleep disturbance'], sourceText: 'Patient describes feeling tired and weak for the past week' },
-        { id: 'sym-3', name: 'Irregular pulse', severity: 'mild', confidence: 0.95, duration: 'intermittent', associatedFactors: ['palpitations'], sourceText: 'Physical examination reveals irregular pulse rhythm' },
-      ],
+        { id: 'sym-1', name: 'Palpitations', severity: 'moderate' as const, confidence: 0.92, duration: '3 days', location: 'cardiac', quality: 'irregular heartbeat', associatedFactors: ['fatigue', 'stress'], sourceText: 'Patient reports irregular heartbeat sensations over the past 3 days' },
+        { id: 'sym-2', name: 'Fatigue', severity: 'moderate' as const, confidence: 0.88, duration: '1 week', quality: 'generalized weakness', associatedFactors: ['palpitations', 'sleep disturbance'], sourceText: 'Patient describes feeling tired and weak for the past week' },
+        { id: 'sym-3', name: 'Irregular pulse', severity: 'mild' as const, confidence: 0.95, duration: 'intermittent', associatedFactors: ['palpitations'], sourceText: 'Physical examination reveals irregular pulse rhythm' },
+      ] as Symptom[],
       diagnoses: [
-        { id: 'dx-1', condition: 'Atrial Fibrillation', icd10Code: 'I48.91', probability: 0.85, severity: 'high', supportingEvidence: ['irregular pulse', 'palpitations', 'age >60', 'female gender'], againstEvidence: ['no chest pain', 'no syncope'], additionalTestsNeeded: ['ECG', 'echocardiogram', 'thyroid function'], reasoning: 'Irregular pulse with palpitations in elderly female suggests atrial fibrillation', urgency: 'urgent' },
-        { id: 'dx-2', condition: 'Thyroid dysfunction', icd10Code: 'E07.9', probability: 0.45, severity: 'medium', supportingEvidence: ['palpitations', 'fatigue', 'female gender'], againstEvidence: ['no weight changes', 'no heat intolerance'], additionalTestsNeeded: ['TSH', 'T3', 'T4'], reasoning: 'Thyroid disorders can cause palpitations and fatigue', urgency: 'routine' },
-      ],
+        { id: 'dx-1', condition: 'Atrial Fibrillation', icd10Code: 'I48.91', probability: 0.85, severity: 'high' as const, supportingEvidence: ['irregular pulse', 'palpitations', 'age >60', 'female gender'], againstEvidence: ['no chest pain', 'no syncope'], additionalTestsNeeded: ['ECG', 'echocardiogram', 'thyroid function'], reasoning: 'Irregular pulse with palpitations in elderly female suggests atrial fibrillation', urgency: 'urgent' as const },
+        { id: 'dx-2', condition: 'Thyroid dysfunction', icd10Code: 'E07.9', probability: 0.45, severity: 'medium' as const, supportingEvidence: ['palpitations', 'fatigue', 'female gender'], againstEvidence: ['no weight changes', 'no heat intolerance'], additionalTestsNeeded: ['TSH', 'T3', 'T4'], reasoning: 'Thyroid disorders can cause palpitations and fatigue', urgency: 'routine' as const },
+      ] as Diagnosis[],
       treatments: [
-        { id: 'tx-1', category: 'medication', recommendation: 'Anticoagulation therapy (warfarin or DOAC)', priority: 'high', timeframe: 'within 24 hours', contraindications: ['active bleeding', 'severe liver disease'], alternatives: ['aspirin if anticoagulation contraindicated'], expectedOutcome: 'Reduced stroke risk', evidenceLevel: 'A' },
-        { id: 'tx-2', category: 'referral', recommendation: 'Cardiology consultation for rhythm management', priority: 'high', timeframe: 'within 48 hours', contraindications: [], alternatives: ['emergency department if symptoms worsen'], expectedOutcome: 'Optimal rhythm and rate control', evidenceLevel: 'A' },
-      ],
+        { id: 'tx-1', category: 'medication' as const, recommendation: 'Anticoagulation therapy (warfarin or DOAC)', priority: 'high' as const, timeframe: 'within 24 hours', contraindications: ['active bleeding', 'severe liver disease'], alternatives: ['aspirin if anticoagulation contraindicated'], expectedOutcome: 'Reduced stroke risk', evidenceLevel: 'A' as const },
+        { id: 'tx-2', category: 'referral' as const, recommendation: 'Cardiology consultation for rhythm management', priority: 'high' as const, timeframe: 'within 48 hours', contraindications: [], alternatives: ['emergency department if symptoms worsen'], expectedOutcome: 'Optimal rhythm and rate control', evidenceLevel: 'A' as const },
+      ] as Treatment[],
       concerns: [
-        { id: 'flag-1', type: 'red_flag', severity: 'high', message: 'New onset atrial fibrillation requires immediate anticoagulation assessment', recommendation: 'Urgent cardiology consultation and anticoagulation initiation', requiresImmediateAction: true },
-      ],
+        { id: 'flag-1', type: 'red_flag' as const, severity: 'high' as const, message: 'New onset atrial fibrillation requires immediate anticoagulation assessment', recommendation: 'Urgent cardiology consultation and anticoagulation initiation', requiresImmediateAction: true },
+      ] as ConcernFlag[],
       confidenceScore: 0.92,
     },
     'V003': { // Michael Brown - Fatigue and gastrointestinal symptoms
