@@ -11,6 +11,28 @@ import { auth, db } from './firebase';
 import { User } from '@/types';
 
 export class AuthService {
+  private authInitialized = false;
+  private authInitPromise: Promise<void> | null = null;
+
+  // Wait for Firebase Auth to initialize and restore state
+  private async waitForAuthInit(): Promise<void> {
+    if (this.authInitialized) {
+      return;
+    }
+
+    if (!this.authInitPromise) {
+      this.authInitPromise = new Promise((resolve) => {
+        const unsubscribe = onAuthStateChanged(auth, () => {
+          this.authInitialized = true;
+          unsubscribe();
+          resolve();
+        });
+      });
+    }
+
+    return this.authInitPromise;
+  }
+
   // Sign in with email and password
   async signIn(email: string, password: string): Promise<User> {
     try {
@@ -100,13 +122,24 @@ export class AuthService {
     });
   }
 
-  // Get current user
-  getCurrentUser(): FirebaseUser | null {
+  // Get current user (waits for auth initialization)
+  async getCurrentUser(): Promise<FirebaseUser | null> {
+    await this.waitForAuthInit();
     return auth.currentUser;
   }
 
-  // Check if user is authenticated
-  isAuthenticated(): boolean {
+  // Check if user is authenticated (waits for auth initialization)
+  async isAuthenticated(): Promise<boolean> {
+    await this.waitForAuthInit();
+    return !!auth.currentUser;
+  }
+
+  // Synchronous methods for when auth is already initialized
+  getCurrentUserSync(): FirebaseUser | null {
+    return auth.currentUser;
+  }
+
+  isAuthenticatedSync(): boolean {
     return !!auth.currentUser;
   }
 }
