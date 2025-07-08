@@ -1,79 +1,102 @@
-# 📊 WebMD Reviews → Synthetic Patients
+# 📊 WebMD Symptom Q&A → Real-World Evaluation Set
 
-This guide shows how we turn the public **WebMD drug-review corpus** into *thousands of artificial patient cases* that PreExamChartingAgent can analyse during offline evaluation.
+*Dataset used: [`shefali2023/webmd-data`](https://huggingface.co/datasets/shefali2023/webmd-data)*
+
+WebMD hosts thousands of consumer health questions answered by medical editors.  Because the content is already public and **contains no direct identifiers**, it is an ideal, *real-patient* corpus for stress-testing PreExamChartingAgent’s symptom-extraction and reasoning quality.
 
 ---
-## 1. Fetch the raw dataset (one-liner)
+## 1  Fetch & inspect the raw dataset (one-liner)
 ```bash
 pip install datasets  # if not yet installed
 python - <<'PY'
-from datasets import load_dataset
-# 161 k reviews split into train / test.
-webmd = load_dataset("shefali2023/webmd-data", split="train")
-webmd.to_parquet("data/webmd_train.parquet")  # ~60 MB
-print(webmd[0])
+from datasets import load_dataset, Dataset
+
+qa_ds = load_dataset("shefali2023/webmd-data", split="train")  # 27 700 rows
+print(qa_ds[0]["text"][:300])  # preview – Q&A packed in one string
+# OPTIONAL: split the packed "<s>[INST] Q [/INST] A </s>" format into columns ↓
+import re, json, pathlib
+rows = []
+pattern = re.compile(r"\\[INST\\](.*?)\\[/INST\\](.*)", re.S)
+for record in qa_ds:
+    m = pattern.search(record["text"])
+    if not m: continue
+    q, a = [s.strip() for s in m.groups()]
+    rows.append({"question": q, "answer": a})
+Dataset.from_list(rows).to_json("evaluation/datasets/webmd_symptom_qa.jsonl")
 PY
 ```
-*Fields preserved*: `drugName`, `condition`, `review`, `rating`, `date`, `usefulCount`.
+*Typical fields after split*: `question`, `answer`  (plain text).
 
 ---
-## 2. Prompt templates
-The two prompt families below let us:
-1. **Expand** each review into a realistic clinical *visit note* (“patient prompt”).
-2. **Evaluate** the agent’s structured output against ground truth we embed.
+## 2  Prompt templates
+Below prompts allow **direct ingestion** of these real questions and answers.
 
-### 2-A  ⬆️  *Raw Review → Patient Utterance*
-*(We now keep the original text.  No hallucinated details.)*
+### 2-A  ⬆️  *Patient Question → Agent Response*
 ```text
 SYSTEM:
-You are PreExamChartingAgent.  A patient wrote the following public WebMD review about their experience with a drug.  Treat the review itself as the patient’s utterance in triage.
+You are PreExamChartingAgent.  A patient asks a health-related question.
+For the given question, extract any explicit or implied SYMPTOMS, POSSIBLE CAUSES, and RECOMMENDED NEXT STEPS.
+Return JSON with keys: symptoms[], differential[], advice.
 
 USER (patient):
-<review_text>
+<question>
 ```
-The agent should parse the review, extract key symptoms, drug efficacy sentiment (0-10), side-effects, and populate the pre-exam chart.
+Expected JSON example:
+```json
+{
+  "symptoms": ["abdominal pain", "nausea"],
+  "differential": ["gastritis", "peptic ulcer"],
+  "advice": "Schedule an upper endoscopy and avoid NSAIDs until seen."
+}
+```
 
-> We purposely do **not** expand or paraphrase the text – reviews are first-hand accounts from real (already anonymised) individuals.
+### 2-B  ⬇️  *Ground-Truth Answer → Self-Critique*
+```text
+SYSTEM:
+You are an expert medical QA auditor.  Compare the agent’s JSON output with the WebMD editor’s answer.
+List MISSING or INCORRECT symptoms / advice.  Score completeness on a 0-5 scale.
+
+REFERENCE ANSWER:
+<answer>
+
+AGENT JSON:
+<agent_json>
 ```
+
+The self-critique can be logged for automatic accuracy scoring in the benchmark runner.
 
 ---
-## 3. Building an evaluation set of “a few thousand” *real* patients
+## 3  Building an evaluation subset ("a few thousand" rows)
 ```python
 from datasets import load_dataset
-import json, pathlib
+import json, pathlib, random
 
-raw = load_dataset("shefali2023/webmd-data", split="train").shuffle(seed=7).select(range(3000))
-pathlib.Path("evaluation/datasets").mkdir(parents=True, exist_ok=True)
+dst = pathlib.Path("evaluation/datasets")
+dst.mkdir(parents=True, exist_ok=True)
 
-with open("evaluation/datasets/webmd_reviews.jsonl", "w") as f:
-    for row in raw:
-        # minimal PII scrub: remove any emails / phone numbers with regex if present
-        import re
-        clean_review = re.sub(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+", "[EMAIL]", row["review"], flags=re.I)
-        clean_review = re.sub(r"\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b", "[PHONE]", clean_review)
-        f.write(json.dumps({
-            "review": clean_review,
-            "drug": row["drugName"],
-            "condition": row["condition"],
-            "rating": row["rating"]
-        })+"\n")
+raw = load_dataset("shefali2023/webmd-data", split="train")
+raw = raw.shuffle(seed=42).select(range(4000))  # adjust sample size here
+
+with open(dst/"webmd_symptom_qa_sample.jsonl", "w") as f:
+    for rec in raw:
+        text = rec["text"]
+        # quick split – tolerates slight format drift
+        if "[INST]" in text:
+            q = text.split("[INST]")[1].split("[/INST]")[0].strip()
+            a = text.split("[/INST]")[1].strip()
+            f.write(json.dumps({"question": q, "answer": a})+"\n")
 ```
-This produces a **real-patient** test set in one file ready for the benchmark runner.
+This produces a real-question test set that can be piped into the benchmark runner.
 
 ---
-## 4. Feedback-driven prompt tuning
-| Issue | Fix |
-|-------|-----|
-| Agent misses important side-effects expressed in casual language | Add examples of slang ("felt icky", "the sweats") to few-shot prompt |
-| Agent mis-reads the 0-10 sentiment | Convert WebMD 1-10 score to 0-10 scale and pass explicitly | 
+## 4  Feedback-driven prompt tuning
+| Observed issue | Suggested fix |
+|----------------|---------------|
+| Agent misses *implicit* symptom mentions (“been throwing up at night”) | Add exemplar where symptom is implied not explicit |
+| Over-diagnosis (lists too many differentials) | Constrain prompt: “return **max 4** differential diagnoses” |
+| Advice too generic | Add `role=system` instruction: “Provide *specific* next step eg. ‘see gastroenterologist if pain persists >48 h’” |
 
-Iterate: sample 50 cases ➜ run agent ➜ inspect JSON / errors ➜ refine prompts.
-
----
-## 5. Linking back to evaluation scripts
-After generating the transcripts place them under `evaluation/datasets/webmd_transcripts.jsonl` (one JSON per line with keys `transcript` and `ground_truth`).  The benchmarking runner in `evaluation/run_benchmark.py` will pick them up automatically.
-
-> **Coming soon** – see `evaluation/scripts/fetch_webmd_dataset.py` for an automated end-to-end pipeline (download ➜ generate ➜ benchmark).
+Cycle: sample 50 Qs → run agent → review mismatches → patch prompt examples.
 
 ---
-*Last updated:* <!-- YYY-MM-DD will be auto-filled by commit --> 
+*Last updated:* <!-- YYYY-MM-DD will be auto-filled by commit --> 
