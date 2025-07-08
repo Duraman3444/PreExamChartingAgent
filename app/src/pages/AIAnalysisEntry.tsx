@@ -29,23 +29,7 @@ import {
   Assessment as AnalysisIcon,
 } from '@mui/icons-material';
 import { ROUTES } from '@/constants';
-
-interface Visit {
-  id: string;
-  patientId: string;
-  patientName: string;
-  type: string;
-  status: string;
-  scheduledDateTime: Date;
-  hasTranscript: boolean;
-  hasAiAnalysis: boolean;
-  analysisStatus: 'none' | 'pending' | 'processing' | 'completed' | 'reviewed';
-  analysisConfidence?: number;
-  department: string;
-  provider: string;
-  chiefComplaint: string;
-  lastAnalysisDate?: Date;
-}
+import { mockVisits, Visit } from '@/data/mockData';
 
 export const AIAnalysisEntry: React.FC = () => {
   const navigate = useNavigate();
@@ -57,71 +41,7 @@ export const AIAnalysisEntry: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState('all');
 
   useEffect(() => {
-    // Mock data - replace with actual API call
-    const mockVisits: Visit[] = [
-      {
-        id: 'V001',
-        patientId: 'P001',
-        patientName: 'John Doe',
-        type: 'consultation',
-        status: 'completed',
-        scheduledDateTime: new Date('2024-01-15T09:00:00'),
-        hasTranscript: true,
-        hasAiAnalysis: true,
-        analysisStatus: 'completed',
-        analysisConfidence: 0.89,
-        department: 'Cardiology',
-        provider: 'Dr. Smith',
-        chiefComplaint: 'Chest pain',
-        lastAnalysisDate: new Date('2024-01-15T10:45:00'),
-      },
-      {
-        id: 'V002',
-        patientId: 'P002',
-        patientName: 'Jane Smith',
-        type: 'follow_up',
-        status: 'completed',
-        scheduledDateTime: new Date('2024-01-16T14:30:00'),
-        hasTranscript: false,
-        hasAiAnalysis: false,
-        analysisStatus: 'none',
-        department: 'Internal Medicine',
-        provider: 'Dr. Johnson',
-        chiefComplaint: 'Diabetes follow-up',
-      },
-      {
-        id: 'V003',
-        patientId: 'P003',
-        patientName: 'Mike Johnson',
-        type: 'urgent_care',
-        status: 'completed',
-        scheduledDateTime: new Date('2024-01-17T11:15:00'),
-        hasTranscript: true,
-        hasAiAnalysis: true,
-        analysisStatus: 'processing',
-        department: 'Emergency',
-        provider: 'Dr. Brown',
-        chiefComplaint: 'Severe headache',
-        lastAnalysisDate: new Date('2024-01-17T12:30:00'),
-      },
-      {
-        id: 'V004',
-        patientId: 'P004',
-        patientName: 'Sarah Wilson',
-        type: 'telemedicine',
-        status: 'completed',
-        scheduledDateTime: new Date('2024-01-18T16:00:00'),
-        hasTranscript: true,
-        hasAiAnalysis: true,
-        analysisStatus: 'reviewed',
-        analysisConfidence: 0.92,
-        department: 'Psychiatry',
-        provider: 'Dr. Davis',
-        chiefComplaint: 'Anxiety management',
-        lastAnalysisDate: new Date('2024-01-18T17:30:00'),
-      },
-    ];
-
+    // Use shared mock data for consistency across all pages
     setVisits(mockVisits);
     setFilteredVisits(mockVisits);
     setLoading(false);
@@ -133,8 +53,8 @@ export const AIAnalysisEntry: React.FC = () => {
     if (searchTerm) {
       filtered = filtered.filter(visit =>
         visit.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        visit.chiefComplaint.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        visit.provider.toLowerCase().includes(searchTerm.toLowerCase())
+        (visit.chiefComplaint?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+        visit.attendingProvider.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -282,7 +202,7 @@ export const AIAnalysisEntry: React.FC = () => {
                 <TableCell>
                   {visit.scheduledDateTime.toLocaleDateString()}
                 </TableCell>
-                <TableCell>{visit.provider}</TableCell>
+                <TableCell>{visit.attendingProvider}</TableCell>
                 <TableCell>{visit.chiefComplaint}</TableCell>
                 <TableCell>
                   <Chip
