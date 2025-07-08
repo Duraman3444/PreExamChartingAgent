@@ -153,6 +153,79 @@ flowchart TD
 
 </details>
 
+<details>
+<summary>AI Analysis Processing Flow</summary>
+
+```mermaid
+flowchart TD
+    A[🤖 Analysis Started] --> B[🔄 Symptom Extraction]
+    B --> C[🔄 Medical History Parsing]
+    C --> D[🔄 Differential Diagnosis]
+    D --> E[🔄 Treatment Recommendations]
+    E --> F[🔄 Risk Assessment]
+    F --> G[🔄 Confidence Scoring]
+    G --> H{Analysis Complete?}
+    H -->|Error| I[⚠️ Processing Error]
+    H -->|Success| J[✅ Analysis Ready]
+    I --> K[🔄 Retry Logic]
+    J --> L[📤 Provider Notification]
+    K --> M{Retry Success?}
+    L --> N[🎯 Ready for Review]
+    M -->|No| O[⚠️ Manual Review Required]
+    M -->|Yes| J
+    O --> P[👤 Support Escalation]
+```
+
+</details>
+
+<details>
+<summary>AI Analysis Review Flow</summary>
+
+```mermaid
+flowchart TD
+    A[🏥 Analysis Review] --> B[📋 AI Summary Dashboard]
+    B --> C[🔍 Filter by Confidence]
+    C --> D[📋 Symptom Analysis]
+    D --> E[📋 Diagnosis Recommendations]
+    E --> F[📋 Treatment Options]
+    F --> G{Review Complete?}
+    G -->|No| H[👤 Edit Recommendations]
+    G -->|Yes| I[✅ Approve Analysis]
+    H --> J[📋 Track Changes]
+    J --> K[📋 Add Comments]
+    K --> L[🔄 Update Confidence]
+    L --> M[📋 Save Revision]
+    M --> G
+    I --> N[📤 Generate Documentation]
+    N --> O[🎯 Analysis Approved]
+```
+
+</details>
+
+<details>
+<summary>Risk Assessment & Alerts Flow</summary>
+
+```mermaid
+flowchart TD
+    A[🤖 Risk Analysis] --> B[🔄 Red Flag Detection]
+    B --> C{Critical Symptoms?}
+    C -->|Yes| D[⚠️ Critical Alert]
+    C -->|No| E[🔄 Risk Stratification]
+    D --> F[📤 Immediate Notification]
+    E --> G{Risk Level?}
+    F --> H[👤 Provider Alert]
+    G -->|High| I[⚠️ High Priority]
+    G -->|Medium| J[📋 Standard Review]
+    G -->|Low| K[✅ Routine Processing]
+    H --> L[📋 Urgent Review Required]
+    I --> M[📋 Priority Review]
+    J --> N[📋 Standard Queue]
+    K --> O[📋 Routine Queue]
+    L --> P[🎯 Critical Path]
+```
+
+</details>
+
 ---
 
 ## 🛠️ **Technology Stack**
