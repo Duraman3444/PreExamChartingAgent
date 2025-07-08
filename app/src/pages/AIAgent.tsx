@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -7,7 +7,6 @@ import {
   Grid,
   Button,
   Alert,
-  CircularProgress,
   Tabs,
   Tab,
   Paper,
@@ -17,10 +16,6 @@ import {
   Select,
   MenuItem,
   TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Chip,
   Accordion,
   AccordionSummary,
@@ -29,41 +24,23 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Divider,
   LinearProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Rating,
-  Tooltip,
-  IconButton,
 } from '@mui/material';
 import {
   SmartToy as SmartToyIcon,
   Person as PersonIcon,
-  Add as AddIcon,
   PlayArrow as PlayArrowIcon,
   Psychology as PsychologyIcon,
   Assessment as AssessmentIcon,
   LocalHospital as HospitalIcon,
-  MedicalServices as MedicalServicesIcon,
   Warning as WarningIcon,
   AutoAwesome as AutoAwesomeIcon,
   ExpandMore as ExpandMoreIcon,
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
-  ThumbUp as ThumbUpIcon,
-  Save as SaveIcon,
-  Refresh as RefreshIcon,
   Timeline as TimelineIcon,
-  TrendingUp as TrendingUpIcon,
   Security as SecurityIcon,
-  HealthAndSafety as HealthAndSafetyIcon,
 } from '@mui/icons-material';
-import { openAIService } from '@/services/openai';
 import { mockVisits } from '@/data/mockData';
 
 interface TabPanelProps {
@@ -746,7 +723,7 @@ const AIAgent: React.FC = () => {
             <Card>
               <CardContent>
                 <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                  <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
+                  <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
                     <Tab label="Analysis Overview" />
                     <Tab label="Differential Diagnoses" />
                     <Tab label="Treatment Recommendations" />
