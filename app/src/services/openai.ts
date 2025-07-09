@@ -536,23 +536,27 @@ class OpenAIService {
       const processingTime = Date.now() - startTime;
       logGPTOperation.progress(operation, 'Firebase Function call completed, processing response');
 
-      // Process the response from Firebase Function
+      // Analyse Transcript mapping robust extraction
+      const differentialData = response.differential_diagnosis || response.differentialDiagnoses || response.diagnoses || [];
+      const treatmentData = response.treatment_recommendations || response.treatments || [];
+      const concernsData = response.flagged_concerns || response.concerns || [];
+
       const analysisResult: AnalysisResult = {
         id: response.id || `analysis-${Date.now()}`,
         symptoms: response.symptoms?.map((s: any, i: number) => ({
           id: `symptom-${i + 1}`,
-          name: s.name || 'Unknown',
+          name: s.name || s.symptom || s.description || 'Unknown',
           severity: s.severity || 'mild',
           confidence: this.normalizeConfidenceScore(s.confidence || 0.8),
           duration: s.duration || 'Unknown',
           location: s.location || '',
           quality: s.quality || '',
           associatedFactors: s.associatedFactors || [],
-          sourceText: s.sourceText || ''
+          sourceText: s.sourceText || s.context || transcript.slice(0, 120)
         })) || [],
-        diagnoses: response.differential_diagnosis?.map((d: any, i: number) => ({
+        diagnoses: differentialData.map((d: any, i: number) => ({
           id: `diagnosis-${i + 1}`,
-          condition: d.condition || 'Unknown',
+          condition: d.condition || d.diagnosis || d.name || 'Unknown',
           icd10Code: d.icd10Code || 'Z99.9',
           probability: this.normalizeConfidenceScore(d.probability || (d.confidence === 'high' ? 0.8 : d.confidence === 'medium' ? 0.6 : 0.4)),
           severity: d.severity || 'medium',
@@ -562,7 +566,7 @@ class OpenAIService {
           reasoning: d.reasoning || 'Analysis from Firebase Function',
           urgency: d.urgency || 'routine'
         })) || [],
-        treatments: response.treatment_recommendations?.map((t: any, i: number) => ({
+        treatments: treatmentData.map((t: any, i: number) => ({
           id: `treatment-${i + 1}`,
           category: t.category || 'monitoring',
           recommendation: t.recommendation || 'Continue monitoring',
@@ -573,7 +577,7 @@ class OpenAIService {
           expectedOutcome: t.expectedOutcome || 'Improvement expected',
           evidenceLevel: t.evidenceLevel || 'B'
         })) || [],
-        concerns: response.flagged_concerns?.map((c: any, i: number) => ({
+        concerns: concernsData.map((c: any, i: number) => ({
           id: `concern-${i + 1}`,
           type: c.type || 'urgent_referral',
           severity: c.severity || 'medium',
@@ -633,23 +637,29 @@ class OpenAIService {
 
       // The Firebase Function now returns a detailed structure
       // Parse the new comprehensive response format
-      
+
+      const differentialData = response.differential_diagnosis || response.differentialDiagnoses || response.diagnoses || [];
+
+      const treatmentData = response.treatment_recommendations || response.treatments || [];
+
+      const concernsData = response.flagged_concerns || response.concerns || [];
+
       const result: AnalysisResult = {
         id: response.id || `quick-analysis-${Date.now()}`,
         symptoms: response.symptoms?.map((s: any, i: number) => ({
           id: `symptom-${i + 1}`,
-          name: s.name || 'Unknown',
+          name: s.name || s.symptom || s.description || 'Unknown',
           severity: s.severity || 'mild',
           confidence: this.normalizeConfidenceScore(s.confidence || 0.7),
           duration: s.duration || 'Unknown',
           location: s.location || '',
           quality: s.quality || '',
           associatedFactors: s.associatedFactors || [],
-          sourceText: s.sourceText || ''
+          sourceText: s.sourceText || s.context || transcript.slice(0, 120)
         })) || [],
-        diagnoses: response.differential_diagnosis?.map((d: any, i: number) => ({
+        diagnoses: differentialData.map((d: any, i: number) => ({
           id: `diagnosis-${i + 1}`,
-          condition: d.condition || 'Unknown',
+          condition: d.condition || d.diagnosis || d.name || 'Unknown',
           icd10Code: d.icd10Code || 'Z99.9',
           probability: this.normalizeConfidenceScore(d.probability || (d.confidence === 'high' ? 0.8 : d.confidence === 'medium' ? 0.6 : 0.4)),
           severity: d.severity || 'low',
@@ -659,7 +669,7 @@ class OpenAIService {
           reasoning: d.reasoning || 'Quick analysis performed',
           urgency: d.urgency || 'routine'
         })) || [],
-        treatments: response.treatment_recommendations?.map((t: any, i: number) => ({
+        treatments: treatmentData.map((t: any, i: number) => ({
           id: `treatment-${i + 1}`,
           category: t.category || 'monitoring',
           recommendation: t.recommendation || 'Continue monitoring',
@@ -670,7 +680,7 @@ class OpenAIService {
           expectedOutcome: t.expectedOutcome || 'Unknown',
           evidenceLevel: t.evidenceLevel || 'D'
         })) || [],
-        concerns: response.flagged_concerns?.map((c: any, i: number) => ({
+        concerns: concernsData.map((c: any, i: number) => ({
           id: `concern-${i + 1}`,
           type: c.type || 'urgent_referral',
           severity: c.severity || 'low',
@@ -799,9 +809,9 @@ class OpenAIService {
 
     const lowerText = text.toLowerCase();
     
-    const doctorScore = doctorPhrases.reduce((score, phrase) => 
+    const doctorScore = doctorPhrases.reduce((score, phrase) =>
       score + (lowerText.includes(phrase) ? 1 : 0), 0);
-    const patientScore = patientPhrases.reduce((score, phrase) => 
+    const patientScore = patientPhrases.reduce((score, phrase) =>
       score + (lowerText.includes(phrase) ? 1 : 0), 0);
 
     if (doctorScore > patientScore) return 'provider';
@@ -972,7 +982,8 @@ class OpenAIService {
       throw new Error(`Failed to generate treatment protocol: ${error.message}`);
     }
   }
+
 }
 
 export const openAIService = new OpenAIService();
-export default openAIService; 
+export default openAIService;

@@ -6,4 +6,6 @@ export declare const transcribeAudio: functions.HttpsFunction;
 export declare const evaluateQuestion: functions.HttpsFunction;
 export declare const batchAnalyzeQuestions: functions.HttpsFunction;
 export declare const analyzeWithReasoning: functions.HttpsFunction;
+export declare const generateText: functions.HttpsFunction;
+export declare const generateTreatmentProtocol: functions.HttpsFunction;
 //# sourceMappingURL=index.d.ts.map
