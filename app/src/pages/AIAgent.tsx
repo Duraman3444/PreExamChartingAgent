@@ -43,6 +43,7 @@ import {
 } from '@mui/icons-material';
 import { mockVisits } from '@/data/mockData';
 import { validateAIIntegration, type AIValidationResult } from '@/utils/aiTestUtils';
+import O1DiagnosticTool from '../components/common/O1DiagnosticTool';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -316,17 +317,21 @@ const AIAgent: React.FC = () => {
     setIsAnalyzing(true);
     setAnalysisProgress(0);
 
+    // Progress tracking - declare outside try block so it's accessible in catch
+    let progressInterval: NodeJS.Timeout | null = null;
+
     try {
-      // Progress tracking
-      const progressInterval = setInterval(() => {
-        setAnalysisProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 300);
+              progressInterval = setInterval(() => {
+          setAnalysisProgress(prev => {
+            if (prev >= 90) {
+              if (progressInterval) {
+                clearInterval(progressInterval);
+              }
+              return 90;
+            }
+            return prev + 10;
+          });
+        }, 300);
 
       // Get patient data
       let patientData;
@@ -425,34 +430,191 @@ const AIAgent: React.FC = () => {
       let aiAnalysis: AIAgentAnalysis;
       
       if (analysisMode === 'quick') {
-        const analysisResult = await openAIService.quickAnalyzeTranscript(transcript);
-        aiAnalysis = {
-          symptoms: analysisResult.symptoms,
-          diagnoses: analysisResult.diagnoses,
-          treatments: analysisResult.treatments,
-          concerns: analysisResult.concerns,
-          confidenceScore: analysisResult.confidenceScore,
-          reasoning: analysisResult.reasoning,
-          nextSteps: analysisResult.nextSteps,
-          modelUsed: 'gpt-4o'
-        };
+        console.log('⚡ [Quick Analysis] Starting quick analysis...');
+        console.log('📋 [Quick Analysis] Transcript length:', transcript.length);
+        
+        try {
+          const analysisResult = await openAIService.quickAnalyzeTranscript(transcript);
+          
+          console.log('✅ [Quick Analysis] Quick analysis completed successfully');
+          console.log('📊 [Quick Analysis] Result keys:', Object.keys(analysisResult));
+          
+          aiAnalysis = {
+            symptoms: analysisResult.symptoms,
+            diagnoses: analysisResult.diagnoses,
+            treatments: analysisResult.treatments,
+            concerns: analysisResult.concerns,
+            confidenceScore: analysisResult.confidenceScore,
+            reasoning: analysisResult.reasoning,
+            nextSteps: analysisResult.nextSteps,
+            modelUsed: 'gpt-4o'
+          };
+          
+          console.log('✅ [Quick Analysis] Analysis object created:', {
+            symptomsCount: aiAnalysis.symptoms.length,
+            diagnosesCount: aiAnalysis.diagnoses.length,
+            treatmentsCount: aiAnalysis.treatments.length,
+            concernsCount: aiAnalysis.concerns.length
+          });
+        } catch (quickError) {
+          console.error('❌ [Quick Analysis] Quick analysis failed:', quickError);
+          
+          // Fallback to basic analysis structure if quick analysis fails
+          const fallbackAnalysis: AIAgentAnalysis = {
+            symptoms: [{
+              id: 'sym-fallback',
+              name: 'Quick Analysis Error',
+              severity: 'moderate',
+              confidence: 0.5,
+              duration: 'System error',
+              location: 'Analysis Service',
+              quality: 'Error condition',
+              associatedFactors: ['API failure'],
+              sourceText: `Quick analysis failed: ${(quickError as Error).message}`
+            }],
+            diagnoses: [{
+              id: 'dx-fallback',
+              condition: 'Quick Analysis Service Error',
+              icd10Code: 'Z99.9',
+              probability: 0.5,
+              severity: 'medium',
+              supportingEvidence: ['System error logs'],
+              againstEvidence: ['Normal operation'],
+              additionalTestsNeeded: ['Check API configuration', 'Verify connectivity'],
+              reasoning: `Quick analysis failed with error: ${(quickError as Error).message}. Switching to O1 Deep Reasoning mode is recommended.`,
+              urgency: 'routine'
+            }],
+            treatments: [{
+              id: 'tx-fallback',
+              category: 'monitoring',
+              recommendation: 'Switch to O1 Deep Reasoning mode for comprehensive analysis',
+              priority: 'medium',
+              timeframe: 'As needed',
+              contraindications: ['System errors'],
+              alternatives: ['Use O1 Deep Reasoning', 'Check system configuration'],
+              expectedOutcome: 'Successful analysis with alternative mode',
+              evidenceLevel: 'C'
+            }],
+            concerns: [{
+              id: 'flag-fallback',
+              type: 'urgent_referral',
+              severity: 'medium',
+              message: 'Quick analysis temporarily unavailable - O1 Deep Reasoning available',
+              recommendation: 'Switch to O1 Deep Reasoning mode for comprehensive analysis',
+              requiresImmediateAction: false
+            }],
+            confidenceScore: 0.5,
+            reasoning: `Quick analysis encountered an error: ${(quickError as Error).message}. The O1 Deep Reasoning mode is available and provides more comprehensive analysis. Please switch to that mode for best results.`,
+            nextSteps: [
+              'Switch to O1 Deep Reasoning mode',
+              'Check system configuration if issue persists',
+              'Contact support if problems continue'
+            ],
+            modelUsed: 'gpt-4o'
+          };
+          
+          if (progressInterval) {
+            clearInterval(progressInterval);
+          }
+          setAnalysis(fallbackAnalysis);
+          setAnalysisProgress(100);
+          setTabValue(1);
+          return;
+        }
       } else {
         // O1 Deep Reasoning - now processes exactly like 4o model but with reasoning trace
-        const o1Result = await openAIService.analyzeTranscriptWithReasoning(transcript, patientContext, 'o1');
+        console.log('🔬 [O1 Analysis] Starting O1 deep reasoning analysis...');
+        console.log('📋 [O1 Analysis] Transcript length:', transcript.length);
+        console.log('👤 [O1 Analysis] Patient context:', patientContext);
         
-        // Use the O1 result directly since it now has the same structure as 4o
-        aiAnalysis = {
-          symptoms: o1Result.symptoms,
-          diagnoses: o1Result.diagnoses,
-          treatments: o1Result.treatments,
-          concerns: o1Result.concerns,
-          confidenceScore: o1Result.confidenceScore,
-          reasoning: o1Result.reasoning,
-          nextSteps: o1Result.nextSteps,
-          reasoningTrace: o1Result.reasoningTrace,
-          modelUsed: o1Result.modelUsed,
-          thinkingTime: o1Result.thinkingTime
-        };
+        try {
+          const o1Result = await openAIService.analyzeTranscriptWithReasoning(transcript, patientContext, 'o1');
+          
+          console.log('✅ [O1 Analysis] O1 analysis completed successfully');
+          console.log('📊 [O1 Analysis] Result keys:', Object.keys(o1Result));
+          
+          // Use the O1 result directly since it now has the same structure as 4o
+          aiAnalysis = {
+            symptoms: o1Result.symptoms,
+            diagnoses: o1Result.diagnoses,
+            treatments: o1Result.treatments,
+            concerns: o1Result.concerns,
+            confidenceScore: o1Result.confidenceScore,
+            reasoning: o1Result.reasoning,
+            nextSteps: o1Result.nextSteps,
+            reasoningTrace: o1Result.reasoningTrace,
+            modelUsed: o1Result.modelUsed,
+            thinkingTime: o1Result.thinkingTime
+          };
+        } catch (o1Error) {
+          console.error('❌ [O1 Analysis] O1 analysis failed:', o1Error);
+          
+          // Create detailed error analysis
+          const errorAnalysis: AIAgentAnalysis = {
+            symptoms: [{
+              id: 'sym-error',
+              name: 'O1 Analysis Error',
+              severity: 'critical',
+              confidence: 0.1,
+              duration: 'System error',
+              location: 'AI Analysis Service',
+              quality: 'Error condition',
+              associatedFactors: ['O1 model access', 'Firebase Functions', 'Authentication'],
+              sourceText: `O1 analysis failed: ${(o1Error as Error).message}`
+            }],
+            diagnoses: [{
+              id: 'dx-error',
+              condition: 'O1 Analysis Service Error',
+              icd10Code: 'Z99.9',
+              probability: 0.1,
+              severity: 'critical',
+              supportingEvidence: ['System error logs', 'Failed API call'],
+              againstEvidence: ['Normal system operation'],
+              additionalTestsNeeded: [
+                'Check Firebase Functions deployment',
+                'Verify OpenAI API key configuration',
+                'Check O1 model access permissions',
+                'Verify user authentication'
+              ],
+              reasoning: `O1 analysis failed with error: ${(o1Error as Error).message}. This could be due to: 1) Firebase Functions not properly deployed, 2) OpenAI API key not configured, 3) O1 model access not available, 4) Authentication issues, or 5) Network connectivity problems.`,
+              urgency: 'urgent'
+            }],
+            treatments: [{
+              id: 'tx-error',
+              category: 'monitoring',
+              recommendation: 'Use O1 Diagnostic Tool to identify and fix the issue',
+              priority: 'urgent',
+              timeframe: 'Immediate',
+              contraindications: ['System errors'],
+              alternatives: ['Use Quick Analysis mode', 'Contact system administrator'],
+              expectedOutcome: 'System restoration and O1 analysis functionality',
+              evidenceLevel: 'D'
+            }],
+            concerns: [{
+              id: 'flag-error',
+              type: 'red_flag',
+              severity: 'critical',
+              message: 'O1 Analysis system error - advanced reasoning unavailable',
+              recommendation: 'Switch to O1 Diagnostic Tool tab to troubleshoot the issue',
+              requiresImmediateAction: true
+            }],
+            confidenceScore: 0.1,
+            reasoning: `O1 analysis could not be completed due to system error: ${(o1Error as Error).message}. Please use the O1 Diagnostic Tool (available in the tab above) to identify and resolve the issue. You can also try using Quick Analysis mode as an alternative.`,
+            nextSteps: [
+              'Switch to O1 Diagnostic Tool tab',
+              'Run comprehensive diagnostic',
+              'Follow the recommendations provided',
+              'Try Quick Analysis mode as alternative',
+              'Contact system administrator if issues persist'
+            ]
+          };
+          
+          clearInterval(progressInterval);
+          setAnalysis(errorAnalysis);
+          setAnalysisProgress(100);
+          setTabValue(1);
+          return;
+        }
       }
 
       clearInterval(progressInterval);
@@ -460,42 +622,47 @@ const AIAgent: React.FC = () => {
       setAnalysisProgress(100);
       setTabValue(1);
 
-    } catch (error) {
-      console.error('Analysis failed:', error);
+    } catch (error: any) {
+      console.error('❌ [Analysis] Analysis failed:', error);
       
-      // Fallback to mock analysis on error
+      // Enhanced error analysis with diagnostic recommendations
       const errorAnalysis: AIAgentAnalysis = {
         symptoms: [{
           id: 'sym-error',
-          name: 'Analysis Error',
+          name: 'Analysis System Error',
           severity: 'critical',
           confidence: 0.1,
           duration: 'System error',
-          location: 'API service',
+          location: 'AI Analysis Service',
           quality: 'Error condition',
-          associatedFactors: ['API failure'],
-          sourceText: `Error occurred during analysis: ${error instanceof Error ? error.message : 'Unknown error'}`
+          associatedFactors: ['API failure', 'System configuration', 'Network issues'],
+          sourceText: `Analysis failed: ${error.message}`
         }],
         diagnoses: [{
           id: 'dx-error',
-          condition: 'Analysis service error',
+          condition: 'Analysis Service Error',
           icd10Code: 'Z99.9',
           probability: 0.1,
           severity: 'critical',
-          supportingEvidence: ['system error'],
-          againstEvidence: ['normal operation'],
-          additionalTestsNeeded: ['check API configuration', 'verify network connectivity'],
-          reasoning: `Failed to complete AI analysis: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          supportingEvidence: ['System error logs', 'Failed API call'],
+          againstEvidence: ['Normal system operation'],
+          additionalTestsNeeded: [
+            'Check system configuration',
+            'Verify network connectivity',
+            'Check API service status',
+            'Validate authentication'
+          ],
+          reasoning: `Analysis failed with error: ${error.message}. This could be due to system configuration issues, network problems, or service unavailability.`,
           urgency: 'urgent'
         }],
         treatments: [{
           id: 'tx-error',
           category: 'monitoring',
-          recommendation: 'Check system configuration and try again',
+          recommendation: 'Use O1 Diagnostic Tool to identify and fix the issue',
           priority: 'urgent',
           timeframe: 'Immediate',
-          contraindications: ['system errors'],
-          alternatives: ['manual analysis', 'retry with different parameters'],
+          contraindications: ['System errors'],
+          alternatives: ['Check system logs', 'Contact system administrator'],
           expectedOutcome: 'System restoration',
           evidenceLevel: 'D'
         }],
@@ -503,20 +670,24 @@ const AIAgent: React.FC = () => {
           id: 'flag-error',
           type: 'red_flag',
           severity: 'critical',
-          message: 'Analysis system error',
-          recommendation: 'Contact system administrator',
+          message: 'Analysis system error - AI analysis unavailable',
+          recommendation: 'Use O1 Diagnostic Tool to troubleshoot the issue',
           requiresImmediateAction: true
         }],
         confidenceScore: 0.1,
-        reasoning: 'Analysis could not be completed due to system error. Please check configuration and try again.',
+        reasoning: `Analysis could not be completed due to system error: ${error.message}. Please use the O1 Diagnostic Tool (available in the tab above) to identify and resolve the issue.`,
         nextSteps: [
-          'Verify OpenAI API key configuration',
-          'Check network connectivity',
-          'Review error logs',
-          'Contact technical support if issue persists'
+          'Switch to O1 Diagnostic Tool tab',
+          'Run comprehensive diagnostic',
+          'Follow the recommendations provided',
+          'Check browser console for detailed error information',
+          'Contact system administrator if issues persist'
         ]
       };
       
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
       setAnalysis(errorAnalysis);
       setAnalysisProgress(100);
       setTabValue(1);
@@ -962,6 +1133,7 @@ const AIAgent: React.FC = () => {
                     <Tab label="Treatment Recommendations" />
                     <Tab label="Clinical Concerns" />
                     {analysis.reasoningTrace && <Tab label="🧠 Reasoning Process" />}
+                    <Tab label="O1 Diagnostic Tool" />
                   </Tabs>
                 </Box>
 
@@ -1509,6 +1681,11 @@ const AIAgent: React.FC = () => {
                     </Stack>
                   </TabPanel>
                 )}
+
+                {/* O1 Diagnostic Tool Tab Panel */}
+                <TabPanel value={tabValue} index={5}>
+                  <O1DiagnosticTool />
+                </TabPanel>
               </CardContent>
             </Card>
           ) : (

@@ -14,24 +14,53 @@ const getAuthToken = async (): Promise<string> => {
   return await user.getIdToken();
 };
 
-// Helper function to call Firebase Functions
+// Helper function to call Firebase Functions with enhanced error handling
 const callFirebaseFunction = async (functionName: string, data: any): Promise<any> => {
-  const token = await getAuthToken();
+  console.log(`🔍 [Firebase Debug] Calling function: ${functionName}`);
+  console.log(`📊 [Firebase Debug] Function data:`, data);
   
-  const response = await fetch(`${FIREBASE_FUNCTIONS_BASE_URL}/${functionName}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify(data)
-  });
-  
-  if (!response.ok) {
-    throw new Error(`Firebase Function error: ${response.status} ${response.statusText}`);
+  try {
+    const token = await getAuthToken();
+    console.log(`🔑 [Firebase Debug] Auth token obtained successfully`);
+    
+    const url = `${FIREBASE_FUNCTIONS_BASE_URL}/${functionName}`;
+    console.log(`🌐 [Firebase Debug] Calling URL: ${url}`);
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(data)
+    });
+    
+    console.log(`📈 [Firebase Debug] Response status: ${response.status} ${response.statusText}`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ [Firebase Debug] Error response:`, errorText);
+      
+      let errorMessage = `Firebase Function error: ${response.status} ${response.statusText}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorMessage;
+      } catch (parseError) {
+        errorMessage = errorText || errorMessage;
+      }
+      
+      throw new Error(errorMessage);
+    }
+    
+    const result = await response.json();
+    console.log(`✅ [Firebase Debug] Function ${functionName} completed successfully`);
+    console.log(`📊 [Firebase Debug] Result keys:`, Object.keys(result));
+    
+    return result;
+  } catch (error) {
+    console.error(`❌ [Firebase Debug] Function ${functionName} failed:`, error);
+    throw error;
   }
-  
-  return await response.json();
 };
 
 // Console logging utility for GPT operations
@@ -232,6 +261,12 @@ export interface ModelConfig {
 }
 
 class OpenAIService {
+  private apiKey: string;
+  
+  constructor() {
+    this.apiKey = import.meta.env.VITE_OPENAI_API_KEY || '';
+  }
+
   private validateApiKey(): void {
     // Always use Firebase Functions - no API key validation needed
     console.log('✅ [OpenAI Debug] Using secure Firebase Functions proxy');
@@ -921,6 +956,197 @@ class OpenAIService {
       hasApiKey: true,
       message: 'Using secure Firebase Functions for OpenAI API calls'
     };
+  }
+
+  /**
+   * Comprehensive diagnostic tool for O1 analysis issues
+   */
+  async diagnoseO1Issues(): Promise<{
+    status: 'success' | 'warning' | 'error';
+    issues: string[];
+    recommendations: string[];
+    testResults: {
+      firebaseConfig: boolean;
+      firebaseAuth: boolean;
+      firebaseFunctions: boolean;
+      openaiConfig: boolean;
+      o1ModelAccess: boolean;
+      quickAnalysis: boolean;
+      o1Analysis: boolean;
+    };
+  }> {
+    const issues: string[] = [];
+    const recommendations: string[] = [];
+    const testResults = {
+      firebaseConfig: false,
+      firebaseAuth: false,
+      firebaseFunctions: false,
+      openaiConfig: false,
+      o1ModelAccess: false,
+      quickAnalysis: false,
+      o1Analysis: false
+    };
+
+    console.log('🔍 [O1 Diagnostic] Starting comprehensive O1 analysis diagnostic...');
+
+    // Test 1: Firebase Configuration
+    try {
+      const { getAuth } = await import('firebase/auth');
+      const auth = getAuth();
+      
+      if (!auth) {
+        issues.push('Firebase Auth not initialized');
+        recommendations.push('Check Firebase configuration in .env file');
+      } else {
+        testResults.firebaseConfig = true;
+        console.log('✅ [O1 Diagnostic] Firebase configuration OK');
+      }
+    } catch (error) {
+      issues.push('Firebase import failed');
+      recommendations.push('Ensure Firebase is properly installed and configured');
+    }
+
+    // Test 2: Firebase Authentication
+    try {
+      const { getAuth } = await import('firebase/auth');
+      const auth = getAuth();
+      const user = auth.currentUser;
+      
+      if (!user) {
+        issues.push('User not authenticated');
+        recommendations.push('Please log in to use O1 analysis features');
+      } else {
+        testResults.firebaseAuth = true;
+        console.log('✅ [O1 Diagnostic] Firebase authentication OK');
+        
+        // Test token generation
+        const token = await user.getIdToken();
+        console.log('✅ [O1 Diagnostic] Auth token generated successfully');
+      }
+    } catch (error) {
+      issues.push('Authentication error: ' + (error as Error).message);
+      recommendations.push('Try logging out and logging back in');
+    }
+
+    // Test 3: Firebase Functions Connectivity
+    try {
+      console.log('🌐 [O1 Diagnostic] Testing Firebase Functions connectivity...');
+      
+      // Instead of OPTIONS, test with a simple authenticated request
+      const token = await getAuthToken();
+      const testUrl = `${FIREBASE_FUNCTIONS_BASE_URL}/analyzeTranscript`;
+      
+      const response = await fetch(testUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          transcript: "Test connectivity",
+          patientId: null,
+          visitId: null
+        })
+      });
+      
+      // Any response (even errors) means connectivity is working
+      if (response.status !== 0) {
+        testResults.firebaseFunctions = true;
+        console.log('✅ [O1 Diagnostic] Firebase Functions endpoint accessible');
+      } else {
+        issues.push(`Firebase Functions endpoint not accessible (${response.status})`);
+        recommendations.push('Check Firebase Functions deployment and URL configuration');
+      }
+    } catch (error) {
+      // Only mark as failed if it's a network/connectivity error
+      const errorMessage = (error as Error).message;
+      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
+        issues.push('Firebase Functions connectivity error: ' + errorMessage);
+        recommendations.push('Check network connectivity and Firebase Functions URL');
+      } else {
+        // If it's not a connectivity error, the endpoint is reachable
+        testResults.firebaseFunctions = true;
+        console.log('✅ [O1 Diagnostic] Firebase Functions endpoint accessible (error indicates reachability)');
+      }
+    }
+
+    // Test 4: OpenAI Configuration (in Firebase Functions)
+    try {
+      console.log('🔍 [O1 Diagnostic] Testing OpenAI configuration...');
+      
+      const testTranscript = "Patient reports mild headache for the past 2 days.";
+      
+      // Test quick analysis first
+      console.log('🔍 [O1 Diagnostic] Testing Quick Analysis...');
+      const quickResult = await this.quickAnalyzeTranscript(testTranscript);
+      
+      if (quickResult && quickResult.reasoning) {
+        testResults.openaiConfig = true;
+        testResults.quickAnalysis = true;
+        console.log('✅ [O1 Diagnostic] OpenAI configuration OK');
+        console.log('✅ [O1 Diagnostic] Quick analysis working');
+      } else {
+        issues.push('Quick Analysis not responding correctly');
+        recommendations.push('Check OpenAI API key configuration for Quick Analysis');
+      }
+    } catch (error) {
+      issues.push('OpenAI API error: ' + (error as Error).message);
+      recommendations.push('Verify OpenAI API key is configured in Firebase Functions');
+    }
+
+    // Test 5: O1 Model Access
+    try {
+      console.log('🔍 [O1 Diagnostic] Testing O1 model access...');
+      
+      const testTranscript = "Patient reports severe chest pain radiating to left arm.";
+      
+      // Test O1-mini first (more accessible)
+      console.log('🔍 [O1 Diagnostic] Testing O1-mini model...');
+      const o1MiniResult = await this.analyzeTranscriptWithReasoning(testTranscript, undefined, 'o1-mini');
+      
+      if (o1MiniResult && o1MiniResult.reasoning && o1MiniResult.reasoningTrace) {
+        testResults.o1ModelAccess = true;
+        testResults.o1Analysis = true;
+        console.log('✅ [O1 Diagnostic] O1-mini model access OK');
+        console.log('✅ [O1 Diagnostic] O1 analysis working');
+        
+        // Try O1 full model if available
+        try {
+          console.log('🔍 [O1 Diagnostic] Testing O1 full model...');
+          const o1FullResult = await this.analyzeTranscriptWithReasoning(testTranscript, undefined, 'o1');
+          if (o1FullResult) {
+            console.log('✅ [O1 Diagnostic] O1 full model also available');
+          }
+        } catch (o1FullError) {
+          console.log('⚠️ [O1 Diagnostic] O1 full model not available, but O1-mini works');
+        }
+      } else {
+        issues.push('O1 model not accessible or not responding correctly');
+        recommendations.push('Check O1 model access permissions in OpenAI account');
+      }
+    } catch (error) {
+      issues.push('O1 model access error: ' + (error as Error).message);
+      recommendations.push('Verify O1 model access in OpenAI account and Firebase Functions configuration');
+    }
+
+    // Determine overall status
+    let status: 'success' | 'warning' | 'error' = 'success';
+    
+    if (!testResults.o1Analysis) {
+      status = 'error';
+    } else if (issues.length > 0) {
+      status = 'warning';
+    }
+
+    const result = {
+      status,
+      issues,
+      recommendations,
+      testResults
+    };
+
+    console.log('🔍 [O1 Diagnostic] Diagnostic complete:', result);
+    return result;
   }
 
   /**
