@@ -8,4 +8,5 @@ export declare const batchAnalyzeQuestions: functions.HttpsFunction;
 export declare const analyzeWithReasoning: functions.HttpsFunction;
 export declare const generateText: functions.HttpsFunction;
 export declare const generateTreatmentProtocol: functions.HttpsFunction;
+export declare const analyzeWithStreamingReasoning: functions.HttpsFunction;
 //# sourceMappingURL=index.d.ts.map

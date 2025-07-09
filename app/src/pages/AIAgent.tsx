@@ -1,49 +1,75 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Typography,
+  Grid,
   Card,
   CardContent,
-  Grid,
+  Typography,
   Button,
-  Alert,
-  Tabs,
-  Tab,
-  Paper,
-  Stack,
+  TextField,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  TextField,
   Chip,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
+  Stack,
   List,
   ListItem,
   ListItemText,
   ListItemIcon,
+  Alert,
+  AlertTitle,
   LinearProgress,
+  CircularProgress,
+  Tabs,
+  Tab,
+  Paper,
+  IconButton,
+  Tooltip,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Badge,
+  Divider,
+  Switch,
+  FormControlLabel,
+  ToggleButton,
+  ToggleButtonGroup
 } from '@mui/material';
 import {
-  SmartToy as SmartToyIcon,
-  Person as PersonIcon,
-  PlayArrow as PlayArrowIcon,
-  Psychology as PsychologyIcon,
-  Assessment as AssessmentIcon,
-  LocalHospital as HospitalIcon,
-  Warning as WarningIcon,
-  AutoAwesome as AutoAwesomeIcon,
-  ExpandMore as ExpandMoreIcon,
-  CheckCircle as CheckCircleIcon,
-  Error as ErrorIcon,
-  Timeline as TimelineIcon,
-  Security as SecurityIcon,
+  SmartToy,
+  Psychology,
+  Biotech,
+  MedicalInformation,
+  LocalHospital,
+  Security,
+  ExpandMore,
+  Assessment,
+  Person,
+  PersonAdd,
+  PlayArrow,
+  Stop,
+  Refresh,
+  BugReport,
+  Timeline,
+  AutoAwesome,
+  CheckCircle,
+  Analytics,
+  Hub,
+  Gavel,
+  Verified,
+  Search,
+  Pause,
+  FlashOn,
+  FlashOff,
+  Error,
+  Warning
 } from '@mui/icons-material';
-import { mockVisits } from '@/data/mockData';
-import { validateAIIntegration, type AIValidationResult } from '@/utils/aiTestUtils';
-import O1DiagnosticTool from '../components/common/O1DiagnosticTool';
+import { mockVisits } from '../data/mockData';
+import { ReasoningStep as OpenAIReasoningStep, ReasoningTrace as OpenAIReasoningTrace, O1AnalysisResult } from '../services/openai';
+import { AIValidationResult, validateAIIntegration } from '../utils/aiTestUtils';
+import StreamingReasoningDisplay from '../components/common/StreamingReasoningDisplay';
+import O1TestButton from '../components/common/O1TestButton';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -161,6 +187,15 @@ interface AIAgentAnalysis {
   thinkingTime?: number;
 }
 
+// Add new interfaces for streaming
+interface StreamingState {
+  isStreaming: boolean;
+  currentStep?: ReasoningStep;
+  reasoningSteps: ReasoningStep[];
+  streamingStatus: 'connecting' | 'connected' | 'analyzing' | 'complete' | 'error';
+  error?: string;
+}
+
 const AIAgent: React.FC = () => {
   const [agentMode, setAgentMode] = useState(false);
   const [patientType, setPatientType] = useState<'existing' | 'new'>('existing');
@@ -192,6 +227,15 @@ const AIAgent: React.FC = () => {
   const [testResult, setTestResult] = useState<AIValidationResult | null>(null);
   const [isTesting, setIsTesting] = useState(false);
   const [analysisMode, setAnalysisMode] = useState<'quick' | 'o1_deep_reasoning'>('quick');
+  const [isAgentMode, setIsAgentMode] = useState(false);
+
+  // New state for streaming reasoning
+  const [streamingEnabled, setStreamingEnabled] = useState(false);
+  const [streamingState, setStreamingState] = useState<StreamingState>({
+    isStreaming: false,
+    reasoningSteps: [],
+    streamingStatus: 'connecting'
+  });
 
   const patients = mockVisits.map(visit => ({
     id: visit.patientId,
@@ -316,23 +360,19 @@ const AIAgent: React.FC = () => {
   const handleRunAnalysis = async () => {
     setIsAnalyzing(true);
     setAnalysisProgress(0);
+    setAnalysis(null);
+
+    // Reset streaming state
+    setStreamingState({
+      isStreaming: false,
+      reasoningSteps: [],
+      streamingStatus: 'connecting'
+    });
 
     // Progress tracking - declare outside try block so it's accessible in catch
     let progressInterval: NodeJS.Timeout | null = null;
 
     try {
-              progressInterval = setInterval(() => {
-          setAnalysisProgress(prev => {
-            if (prev >= 90) {
-              if (progressInterval) {
-                clearInterval(progressInterval);
-              }
-              return 90;
-            }
-            return prev + 10;
-          });
-        }, 300);
-
       // Get patient data
       let patientData;
       if (patientType === 'existing') {
@@ -408,7 +448,7 @@ const AIAgent: React.FC = () => {
           ]
         };
         
-        clearInterval(progressInterval);
+        if (progressInterval) clearInterval(progressInterval);
         setAnalysis(mockAnalysis);
         setAnalysisProgress(100);
         setTabValue(1);
@@ -430,6 +470,16 @@ const AIAgent: React.FC = () => {
       let aiAnalysis: AIAgentAnalysis;
       
       if (analysisMode === 'quick') {
+        progressInterval = setInterval(() => {
+          setAnalysisProgress(prev => {
+            if (prev >= 90) {
+              if (progressInterval) clearInterval(progressInterval);
+              return 90;
+            }
+            return prev + 10;
+          });
+        }, 300);
+
         console.log('⚡ [Quick Analysis] Starting quick analysis...');
         console.log('📋 [Quick Analysis] Transcript length:', transcript.length);
         
@@ -513,41 +563,141 @@ const AIAgent: React.FC = () => {
             modelUsed: 'gpt-4o'
           };
           
-          if (progressInterval) {
-            clearInterval(progressInterval);
-          }
+          if (progressInterval) clearInterval(progressInterval);
           setAnalysis(fallbackAnalysis);
           setAnalysisProgress(100);
           setTabValue(1);
           return;
         }
       } else {
-        // O1 Deep Reasoning - now processes exactly like 4o model but with reasoning trace
+        // O1 Deep Reasoning - now with streaming option
         console.log('🔬 [O1 Analysis] Starting O1 deep reasoning analysis...');
         console.log('📋 [O1 Analysis] Transcript length:', transcript.length);
         console.log('👤 [O1 Analysis] Patient context:', patientContext);
+        console.log('🚀 [O1 Analysis] Streaming enabled:', streamingEnabled);
         
         try {
-          const o1Result = await openAIService.analyzeTranscriptWithReasoning(transcript, patientContext, 'o1');
-          
-          console.log('✅ [O1 Analysis] O1 analysis completed successfully');
-          console.log('📊 [O1 Analysis] Result keys:', Object.keys(o1Result));
-          
-          // Use the O1 result directly since it now has the same structure as 4o
-          aiAnalysis = {
-            symptoms: o1Result.symptoms,
-            diagnoses: o1Result.diagnoses,
-            treatments: o1Result.treatments,
-            concerns: o1Result.concerns,
-            confidenceScore: o1Result.confidenceScore,
-            reasoning: o1Result.reasoning,
-            nextSteps: o1Result.nextSteps,
-            reasoningTrace: o1Result.reasoningTrace,
-            modelUsed: o1Result.modelUsed,
-            thinkingTime: o1Result.thinkingTime
-          };
+          if (streamingEnabled) {
+            // Use streaming analysis
+            setStreamingState(prev => ({
+              ...prev,
+              isStreaming: true,
+              streamingStatus: 'connecting',
+              reasoningSteps: []
+            }));
+
+            // Switch to reasoning tab immediately for streaming
+            setTabValue(4);
+
+            await openAIService.analyzeTranscriptWithStreamingReasoning(
+              transcript,
+              patientContext,
+              'o1-mini',
+              // onReasoningStep
+              (step: ReasoningStep) => {
+                console.log('🔄 [Streaming] New reasoning step:', step.title);
+                setStreamingState(prev => ({
+                  ...prev,
+                  currentStep: step,
+                  reasoningSteps: [...prev.reasoningSteps, step],
+                  streamingStatus: 'analyzing'
+                }));
+              },
+              // onAnalysisUpdate
+              (update: any) => {
+                console.log('📊 [Streaming] Analysis update:', update);
+                setStreamingState(prev => ({
+                  ...prev,
+                  streamingStatus: 'analyzing'
+                }));
+              },
+              // onComplete
+              (result: O1AnalysisResult) => {
+                console.log('✅ [Streaming] Analysis completed successfully');
+                console.log('📊 [Streaming] Result keys:', Object.keys(result));
+                
+                aiAnalysis = {
+                  symptoms: result.symptoms,
+                  diagnoses: result.diagnoses,
+                  treatments: result.treatments,
+                  concerns: result.concerns,
+                  confidenceScore: result.confidenceScore,
+                  reasoning: result.reasoning,
+                  nextSteps: result.nextSteps,
+                  reasoningTrace: result.reasoningTrace,
+                  modelUsed: result.modelUsed,
+                  thinkingTime: result.thinkingTime
+                };
+
+                setStreamingState(prev => ({
+                  ...prev,
+                  isStreaming: false,
+                  streamingStatus: 'complete',
+                  currentStep: undefined
+                }));
+
+                setAnalysis(aiAnalysis);
+                setAnalysisProgress(100);
+                setTabValue(1); // Switch to results tab
+              },
+              // onError
+              (error: Error) => {
+                console.error('❌ [Streaming] Analysis failed:', error);
+                setStreamingState(prev => ({
+                  ...prev,
+                  isStreaming: false,
+                  streamingStatus: 'error',
+                  error: error.message,
+                  currentStep: undefined
+                }));
+                throw error;
+              }
+            );
+
+            // Exit here for streaming mode - the onComplete callback will handle the rest
+            return;
+          } else {
+            // Use regular non-streaming analysis
+            progressInterval = setInterval(() => {
+              setAnalysisProgress(prev => {
+                if (prev >= 90) {
+                  if (progressInterval) clearInterval(progressInterval);
+                  return 90;
+                }
+                return prev + 10;
+              });
+            }, 300);
+
+            const o1Result = await openAIService.analyzeTranscriptWithReasoning(transcript, patientContext, 'o1-mini');
+            
+            console.log('✅ [O1 Analysis] O1 analysis completed successfully');
+            console.log('📊 [O1 Analysis] Result keys:', Object.keys(o1Result));
+            
+            // Use the O1 result directly since it now has the same structure as 4o
+            aiAnalysis = {
+              symptoms: o1Result.symptoms,
+              diagnoses: o1Result.diagnoses,
+              treatments: o1Result.treatments,
+              concerns: o1Result.concerns,
+              confidenceScore: o1Result.confidenceScore,
+              reasoning: o1Result.reasoning,
+              nextSteps: o1Result.nextSteps,
+              reasoningTrace: o1Result.reasoningTrace,
+              modelUsed: o1Result.modelUsed,
+              thinkingTime: o1Result.thinkingTime
+            };
+          }
         } catch (o1Error) {
           console.error('❌ [O1 Analysis] O1 analysis failed:', o1Error);
+          
+          // Update streaming state on error
+          setStreamingState(prev => ({
+            ...prev,
+            isStreaming: false,
+            streamingStatus: 'error',
+            error: (o1Error as Error).message,
+            currentStep: undefined
+          }));
           
           // Create detailed error analysis
           const errorAnalysis: AIAgentAnalysis = {
@@ -568,48 +718,43 @@ const AIAgent: React.FC = () => {
               icd10Code: 'Z99.9',
               probability: 0.1,
               severity: 'critical',
-              supportingEvidence: ['System error logs', 'Failed API call'],
-              againstEvidence: ['Normal system operation'],
-              additionalTestsNeeded: [
-                'Check Firebase Functions deployment',
-                'Verify OpenAI API key configuration',
-                'Check O1 model access permissions',
-                'Verify user authentication'
-              ],
-              reasoning: `O1 analysis failed with error: ${(o1Error as Error).message}. This could be due to: 1) Firebase Functions not properly deployed, 2) OpenAI API key not configured, 3) O1 model access not available, 4) Authentication issues, or 5) Network connectivity problems.`,
-              urgency: 'urgent'
+              supportingEvidence: ['System error logs'],
+              againstEvidence: ['Normal operation'],
+              additionalTestsNeeded: ['Check O1 model access', 'Verify Firebase Functions', 'Check authentication'],
+              reasoning: `O1 analysis failed with error: ${(o1Error as Error).message}. This may be due to O1 model access issues, Firebase Functions configuration, or authentication problems. Quick analysis mode is available as an alternative.`,
+              urgency: 'routine'
             }],
             treatments: [{
               id: 'tx-error',
               category: 'monitoring',
-              recommendation: 'Use O1 Diagnostic Tool to identify and fix the issue',
-              priority: 'urgent',
+              recommendation: 'Switch to Quick Analysis mode for immediate results',
+              priority: 'high',
               timeframe: 'Immediate',
-              contraindications: ['System errors'],
-              alternatives: ['Use Quick Analysis mode', 'Contact system administrator'],
-              expectedOutcome: 'System restoration and O1 analysis functionality',
-              evidenceLevel: 'D'
+              contraindications: ['O1 model access issues'],
+              alternatives: ['Use Quick Analysis mode', 'Check system configuration'],
+              expectedOutcome: 'Alternative analysis available',
+              evidenceLevel: 'C'
             }],
             concerns: [{
               id: 'flag-error',
-              type: 'red_flag',
-              severity: 'critical',
-              message: 'O1 Analysis system error - advanced reasoning unavailable',
-              recommendation: 'Switch to O1 Diagnostic Tool tab to troubleshoot the issue',
-              requiresImmediateAction: true
+              type: 'urgent_referral',
+              severity: 'high',
+              message: 'O1 Deep Reasoning temporarily unavailable - Quick Analysis available',
+              recommendation: 'Switch to Quick Analysis mode for immediate medical analysis',
+              requiresImmediateAction: false
             }],
             confidenceScore: 0.1,
-            reasoning: `O1 analysis could not be completed due to system error: ${(o1Error as Error).message}. Please use the O1 Diagnostic Tool (available in the tab above) to identify and resolve the issue. You can also try using Quick Analysis mode as an alternative.`,
+            reasoning: `O1 Deep Reasoning encountered an error: ${(o1Error as Error).message}. The Quick Analysis mode is available and provides reliable medical analysis. Please switch to that mode or check system configuration.`,
             nextSteps: [
-              'Switch to O1 Diagnostic Tool tab',
-              'Run comprehensive diagnostic',
-              'Follow the recommendations provided',
-              'Try Quick Analysis mode as alternative',
-              'Contact system administrator if issues persist'
-            ]
+              'Switch to Quick Analysis mode',
+              'Check O1 model access permissions',
+              'Verify Firebase Functions configuration',
+              'Contact support if problems persist'
+            ],
+            modelUsed: 'gpt-4o'
           };
           
-          clearInterval(progressInterval);
+          if (progressInterval) clearInterval(progressInterval);
           setAnalysis(errorAnalysis);
           setAnalysisProgress(100);
           setTabValue(1);
@@ -617,26 +762,39 @@ const AIAgent: React.FC = () => {
         }
       }
 
-      clearInterval(progressInterval);
+      // Complete analysis (for non-streaming mode)
+      if (progressInterval) clearInterval(progressInterval);
       setAnalysis(aiAnalysis);
       setAnalysisProgress(100);
       setTabValue(1);
 
-    } catch (error: any) {
-      console.error('❌ [Analysis] Analysis failed:', error);
+    } catch (error) {
+      console.error('Error in analysis:', error);
       
-      // Enhanced error analysis with diagnostic recommendations
+      // Update streaming state on error
+      setStreamingState(prev => ({
+        ...prev,
+        isStreaming: false,
+        streamingStatus: 'error',
+        error: (error as Error).message,
+        currentStep: undefined
+      }));
+      
+      if (progressInterval) clearInterval(progressInterval);
+      setAnalysisProgress(100);
+      
+      // Create error analysis
       const errorAnalysis: AIAgentAnalysis = {
         symptoms: [{
           id: 'sym-error',
-          name: 'Analysis System Error',
+          name: 'Analysis Error',
           severity: 'critical',
           confidence: 0.1,
           duration: 'System error',
           location: 'AI Analysis Service',
           quality: 'Error condition',
-          associatedFactors: ['API failure', 'System configuration', 'Network issues'],
-          sourceText: `Analysis failed: ${error.message}`
+          associatedFactors: ['System failure'],
+          sourceText: `Analysis failed: ${(error as Error).message}`
         }],
         diagnoses: [{
           id: 'dx-error',
@@ -644,52 +802,43 @@ const AIAgent: React.FC = () => {
           icd10Code: 'Z99.9',
           probability: 0.1,
           severity: 'critical',
-          supportingEvidence: ['System error logs', 'Failed API call'],
-          againstEvidence: ['Normal system operation'],
-          additionalTestsNeeded: [
-            'Check system configuration',
-            'Verify network connectivity',
-            'Check API service status',
-            'Validate authentication'
-          ],
-          reasoning: `Analysis failed with error: ${error.message}. This could be due to system configuration issues, network problems, or service unavailability.`,
-          urgency: 'urgent'
+          supportingEvidence: ['System error logs'],
+          againstEvidence: ['Normal operation'],
+          additionalTestsNeeded: ['Check system configuration', 'Verify API access'],
+          reasoning: `Analysis failed with error: ${(error as Error).message}. This may be due to system configuration issues or API access problems.`,
+          urgency: 'routine'
         }],
         treatments: [{
           id: 'tx-error',
           category: 'monitoring',
-          recommendation: 'Use O1 Diagnostic Tool to identify and fix the issue',
-          priority: 'urgent',
+          recommendation: 'Check system configuration and try again',
+          priority: 'high',
           timeframe: 'Immediate',
-          contraindications: ['System errors'],
-          alternatives: ['Check system logs', 'Contact system administrator'],
-          expectedOutcome: 'System restoration',
-          evidenceLevel: 'D'
+          contraindications: ['System configuration issues'],
+          alternatives: ['Refresh page', 'Check API configuration'],
+          expectedOutcome: 'Resolution of system issues',
+          evidenceLevel: 'C'
         }],
         concerns: [{
           id: 'flag-error',
-          type: 'red_flag',
-          severity: 'critical',
-          message: 'Analysis system error - AI analysis unavailable',
-          recommendation: 'Use O1 Diagnostic Tool to troubleshoot the issue',
-          requiresImmediateAction: true
+          type: 'urgent_referral',
+          severity: 'high',
+          message: 'Analysis service temporarily unavailable',
+          recommendation: 'Check system configuration and try again',
+          requiresImmediateAction: false
         }],
         confidenceScore: 0.1,
-        reasoning: `Analysis could not be completed due to system error: ${error.message}. Please use the O1 Diagnostic Tool (available in the tab above) to identify and resolve the issue.`,
+        reasoning: `Analysis encountered an error: ${(error as Error).message}. Please check system configuration and try again.`,
         nextSteps: [
-          'Switch to O1 Diagnostic Tool tab',
-          'Run comprehensive diagnostic',
-          'Follow the recommendations provided',
-          'Check browser console for detailed error information',
-          'Contact system administrator if issues persist'
-        ]
+          'Check system configuration',
+          'Verify API access',
+          'Refresh the page',
+          'Contact support if problems persist'
+        ],
+        modelUsed: 'gpt-4o'
       };
       
-      if (progressInterval) {
-        clearInterval(progressInterval);
-      }
       setAnalysis(errorAnalysis);
-      setAnalysisProgress(100);
       setTabValue(1);
     } finally {
       setIsAnalyzing(false);
@@ -755,7 +904,7 @@ const AIAgent: React.FC = () => {
       <Box sx={{ p: 3 }}>
         <Card sx={{ maxWidth: 600, mx: 'auto', mt: 8 }}>
           <CardContent sx={{ textAlign: 'center', p: 4 }}>
-            <SmartToyIcon sx={{ fontSize: 80, color: 'primary.main', mb: 2 }} />
+            <SmartToy sx={{ fontSize: 80, color: 'primary.main', mb: 2 }} />
             <Typography variant="h4" component="h1" gutterBottom>
               AI Medical Agent
             </Typography>
@@ -766,7 +915,7 @@ const AIAgent: React.FC = () => {
             <Button
               variant="contained"
               size="large"
-              startIcon={<PlayArrowIcon />}
+              startIcon={<PlayArrow />}
               onClick={handleEnterAgentMode}
               sx={{ mt: 2 }}
             >
@@ -779,361 +928,415 @@ const AIAgent: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <SmartToyIcon sx={{ mr: 1, color: 'primary.main' }} />
-          <Typography variant="h4" component="h1">
-            AI Medical Agent
-          </Typography>
-        </Box>
-        <Button
-          variant="outlined"
-          onClick={handleExitAgentMode}
-          color="secondary"
-        >
-          Exit Agent Mode
-        </Button>
-      </Box>
-
-      {/* Analysis Progress */}
-      {isAnalyzing && (
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Analyzing Patient Data...
-          </Typography>
-          <LinearProgress 
-            variant="determinate" 
-            value={analysisProgress} 
-            sx={{ mb: 1 }}
-          />
-          <Typography variant="body2" color="text.secondary">
-            {analysisProgress}% Complete
-          </Typography>
-        </Paper>
-      )}
-
-      {/* Main Content */}
+    <Box sx={{ p: 2 }}>
       <Grid container spacing={3}>
-        {/* Patient Selection Panel */}
-        <Grid item xs={12} md={4}>
-          <Card sx={{ height: 'fit-content' }}>
+        <Grid item xs={12} md={6}>
+          <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                <PersonIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Patient Selection
+                <SmartToy sx={{ mr: 1, verticalAlign: 'middle' }} />
+                AI Medical Analysis Agent
               </Typography>
               
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <InputLabel>Patient Type</InputLabel>
-                <Select
-                  value={patientType}
-                  label="Patient Type"
-                  onChange={(e) => setPatientType(e.target.value as 'existing' | 'new')}
-                >
-                  <MenuItem value="existing">Existing Patient</MenuItem>
-                  <MenuItem value="new">New Patient</MenuItem>
-                </Select>
-              </FormControl>
-
-              {patientType === 'existing' && (
-                <>
-                  <FormControl fullWidth sx={{ mb: 2 }}>
-                    <InputLabel>Select Patient</InputLabel>
-                    <Select
-                      value={selectedPatient}
-                      label="Select Patient"
-                      onChange={(e) => handlePatientSelect(e.target.value)}
-                    >
-                      {uniquePatients.map((patient) => (
-                        <MenuItem key={patient.id} value={patient.id}>
-                          {patient.name} ({patient.age}y, {patient.gender})
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-
-                  {selectedPatient && (
-                    <>
-                      <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
-                        Add Additional Information for Analysis
-                      </Typography>
-                      <Typography variant="caption" sx={{ mb: 2, color: 'text.secondary', fontStyle: 'italic' }}>
-                        Optional: You can run analysis with existing patient data only, or add current visit information below
-                      </Typography>
-                      <Stack spacing={2}>
-                        <TextField
-                          fullWidth
-                          label="Current Chief Complaint"
-                          value={existingPatientAddition.chiefComplaint}
-                          onChange={(e) => handleExistingPatientAdditionChange('chiefComplaint', e.target.value)}
-                          multiline
-                          rows={2}
-                          placeholder="Describe the current reason for visit..."
-                        />
-
-                        <TextField
-                          fullWidth
-                          label="Current Symptoms"
-                          value={existingPatientAddition.currentSymptoms}
-                          onChange={(e) => handleExistingPatientAdditionChange('currentSymptoms', e.target.value)}
-                          multiline
-                          rows={3}
-                          placeholder="Describe current symptoms, onset, duration, severity..."
-                        />
-
-                        <TextField
-                          fullWidth
-                          label="Recent Medical History"
-                          value={existingPatientAddition.newMedicalHistory}
-                          onChange={(e) => handleExistingPatientAdditionChange('newMedicalHistory', e.target.value)}
-                          multiline
-                          rows={2}
-                          placeholder="Any new medical conditions or recent changes..."
-                        />
-
-                        <TextField
-                          fullWidth
-                          label="Current Medications"
-                          value={existingPatientAddition.currentMedications}
-                          onChange={(e) => handleExistingPatientAdditionChange('currentMedications', e.target.value)}
-                          multiline
-                          rows={2}
-                          placeholder="List current medications, dosages, and any recent changes..."
-                        />
-
-                        <TextField
-                          fullWidth
-                          label="New Allergies"
-                          value={existingPatientAddition.newAllergies}
-                          onChange={(e) => handleExistingPatientAdditionChange('newAllergies', e.target.value)}
-                          placeholder="Any new allergies or reactions..."
-                        />
-
-                        <TextField
-                          fullWidth
-                          label="Additional Information"
-                          value={existingPatientAddition.additionalInfo}
-                          onChange={(e) => handleExistingPatientAdditionChange('additionalInfo', e.target.value)}
-                          multiline
-                          rows={2}
-                          placeholder="Any other relevant information for this visit..."
-                        />
-                      </Stack>
-                    </>
-                  )}
-                </>
-              )}
-
-              {patientType === 'new' && (
-                <Stack spacing={2}>
-                  <Grid container spacing={2}>
-                    <Grid item xs={6}>
-                      <TextField
-                        fullWidth
-                        label="First Name"
-                        value={newPatientData.firstName}
-                        onChange={(e) => handleNewPatientDataChange('firstName', e.target.value)}
-                      />
-                    </Grid>
-                    <Grid item xs={6}>
-                      <TextField
-                        fullWidth
-                        label="Last Name"
-                        value={newPatientData.lastName}
-                        onChange={(e) => handleNewPatientDataChange('lastName', e.target.value)}
-                      />
-                    </Grid>
-                  </Grid>
-                  
-                  <Grid container spacing={2}>
-                    <Grid item xs={6}>
-                      <TextField
-                        fullWidth
-                        label="Age"
-                        type="number"
-                        value={newPatientData.age || ''}
-                        onChange={(e) => handleNewPatientDataChange('age', parseInt(e.target.value) || 0)}
-                      />
-                    </Grid>
-                    <Grid item xs={6}>
-                      <FormControl fullWidth>
-                        <InputLabel>Gender</InputLabel>
-                        <Select
-                          value={newPatientData.gender}
-                          label="Gender"
-                          onChange={(e) => handleNewPatientDataChange('gender', e.target.value)}
-                        >
-                          <MenuItem value="male">Male</MenuItem>
-                          <MenuItem value="female">Female</MenuItem>
-                          <MenuItem value="other">Other</MenuItem>
-                          <MenuItem value="prefer-not-to-say">Prefer not to say</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Grid>
-                  </Grid>
-
-                  <TextField
-                    fullWidth
-                    label="Chief Complaint"
-                    value={newPatientData.chiefComplaint}
-                    onChange={(e) => handleNewPatientDataChange('chiefComplaint', e.target.value)}
-                    multiline
-                    rows={2}
-                  />
-
-                  <TextField
-                    fullWidth
-                    label="Symptoms"
-                    value={newPatientData.symptoms}
-                    onChange={(e) => handleNewPatientDataChange('symptoms', e.target.value)}
-                    multiline
-                    rows={3}
-                  />
-
-                  <TextField
-                    fullWidth
-                    label="Medical History"
-                    value={newPatientData.medicalHistory}
-                    onChange={(e) => handleNewPatientDataChange('medicalHistory', e.target.value)}
-                    multiline
-                    rows={2}
-                  />
-
-                  <TextField
-                    fullWidth
-                    label="Current Medications"
-                    value={newPatientData.medications}
-                    onChange={(e) => handleNewPatientDataChange('medications', e.target.value)}
-                    multiline
-                    rows={2}
-                  />
-
-                  <TextField
-                    fullWidth
-                    label="Allergies"
-                    value={newPatientData.allergies}
-                    onChange={(e) => handleNewPatientDataChange('allergies', e.target.value)}
-                  />
-
-                  <TextField
-                    fullWidth
-                    label="Additional Information"
-                    value={newPatientData.additionalInfo}
-                    onChange={(e) => handleNewPatientDataChange('additionalInfo', e.target.value)}
-                    multiline
-                    rows={2}
-                  />
-                </Stack>
-              )}
-
-              <FormControl fullWidth sx={{ mt: 2 }}>
-                <InputLabel>Analysis Mode</InputLabel>
-                <Select
+              {/* Analysis Mode Selection */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Analysis Mode
+                </Typography>
+                <ToggleButtonGroup
                   value={analysisMode}
-                  label="Analysis Mode"
-                  onChange={(e) => setAnalysisMode(e.target.value as 'quick' | 'o1_deep_reasoning')}
-                  disabled={isAnalyzing}
+                  exclusive
+                  onChange={(e, value) => value && setAnalysisMode(value)}
+                  aria-label="analysis mode"
+                  size="small"
                 >
-                  <MenuItem value="quick">
-                    <Box>
-                      <Typography variant="body2" fontWeight="bold">
-                        Quick Analysis (5-15 seconds)
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Rapid assessment with core diagnoses - GPT-4o
-                      </Typography>
-                    </Box>
-                  </MenuItem>
-                  <MenuItem value="o1_deep_reasoning">
-                    <Box>
-                      <Typography variant="body2" fontWeight="bold">
-                        🧠🔬 O1 Deep Research + Reasoning (60-120 seconds)
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Advanced reasoning + research integration with full thinking process - O1
-                      </Typography>
-                    </Box>
-                  </MenuItem>
-                </Select>
-              </FormControl>
+                  <ToggleButton value="quick" aria-label="quick analysis">
+                    <FlashOn sx={{ mr: 1 }} />
+                    Quick Analysis
+                  </ToggleButton>
+                  <ToggleButton value="o1_deep_reasoning" aria-label="o1 deep reasoning">
+                    <Psychology sx={{ mr: 1 }} />
+                    O1 Deep Reasoning
+                  </ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
 
-              <Button
-                fullWidth
-                variant="contained"
-                size="large"
-                startIcon={<PsychologyIcon />}
-                onClick={handleRunAnalysis}
-                disabled={!canRunAnalysis() || isAnalyzing}
-                sx={{ mt: 2 }}
-              >
-                {isAnalyzing ? 'Analyzing...' : `Run ${
-                  analysisMode === 'quick' ? 'Quick' : 'O1 Deep Research'
-                } AI Analysis`}
-              </Button>
+              {/* Streaming Toggle (only for O1 Deep Reasoning) */}
+              {analysisMode === 'o1_deep_reasoning' && (
+                <Box sx={{ mb: 3 }}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={streamingEnabled}
+                        onChange={(e) => setStreamingEnabled(e.target.checked)}
+                        name="streamingEnabled"
+                        color="primary"
+                      />
+                    }
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Timeline sx={{ mr: 1 }} />
+                        Real-time Reasoning Display
+                      </Box>
+                    }
+                  />
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {streamingEnabled 
+                      ? 'Show reasoning steps in real-time as the AI analyzes' 
+                      : 'Show reasoning steps after analysis completes'
+                    }
+                  </Typography>
+                </Box>
+              )}
 
-              <Button
-                fullWidth
-                variant="outlined"
-                size="medium"
-                startIcon={<SecurityIcon />}
-                onClick={handleTestAI}
-                disabled={isTesting}
-                sx={{ mt: 2 }}
-              >
-                {isTesting ? 'Testing AI...' : 'Test AI Integration'}
-              </Button>
+              {/* Patient Selection Panel */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  <Person sx={{ mr: 1, verticalAlign: 'middle' }} />
+                  Patient Selection
+                </Typography>
+                
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Patient Type</InputLabel>
+                  <Select
+                    value={patientType}
+                    label="Patient Type"
+                    onChange={(e) => setPatientType(e.target.value as 'existing' | 'new')}
+                  >
+                    <MenuItem value="existing">Existing Patient</MenuItem>
+                    <MenuItem value="new">New Patient</MenuItem>
+                  </Select>
+                </FormControl>
 
-              {testResult && (
-                <Alert 
-                  severity={testResult.isWorking && testResult.isRealAI ? 'success' : 'warning'}
+                {patientType === 'existing' && (
+                  <>
+                    <FormControl fullWidth sx={{ mb: 2 }}>
+                      <InputLabel>Select Patient</InputLabel>
+                      <Select
+                        value={selectedPatient}
+                        label="Select Patient"
+                        onChange={(e) => handlePatientSelect(e.target.value)}
+                      >
+                        {uniquePatients.map((patient) => (
+                          <MenuItem key={patient.id} value={patient.id}>
+                            {patient.name} ({patient.age}y, {patient.gender})
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    {selectedPatient && (
+                      <>
+                        <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>
+                          Add Additional Information for Analysis
+                        </Typography>
+                        <Typography variant="caption" sx={{ mb: 2, color: 'text.secondary', fontStyle: 'italic' }}>
+                          Optional: You can run analysis with existing patient data only, or add current visit information below
+                        </Typography>
+                        <Stack spacing={2}>
+                          <TextField
+                            fullWidth
+                            label="Current Chief Complaint"
+                            value={existingPatientAddition.chiefComplaint}
+                            onChange={(e) => handleExistingPatientAdditionChange('chiefComplaint', e.target.value)}
+                            multiline
+                            rows={2}
+                            placeholder="Describe the current reason for visit..."
+                          />
+
+                          <TextField
+                            fullWidth
+                            label="Current Symptoms"
+                            value={existingPatientAddition.currentSymptoms}
+                            onChange={(e) => handleExistingPatientAdditionChange('currentSymptoms', e.target.value)}
+                            multiline
+                            rows={3}
+                            placeholder="Describe current symptoms, onset, duration, severity..."
+                          />
+
+                          <TextField
+                            fullWidth
+                            label="Recent Medical History"
+                            value={existingPatientAddition.newMedicalHistory}
+                            onChange={(e) => handleExistingPatientAdditionChange('newMedicalHistory', e.target.value)}
+                            multiline
+                            rows={2}
+                            placeholder="Any new medical conditions or recent changes..."
+                          />
+
+                          <TextField
+                            fullWidth
+                            label="Current Medications"
+                            value={existingPatientAddition.currentMedications}
+                            onChange={(e) => handleExistingPatientAdditionChange('currentMedications', e.target.value)}
+                            multiline
+                            rows={2}
+                            placeholder="List current medications, dosages, and any recent changes..."
+                          />
+
+                          <TextField
+                            fullWidth
+                            label="New Allergies"
+                            value={existingPatientAddition.newAllergies}
+                            onChange={(e) => handleExistingPatientAdditionChange('newAllergies', e.target.value)}
+                            placeholder="Any new allergies or reactions..."
+                          />
+
+                          <TextField
+                            fullWidth
+                            label="Additional Information"
+                            value={existingPatientAddition.additionalInfo}
+                            onChange={(e) => handleExistingPatientAdditionChange('additionalInfo', e.target.value)}
+                            multiline
+                            rows={2}
+                            placeholder="Any other relevant information for this visit..."
+                          />
+                        </Stack>
+                      </>
+                    )}
+                  </>
+                )}
+
+                {patientType === 'new' && (
+                  <Stack spacing={2}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={6}>
+                        <TextField
+                          fullWidth
+                          label="First Name"
+                          value={newPatientData.firstName}
+                          onChange={(e) => handleNewPatientDataChange('firstName', e.target.value)}
+                        />
+                      </Grid>
+                      <Grid item xs={6}>
+                        <TextField
+                          fullWidth
+                          label="Last Name"
+                          value={newPatientData.lastName}
+                          onChange={(e) => handleNewPatientDataChange('lastName', e.target.value)}
+                        />
+                      </Grid>
+                    </Grid>
+                    
+                    <Grid container spacing={2}>
+                      <Grid item xs={6}>
+                        <TextField
+                          fullWidth
+                          label="Age"
+                          type="number"
+                          value={newPatientData.age || ''}
+                          onChange={(e) => handleNewPatientDataChange('age', parseInt(e.target.value) || 0)}
+                        />
+                      </Grid>
+                      <Grid item xs={6}>
+                        <FormControl fullWidth>
+                          <InputLabel>Gender</InputLabel>
+                          <Select
+                            value={newPatientData.gender}
+                            label="Gender"
+                            onChange={(e) => handleNewPatientDataChange('gender', e.target.value)}
+                          >
+                            <MenuItem value="male">Male</MenuItem>
+                            <MenuItem value="female">Female</MenuItem>
+                            <MenuItem value="other">Other</MenuItem>
+                            <MenuItem value="prefer-not-to-say">Prefer not to say</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                    </Grid>
+
+                    <TextField
+                      fullWidth
+                      label="Chief Complaint"
+                      value={newPatientData.chiefComplaint}
+                      onChange={(e) => handleNewPatientDataChange('chiefComplaint', e.target.value)}
+                      multiline
+                      rows={2}
+                    />
+
+                    <TextField
+                      fullWidth
+                      label="Symptoms"
+                      value={newPatientData.symptoms}
+                      onChange={(e) => handleNewPatientDataChange('symptoms', e.target.value)}
+                      multiline
+                      rows={3}
+                    />
+
+                    <TextField
+                      fullWidth
+                      label="Medical History"
+                      value={newPatientData.medicalHistory}
+                      onChange={(e) => handleNewPatientDataChange('medicalHistory', e.target.value)}
+                      multiline
+                      rows={2}
+                    />
+
+                    <TextField
+                      fullWidth
+                      label="Current Medications"
+                      value={newPatientData.medications}
+                      onChange={(e) => handleNewPatientDataChange('medications', e.target.value)}
+                      multiline
+                      rows={2}
+                    />
+
+                    <TextField
+                      fullWidth
+                      label="Allergies"
+                      value={newPatientData.allergies}
+                      onChange={(e) => handleNewPatientDataChange('allergies', e.target.value)}
+                    />
+
+                    <TextField
+                      fullWidth
+                      label="Additional Information"
+                      value={newPatientData.additionalInfo}
+                      onChange={(e) => handleNewPatientDataChange('additionalInfo', e.target.value)}
+                      multiline
+                      rows={2}
+                    />
+                  </Stack>
+                )}
+
+                <FormControl fullWidth sx={{ mt: 2 }}>
+                  <InputLabel>Analysis Mode</InputLabel>
+                  <Select
+                    value={analysisMode}
+                    label="Analysis Mode"
+                    onChange={(e) => setAnalysisMode(e.target.value as 'quick' | 'o1_deep_reasoning')}
+                    disabled={isAnalyzing}
+                  >
+                    <MenuItem value="quick">
+                      <Box>
+                        <Typography variant="body2" fontWeight="bold">
+                          Quick Analysis (5-15 seconds)
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Rapid assessment with core diagnoses - GPT-4o
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                    <MenuItem value="o1_deep_reasoning">
+                      <Box>
+                        <Typography variant="body2" fontWeight="bold">
+                          🧠🔬 O1 Deep Research + Reasoning (60-120 seconds)
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Advanced reasoning + research integration with full thinking process - O1
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  </Select>
+                </FormControl>
+
+                <Button
+                  fullWidth
+                  variant="contained"
+                  size="large"
+                  startIcon={isAnalyzing ? <CircularProgress size={20} /> : <PlayArrow />}
+                  onClick={handleRunAnalysis}
+                  disabled={!canRunAnalysis() || isAnalyzing}
                   sx={{ mt: 2 }}
                 >
-                  <Typography variant="body2" gutterBottom>
-                    <strong>AI Integration Test Results:</strong>
-                  </Typography>
-                  <Typography variant="body2" gutterBottom>
-                    • API Working: {testResult.isWorking ? '✅' : '❌'}
-                  </Typography>
-                  <Typography variant="body2" gutterBottom>
-                    • Real AI: {testResult.isRealAI ? '✅' : '❌'}
-                  </Typography>
-                  <Typography variant="body2" gutterBottom>
-                    • Medical Accuracy: {testResult.medicalAccuracy.toUpperCase()}
-                  </Typography>
-                  <Typography variant="body2" gutterBottom>
-                    • Full Analysis Time: {testResult.testResults.responseTime}ms
-                  </Typography>
-                  {testResult.testResults.quickResponseTime && (
+                  {isAnalyzing ? 'Analyzing...' : `Run ${
+                    analysisMode === 'quick' ? 'Quick' : 'O1 Deep Research'
+                  } AI Analysis`}
+                </Button>
+                
+                {isAnalyzing && (
+                  <Box sx={{ mt: 2 }}>
+                    <LinearProgress variant="determinate" value={analysisProgress} />
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                      {streamingState.isStreaming ? 'Streaming analysis in progress...' : 'Analysis in progress...'}
+                      {analysisProgress}%
+                    </Typography>
+                  </Box>
+                )}
+
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  size="medium"
+                  startIcon={<Security />}
+                  onClick={handleTestAI}
+                  disabled={isTesting}
+                  sx={{ mt: 2 }}
+                >
+                  {isTesting ? 'Testing AI...' : 'Test AI Integration'}
+                </Button>
+
+                <Box sx={{ mt: 2 }}>
+                  <O1TestButton onTestComplete={(success, error) => {
+                    console.log('O1 test completed:', { success, error });
+                  }} />
+                </Box>
+
+                {testResult && (
+                  <Alert 
+                    severity={testResult.isWorking && testResult.isRealAI ? 'success' : 'warning'}
+                    sx={{ mt: 2 }}
+                  >
                     <Typography variant="body2" gutterBottom>
-                      • Quick Analysis Time: {testResult.testResults.quickResponseTime}ms
+                      <strong>AI Integration Test Results:</strong>
                     </Typography>
-                  )}
-                  {testResult.issues.length > 0 && (
-                    <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-                      Issues: {testResult.issues.join(', ')}
+                    <Typography variant="body2" gutterBottom>
+                      • API Working: {testResult.isWorking ? '✅' : '❌'}
                     </Typography>
-                  )}
-                </Alert>
-              )}
+                    <Typography variant="body2" gutterBottom>
+                      • Real AI: {testResult.isRealAI ? '✅' : '❌'}
+                    </Typography>
+                    <Typography variant="body2" gutterBottom>
+                      • Medical Accuracy: {testResult.medicalAccuracy.toUpperCase()}
+                    </Typography>
+                    <Typography variant="body2" gutterBottom>
+                      • Full Analysis Time: {testResult.testResults.responseTime}ms
+                    </Typography>
+                    {testResult.testResults.quickResponseTime && (
+                      <Typography variant="body2" gutterBottom>
+                        • Quick Analysis Time: {testResult.testResults.quickResponseTime}ms
+                      </Typography>
+                    )}
+                    {testResult.issues.length > 0 && (
+                      <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                        Issues: {testResult.issues.join(', ')}
+                      </Typography>
+                    )}
+                  </Alert>
+                )}
+              </Box>
             </CardContent>
           </Card>
         </Grid>
 
-        {/* Analysis Results Panel */}
-        <Grid item xs={12} md={8}>
+        <Grid item xs={12} md={6}>
           {analysis ? (
             <Card>
               <CardContent>
                 <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                  <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
-                    <Tab label="Analysis Overview" />
-                    <Tab label="Differential Diagnoses" />
-                    <Tab label="Treatment Recommendations" />
-                    <Tab label="Clinical Concerns" />
-                    {analysis.reasoningTrace && <Tab label="🧠 Reasoning Process" />}
-                    <Tab label="O1 Diagnostic Tool" />
+                  <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
+                    <Tab label="Summary" />
+                    <Tab label="Symptoms" />
+                    <Tab label="Diagnoses" />
+                    <Tab label="Treatments" />
+                    <Tab label="Concerns" />
+                    {analysis.reasoningTrace && (
+                      <Tab 
+                        label={
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Timeline sx={{ mr: 1 }} />
+                            Reasoning
+                            {streamingState.isStreaming && (
+                              <Badge 
+                                color="primary" 
+                                variant="dot" 
+                                sx={{ ml: 1 }}
+                              />
+                            )}
+                          </Box>
+                        }
+                      />
+                    )}
                   </Tabs>
                 </Box>
 
@@ -1141,7 +1344,7 @@ const AIAgent: React.FC = () => {
                   <Stack spacing={3}>
                     <Box>
                       <Typography variant="h6" gutterBottom>
-                        <AutoAwesomeIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                        <AutoAwesome sx={{ mr: 1, verticalAlign: 'middle' }} />
                         AI Analysis Summary
                       </Typography>
                       <Alert severity="info" sx={{ mb: 2 }}>
@@ -1165,7 +1368,7 @@ const AIAgent: React.FC = () => {
 
                     <Box>
                       <Typography variant="h6" gutterBottom>
-                        <TimelineIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                        <Timeline sx={{ mr: 1, verticalAlign: 'middle' }} />
                         Extracted Symptoms
                       </Typography>
                       {analysis.symptoms.length > 0 ? (
@@ -1225,7 +1428,7 @@ const AIAgent: React.FC = () => {
 
                     <Box>
                       <Typography variant="h6" gutterBottom>
-                        <AssessmentIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                        <Assessment sx={{ mr: 1, verticalAlign: 'middle' }} />
                         Clinical Summary
                       </Typography>
                       <Grid container spacing={2}>
@@ -1270,7 +1473,7 @@ const AIAgent: React.FC = () => {
 
                     <Box>
                       <Typography variant="h6" gutterBottom>
-                        <CheckCircleIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                        <CheckCircle sx={{ mr: 1, verticalAlign: 'middle' }} />
                         Next Steps
                       </Typography>
                       {analysis.nextSteps && analysis.nextSteps.length > 0 ? (
@@ -1278,7 +1481,7 @@ const AIAgent: React.FC = () => {
                           {analysis.nextSteps.map((step, index) => (
                             <ListItem key={index}>
                               <ListItemIcon>
-                                <CheckCircleIcon color="success" />
+                                <CheckCircle color="success" />
                               </ListItemIcon>
                               <ListItemText primary={step} />
                             </ListItem>
@@ -1298,7 +1501,7 @@ const AIAgent: React.FC = () => {
                 <TabPanel value={tabValue} index={1}>
                   <Stack spacing={2}>
                     <Typography variant="h6" gutterBottom>
-                      <AssessmentIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                      <Assessment sx={{ mr: 1, verticalAlign: 'middle' }} />
                       Differential Diagnoses
                     </Typography>
                     {analysis.diagnoses && analysis.diagnoses.length > 0 ? (
@@ -1349,7 +1552,7 @@ const AIAgent: React.FC = () => {
                                       {diagnosis.supportingEvidence.map((evidence, evidenceIndex) => (
                                         <ListItem key={evidenceIndex} sx={{ py: 0.5 }}>
                                           <ListItemIcon sx={{ minWidth: 30 }}>
-                                            <CheckCircleIcon color="success" fontSize="small" />
+                                            <CheckCircle color="success" fontSize="small" />
                                           </ListItemIcon>
                                           <ListItemText primary={evidence} />
                                         </ListItem>
@@ -1371,7 +1574,7 @@ const AIAgent: React.FC = () => {
                                       {diagnosis.againstEvidence.map((evidence, evidenceIndex) => (
                                         <ListItem key={evidenceIndex} sx={{ py: 0.5 }}>
                                           <ListItemIcon sx={{ minWidth: 30 }}>
-                                            <ErrorIcon color="error" fontSize="small" />
+                                            <Error color="error" fontSize="small" />
                                           </ListItemIcon>
                                           <ListItemText primary={evidence} />
                                         </ListItem>
@@ -1418,7 +1621,7 @@ const AIAgent: React.FC = () => {
                 <TabPanel value={tabValue} index={2}>
                   <Stack spacing={2}>
                     <Typography variant="h6" gutterBottom>
-                      <HospitalIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                      <LocalHospital sx={{ mr: 1, verticalAlign: 'middle' }} />
                       Treatment Recommendations
                     </Typography>
                     {analysis.treatments && analysis.treatments.length > 0 ? (
@@ -1461,7 +1664,7 @@ const AIAgent: React.FC = () => {
                                     {treatment.contraindications.map((contraindication: string, index: number) => (
                                       <ListItem key={index}>
                                         <ListItemIcon>
-                                          <WarningIcon color="warning" />
+                                          <Warning color="warning" />
                                         </ListItemIcon>
                                         <ListItemText primary={contraindication} />
                                       </ListItem>
@@ -1509,7 +1712,7 @@ const AIAgent: React.FC = () => {
                 <TabPanel value={tabValue} index={3}>
                   <Stack spacing={2}>
                     <Typography variant="h6" gutterBottom>
-                      <SecurityIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                      <Security sx={{ mr: 1, verticalAlign: 'middle' }} />
                       Clinical Concerns & Alerts
                     </Typography>
                     {analysis.concerns && analysis.concerns.length > 0 ? (
@@ -1549,149 +1752,165 @@ const AIAgent: React.FC = () => {
                 {/* Reasoning Process Tab Panel */}
                 {analysis.reasoningTrace && (
                   <TabPanel value={tabValue} index={4}>
-                    <Stack spacing={3}>
-                      <Box>
-                        <Typography variant="h6" gutterBottom>
-                          <PsychologyIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                          O1 Model Reasoning Process
-                        </Typography>
-                        <Alert severity="info" sx={{ mb: 2 }}>
-                          <Typography variant="body2">
-                            <strong>Model:</strong> {analysis.modelUsed?.toUpperCase()} | 
-                            <strong> Thinking Time:</strong> {analysis.thinkingTime ? `${(analysis.thinkingTime / 1000).toFixed(1)}s` : 'N/A'} |
-                            <strong> Steps:</strong> {analysis.reasoningTrace.totalSteps}
-                          </Typography>
-                        </Alert>
-                      </Box>
-
-                      <Box>
-                        <Typography variant="h6" gutterBottom>
-                          <TimelineIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                          Step-by-Step Reasoning
-                        </Typography>
-                        
-                        {analysis.reasoningTrace.steps.length > 0 ? (
-                          <Stack spacing={2}>
-                            {analysis.reasoningTrace.steps.map((step, index) => (
-                              <Card key={step.id} variant="outlined">
-                                <CardContent>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                    <Typography variant="h6" sx={{ flexGrow: 1 }}>
-                                      Step {index + 1}: {step.title}
-                                    </Typography>
-                                    <Chip
-                                      label={step.type}
-                                      color={
-                                        step.type === 'analysis' ? 'primary' :
-                                        step.type === 'research' ? 'secondary' :
-                                        step.type === 'evaluation' ? 'info' :
-                                        step.type === 'synthesis' ? 'success' :
-                                        step.type === 'decision' ? 'warning' :
-                                        'default'
-                                      }
-                                      size="small"
-                                      sx={{ mr: 1 }}
-                                    />
-                                    <Chip
-                                      label={`${Math.round(step.confidence * 100)}% confidence`}
-                                      variant="outlined"
-                                      size="small"
-                                    />
-                                  </Box>
-                                  
-                                  <Typography variant="body1" paragraph>
-                                    {step.content}
-                                  </Typography>
-                                  
-                                  {step.evidence && step.evidence.length > 0 && (
-                                    <Box sx={{ mt: 2 }}>
-                                      <Typography variant="subtitle2" gutterBottom>
-                                        Evidence Considered:
-                                      </Typography>
-                                      <List dense>
-                                        {step.evidence.map((evidence, evidenceIndex) => (
-                                          <ListItem key={evidenceIndex}>
-                                            <ListItemIcon>
-                                              <CheckCircleIcon color="success" />
-                                            </ListItemIcon>
-                                            <ListItemText primary={evidence} />
-                                          </ListItem>
-                                        ))}
-                                      </List>
-                                    </Box>
-                                  )}
-                                  
-                                  {step.considerations && step.considerations.length > 0 && (
-                                    <Box sx={{ mt: 2 }}>
-                                      <Typography variant="subtitle2" gutterBottom>
-                                        Key Considerations:
-                                      </Typography>
-                                      <Stack direction="row" spacing={1} flexWrap="wrap">
-                                        {step.considerations.map((consideration, considerationIndex) => (
-                                          <Chip 
-                                            key={considerationIndex} 
-                                            label={consideration} 
-                                            variant="outlined" 
-                                            size="small"
-                                          />
-                                        ))}
-                                      </Stack>
-                                    </Box>
-                                  )}
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </Stack>
-                        ) : (
-                          <Alert severity="info">
-                            <Typography variant="body2">
-                              No detailed reasoning steps available. The model may not have provided structured reasoning output.
-                            </Typography>
-                          </Alert>
-                        )}
-                      </Box>
-
-                      {analysis.reasoningTrace.reasoning && (
+                    {streamingEnabled && (streamingState.isStreaming || streamingState.reasoningSteps.length > 0) ? (
+                      <StreamingReasoningDisplay
+                        isStreaming={streamingState.isStreaming}
+                        reasoningSteps={streamingState.reasoningSteps}
+                        currentStep={streamingState.currentStep}
+                        streamingStatus={streamingState.streamingStatus}
+                        showFullReasoning={!streamingState.isStreaming && !!analysis.reasoningTrace?.reasoning}
+                        fullReasoningContent={analysis.reasoningTrace?.reasoning}
+                        totalSteps={5}
+                        onStepComplete={(step) => {
+                          console.log('Step completed:', step.title);
+                        }}
+                        onStreamComplete={() => {
+                          console.log('Stream completed');
+                        }}
+                        onStreamError={(error) => {
+                          console.error('Stream error:', error);
+                        }}
+                      />
+                    ) : (
+                      <Stack spacing={3}>
                         <Box>
                           <Typography variant="h6" gutterBottom>
-                            <AutoAwesomeIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                            Full Reasoning Content
+                            <Psychology sx={{ mr: 1, verticalAlign: 'middle' }} />
+                            O1 Model Reasoning Process
                           </Typography>
-                          <Paper sx={{ 
-                            p: 2, 
-                            bgcolor: (theme) => theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
-                            border: (theme) => theme.palette.mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(0, 0, 0, 0.12)'
-                          }}>
-                            <Typography 
-                              variant="body2" 
-                              component="pre" 
-                              sx={{ 
-                                whiteSpace: 'pre-wrap',
-                                color: (theme) => theme.palette.mode === 'dark' ? 'grey.100' : 'grey.800',
-                                fontFamily: 'monospace',
-                                fontSize: '0.875rem',
-                                lineHeight: 1.6
-                              }}
-                            >
-                              {analysis.reasoningTrace.reasoning}
+                          <Alert severity="info" sx={{ mb: 2 }}>
+                            <Typography variant="body2">
+                              <strong>Model:</strong> {analysis.modelUsed?.toUpperCase()} | 
+                              <strong> Thinking Time:</strong> {analysis.thinkingTime ? `${(analysis.thinkingTime / 1000).toFixed(1)}s` : 'N/A'} |
+                              <strong> Steps:</strong> {analysis.reasoningTrace.totalSteps}
                             </Typography>
-                          </Paper>
+                          </Alert>
                         </Box>
-                      )}
-                    </Stack>
+
+                        <Box>
+                          <Typography variant="h6" gutterBottom>
+                            <Timeline sx={{ mr: 1, verticalAlign: 'middle' }} />
+                            Step-by-Step Reasoning
+                          </Typography>
+                          
+                          {analysis.reasoningTrace.steps.length > 0 ? (
+                            <Stack spacing={2}>
+                              {analysis.reasoningTrace.steps.map((step, index) => (
+                                <Card key={step.id} variant="outlined">
+                                  <CardContent>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                      <Typography variant="h6" sx={{ flexGrow: 1 }}>
+                                        Step {index + 1}: {step.title}
+                                      </Typography>
+                                      <Chip
+                                        label={step.type}
+                                        color={
+                                          step.type === 'analysis' ? 'primary' :
+                                          step.type === 'research' ? 'secondary' :
+                                          step.type === 'evaluation' ? 'info' :
+                                          step.type === 'synthesis' ? 'success' :
+                                          step.type === 'decision' ? 'warning' :
+                                          'default'
+                                        }
+                                        size="small"
+                                        sx={{ mr: 1 }}
+                                      />
+                                      <Chip
+                                        label={`${Math.round(step.confidence * 100)}% confidence`}
+                                        variant="outlined"
+                                        size="small"
+                                      />
+                                    </Box>
+                                    
+                                    <Typography variant="body1" paragraph>
+                                      {step.content}
+                                    </Typography>
+                                    
+                                    {step.evidence && step.evidence.length > 0 && (
+                                      <Box sx={{ mt: 2 }}>
+                                        <Typography variant="subtitle2" gutterBottom>
+                                          Evidence Considered:
+                                        </Typography>
+                                        <List dense>
+                                          {step.evidence.map((evidence, evidenceIndex) => (
+                                            <ListItem key={evidenceIndex}>
+                                              <ListItemIcon>
+                                                <CheckCircle color="success" />
+                                              </ListItemIcon>
+                                              <ListItemText primary={evidence} />
+                                            </ListItem>
+                                          ))}
+                                        </List>
+                                      </Box>
+                                    )}
+                                    
+                                    {step.considerations && step.considerations.length > 0 && (
+                                      <Box sx={{ mt: 2 }}>
+                                        <Typography variant="subtitle2" gutterBottom>
+                                          Key Considerations:
+                                        </Typography>
+                                        <Stack direction="row" spacing={1} flexWrap="wrap">
+                                          {step.considerations.map((consideration, considerationIndex) => (
+                                            <Chip 
+                                              key={considerationIndex} 
+                                              label={consideration} 
+                                              variant="outlined" 
+                                              size="small"
+                                            />
+                                          ))}
+                                        </Stack>
+                                      </Box>
+                                    )}
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </Stack>
+                          ) : (
+                            <Alert severity="info">
+                              <Typography variant="body2">
+                                No detailed reasoning steps available. The model may not have provided structured reasoning output.
+                              </Typography>
+                            </Alert>
+                          )}
+                        </Box>
+
+                        {analysis.reasoningTrace.reasoning && (
+                          <Box>
+                            <Typography variant="h6" gutterBottom>
+                              <AutoAwesome sx={{ mr: 1, verticalAlign: 'middle' }} />
+                              Full Reasoning Content
+                            </Typography>
+                            <Paper sx={{ 
+                              p: 2, 
+                              bgcolor: (theme) => theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
+                              border: (theme) => theme.palette.mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(0, 0, 0, 0.12)'
+                            }}>
+                              <Typography 
+                                variant="body2" 
+                                component="pre" 
+                                sx={{ 
+                                  whiteSpace: 'pre-wrap',
+                                  color: (theme) => theme.palette.mode === 'dark' ? 'grey.100' : 'grey.800',
+                                  fontFamily: 'monospace',
+                                  fontSize: '0.875rem',
+                                  lineHeight: 1.6
+                                }}
+                              >
+                                {analysis.reasoningTrace.reasoning}
+                              </Typography>
+                            </Paper>
+                          </Box>
+                        )}
+                      </Stack>
+                    )}
                   </TabPanel>
                 )}
-
-                {/* O1 Diagnostic Tool Tab Panel */}
-                <TabPanel value={tabValue} index={5}>
-                  <O1DiagnosticTool />
-                </TabPanel>
               </CardContent>
             </Card>
           ) : (
             <Card>
               <CardContent sx={{ textAlign: 'center', py: 6 }}>
-                <PsychologyIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+                <Psychology sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
                 <Typography variant="h6" color="text.secondary">
                   Select a patient and run AI analysis to view results
                 </Typography>

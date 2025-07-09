@@ -314,6 +314,255 @@ class OpenAIService {
   }
 
   /**
+   * Streaming medical analysis using o1 model with real-time reasoning display
+   */
+  async analyzeTranscriptWithStreamingReasoning(
+    transcript: string,
+    patientContext?: {
+      age?: number;
+      gender?: string;
+      medicalHistory?: string;
+      medications?: string;
+      allergies?: string;
+      familyHistory?: string;
+      socialHistory?: string;
+    },
+    modelType: 'o1' | 'o1-mini' = 'o1-mini',
+    onReasoningStep?: (step: ReasoningStep) => void,
+    onAnalysisUpdate?: (update: any) => void,
+    onComplete?: (analysis: O1AnalysisResult) => void,
+    onError?: (error: Error) => void
+  ): Promise<void> {
+    const operation = 'STREAMING_TRANSCRIPT_ANALYSIS';
+    const startTime = Date.now();
+    
+    try {
+      logGPTOperation.start(operation, modelType, {
+        transcriptLength: transcript.length,
+        hasPatientContext: !!patientContext,
+        modelType,
+        streaming: true
+      });
+
+      logGPTOperation.progress(operation, 'Connecting to streaming Firebase Function');
+
+      // Get auth token
+      const token = await getAuthToken();
+      
+      // Create AbortController with longer timeout for streaming
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes timeout
+      
+      // Connect to streaming Firebase Function
+      const response = await fetch(`${import.meta.env.VITE_FIREBASE_FUNCTIONS_URL}/analyzeWithStreamingReasoning`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+        body: JSON.stringify({
+          transcript,
+          patientContext,
+          modelType,
+          patientId: null,
+          visitId: null
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      if (!response.body) {
+        throw new Error('No response body available for streaming');
+      }
+
+      logGPTOperation.progress(operation, 'Connected to streaming analysis, processing reasoning steps');
+
+      // Set up Server-Sent Events reader
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      try {
+        let currentEvent = '';
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) {
+            clearTimeout(timeoutId);
+            break;
+          }
+          
+          buffer += decoder.decode(value, { stream: true });
+          
+          // Process complete messages
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || ''; // Keep the last incomplete line in buffer
+          
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              currentEvent = line.substring(7).trim();
+              continue;
+            }
+            
+            if (line.startsWith('data: ')) {
+              const data = line.substring(6);
+              
+              if (data.trim() === '') continue;
+              
+              try {
+                const parsedData = JSON.parse(data);
+                
+                // Handle different event types based on the event line
+                if (currentEvent === 'reasoning_step') {
+                  const reasoningStep: ReasoningStep = {
+                    id: parsedData.id,
+                    timestamp: parsedData.timestamp,
+                    type: parsedData.type,
+                    title: parsedData.title,
+                    content: parsedData.content,
+                    confidence: parsedData.confidence,
+                    evidence: parsedData.evidence,
+                    considerations: parsedData.considerations
+                  };
+                  
+                  if (onReasoningStep) {
+                    onReasoningStep(reasoningStep);
+                  }
+                  
+                  logGPTOperation.progress(operation, `Reasoning step: ${reasoningStep.title}`);
+                }
+                else if (currentEvent === 'analysis_update') {
+                  if (onAnalysisUpdate) {
+                    onAnalysisUpdate(parsedData);
+                  }
+                  
+                  logGPTOperation.progress(operation, 'Analysis update received');
+                }
+                else if (currentEvent === 'analysis_complete') {
+                  // Process the complete analysis
+                  const analysisData = parsedData;
+                  
+                  const differentialData = analysisData.differential_diagnosis || analysisData.differentialDiagnoses || analysisData.diagnoses || [];
+                  const treatmentData = analysisData.treatment_recommendations || analysisData.treatments || [];
+                  const concernsData = analysisData.flagged_concerns || analysisData.concerns || [];
+
+                  const result: O1AnalysisResult = {
+                    id: analysisData.id || `analysis-${Date.now()}`,
+                    symptoms: analysisData.symptoms?.map((s: any, i: number) => ({
+                      id: `symptom-${i + 1}`,
+                      name: s.name || s.symptom || s.description || 'Unknown',
+                      severity: s.severity || 'mild',
+                      confidence: this.normalizeConfidenceScore(s.confidence || 0.8),
+                      duration: s.duration || 'Unknown',
+                      location: s.location || '',
+                      quality: s.quality || '',
+                      associatedFactors: s.associatedFactors || [],
+                      sourceText: s.sourceText || s.context || transcript.slice(0, 120)
+                    })) || [],
+                    diagnoses: differentialData.map((d: any, i: number) => ({
+                      id: `diagnosis-${i + 1}`,
+                      condition: d.condition || d.diagnosis || d.name || 'Unknown',
+                      icd10Code: d.icd10Code || 'Z99.9',
+                      probability: this.normalizeConfidenceScore(d.probability || (d.confidence === 'high' ? 0.8 : d.confidence === 'medium' ? 0.6 : 0.4)),
+                      severity: d.severity || 'medium',
+                      supportingEvidence: d.supportingEvidence || [],
+                      againstEvidence: d.againstEvidence || [],
+                      additionalTestsNeeded: d.additionalTestsNeeded || [],
+                      reasoning: d.reasoning || 'Analysis from Firebase Function',
+                      urgency: d.urgency || 'routine'
+                    })) || [],
+                    treatments: treatmentData.map((t: any, i: number) => ({
+                      id: `treatment-${i + 1}`,
+                      category: t.category || 'monitoring',
+                      recommendation: t.recommendation || 'Continue monitoring',
+                      priority: t.priority || 'medium',
+                      timeframe: t.timeframe || 'As needed',
+                      contraindications: t.contraindications || [],
+                      alternatives: t.alternatives || [],
+                      expectedOutcome: t.expectedOutcome || 'Improvement expected',
+                      evidenceLevel: t.evidenceLevel || 'B'
+                    })) || [],
+                    concerns: concernsData.map((c: any, i: number) => ({
+                      id: `concern-${i + 1}`,
+                      type: c.type || 'urgent_referral',
+                      severity: c.severity || 'medium',
+                      message: c.message || 'No immediate concerns',
+                      recommendation: c.recommendation || 'Consult with physician',
+                      requiresImmediateAction: c.requiresImmediateAction || false
+                    })) || [],
+                    confidenceScore: this.normalizeConfidenceScore(analysisData.confidenceScore || 0.8),
+                    reasoning: analysisData.reasoning || 'O1 streaming analysis completed.',
+                    nextSteps: analysisData.nextSteps || analysisData.follow_up_recommendations || ['Review findings with attending physician'],
+                    processingTime: Date.now() - startTime,
+                    timestamp: new Date(),
+                    reasoningTrace: analysisData.reasoningTrace || {
+                      sessionId: `session-${Date.now()}`,
+                      totalSteps: 1,
+                      steps: [],
+                      startTime: Date.now(),
+                      endTime: Date.now(),
+                      model: modelType,
+                      reasoning: analysisData.reasoning || 'Streaming analysis completed'
+                    },
+                    modelUsed: analysisData.modelUsed || modelType,
+                    thinkingTime: analysisData.thinkingTime || (Date.now() - startTime)
+                  };
+
+                  if (onComplete) {
+                    onComplete(result);
+                  }
+                  
+                  logGPTOperation.success(operation, modelType, Date.now() - startTime, result);
+                }
+                else if (currentEvent === 'complete') {
+                  logGPTOperation.progress(operation, 'Streaming analysis completed successfully');
+                  break;
+                }
+                else if (currentEvent === 'error') {
+                  throw new Error(parsedData.details || parsedData.error || 'Streaming analysis failed');
+                }
+                else if (currentEvent === 'connected') {
+                  logGPTOperation.progress(operation, 'Connected to streaming analysis');
+                }
+                
+              } catch (parseError) {
+                console.warn('Failed to parse SSE data:', parseError, 'Data:', data);
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+
+    } catch (error: any) {
+      const processingTime = Date.now() - startTime;
+      
+      // Handle specific network errors
+      if (error.name === 'AbortError') {
+        error.message = 'Request timed out after 2 minutes';
+      } else if (error.message.includes('Load failed') || error.message.includes('network connection was lost')) {
+        error.message = 'Network connection lost during analysis. Please try again.';
+      }
+      
+      logGPTOperation.error(operation, modelType, error, processingTime);
+      
+      if (onError) {
+        onError(error);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  /**
    * Enhanced medical analysis using o1 model with visible reasoning
    */
   async analyzeTranscriptWithReasoning(
