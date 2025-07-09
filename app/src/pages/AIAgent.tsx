@@ -437,19 +437,21 @@ const AIAgent: React.FC = () => {
           modelUsed: 'gpt-4o'
         };
       } else {
-        // O1 Deep Reasoning
-        const o1DeepResult = await openAIService.deepMedicalAnalysisWithReasoning(transcript, patientContext, 'o1');
+        // O1 Deep Reasoning - now processes exactly like 4o model but with reasoning trace
+        const o1Result = await openAIService.analyzeTranscriptWithReasoning(transcript, patientContext, 'o1');
+        
+        // Use the O1 result directly since it now has the same structure as 4o
         aiAnalysis = {
-          symptoms: [], // Will be populated from deep analysis
-          diagnoses: [o1DeepResult.primaryDiagnosis, ...o1DeepResult.differentialDiagnoses],
-          treatments: o1DeepResult.clinicalRecommendations,
-          concerns: o1DeepResult.emergencyFlags,
-          confidenceScore: o1DeepResult.confidenceAssessment.consistencyScore,
-          reasoning: `Deep O1 analysis with evidence integration. Evidence quality: ${o1DeepResult.confidenceAssessment.evidenceQuality}. Research evidence: ${o1DeepResult.researchEvidence.map(e => e.source).join(', ')}`,
-          nextSteps: o1DeepResult.followUpProtocol,
-          reasoningTrace: o1DeepResult.reasoningTrace,
-          modelUsed: o1DeepResult.modelUsed,
-          thinkingTime: o1DeepResult.thinkingTime
+          symptoms: o1Result.symptoms,
+          diagnoses: o1Result.diagnoses,
+          treatments: o1Result.treatments,
+          concerns: o1Result.concerns,
+          confidenceScore: o1Result.confidenceScore,
+          reasoning: o1Result.reasoning,
+          nextSteps: o1Result.nextSteps,
+          reasoningTrace: o1Result.reasoningTrace,
+          modelUsed: o1Result.modelUsed,
+          thinkingTime: o1Result.thinkingTime
         };
       }
 
@@ -994,30 +996,103 @@ const AIAgent: React.FC = () => {
                         <TimelineIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
                         Extracted Symptoms
                       </Typography>
+                      {analysis.symptoms.length > 0 ? (
+                        <Grid container spacing={2}>
+                          {analysis.symptoms.map((symptom) => (
+                            <Grid item xs={12} sm={6} key={symptom.id}>
+                              <Card variant="outlined">
+                                <CardContent>
+                                  <Typography variant="subtitle1" gutterBottom>
+                                    {symptom.name}
+                                  </Typography>
+                                  <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                                    <Chip
+                                      label={symptom.severity}
+                                      color={getSeverityColor(symptom.severity) as any}
+                                      size="small"
+                                    />
+                                    <Chip
+                                      label={`${Math.round(symptom.confidence * 100)}% confidence`}
+                                      variant="outlined"
+                                      size="small"
+                                    />
+                                  </Stack>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Duration: {symptom.duration}
+                                  </Typography>
+                                  {symptom.location && (
+                                    <Typography variant="body2" color="text.secondary">
+                                      Location: {symptom.location}
+                                    </Typography>
+                                  )}
+                                  {symptom.quality && (
+                                    <Typography variant="body2" color="text.secondary">
+                                      Quality: {symptom.quality}
+                                    </Typography>
+                                  )}
+                                  {symptom.associatedFactors && symptom.associatedFactors.length > 0 && (
+                                    <Box sx={{ mt: 1 }}>
+                                      <Typography variant="caption" color="text.secondary">
+                                        Associated factors: {symptom.associatedFactors.join(', ')}
+                                      </Typography>
+                                    </Box>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            </Grid>
+                          ))}
+                        </Grid>
+                      ) : (
+                        <Alert severity="info">
+                          <Typography variant="body2">
+                            No specific symptoms extracted from the analysis. Check the Reasoning Process tab for detailed symptom analysis.
+                          </Typography>
+                        </Alert>
+                      )}
+                    </Box>
+
+                    <Box>
+                      <Typography variant="h6" gutterBottom>
+                        <AssessmentIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                        Clinical Summary
+                      </Typography>
                       <Grid container spacing={2}>
-                        {analysis.symptoms.map((symptom) => (
-                          <Grid item xs={12} sm={6} key={symptom.id}>
-                            <Card variant="outlined">
-                              <CardContent>
-                                <Typography variant="subtitle1" gutterBottom>
-                                  {symptom.name}
-                                </Typography>
-                                <Chip
-                                  label={symptom.severity}
-                                  color={getSeverityColor(symptom.severity) as any}
-                                  size="small"
-                                  sx={{ mb: 1 }}
-                                />
-                                <Typography variant="body2" color="text.secondary">
-                                  Duration: {symptom.duration}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                  Confidence: {Math.round(symptom.confidence * 100)}%
-                                </Typography>
-                              </CardContent>
-                            </Card>
-                          </Grid>
-                        ))}
+                        <Grid item xs={12} md={4}>
+                          <Card variant="outlined">
+                            <CardContent>
+                              <Typography variant="h6" color="primary">
+                                {analysis.diagnoses.length}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                Differential Diagnoses
+                              </Typography>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <Card variant="outlined">
+                            <CardContent>
+                              <Typography variant="h6" color="secondary">
+                                {analysis.treatments.length}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                Treatment Recommendations
+                              </Typography>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <Card variant="outlined">
+                            <CardContent>
+                              <Typography variant="h6" color="warning.main">
+                                {analysis.concerns.length}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                Clinical Concerns
+                              </Typography>
+                            </CardContent>
+                          </Card>
+                        </Grid>
                       </Grid>
                     </Box>
 
@@ -1026,13 +1101,24 @@ const AIAgent: React.FC = () => {
                         <CheckCircleIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
                         Next Steps
                       </Typography>
-                      <List>
-                        {analysis.nextSteps.map((step, index) => (
-                          <ListItem key={index}>
-                            <ListItemText primary={step} />
-                          </ListItem>
-                        ))}
-                      </List>
+                      {analysis.nextSteps && analysis.nextSteps.length > 0 ? (
+                        <List>
+                          {analysis.nextSteps.map((step, index) => (
+                            <ListItem key={index}>
+                              <ListItemIcon>
+                                <CheckCircleIcon color="success" />
+                              </ListItemIcon>
+                              <ListItemText primary={step} />
+                            </ListItem>
+                          ))}
+                        </List>
+                      ) : (
+                        <Alert severity="info">
+                          <Typography variant="body2">
+                            No specific next steps provided. Refer to treatment recommendations and clinical concerns for guidance.
+                          </Typography>
+                        </Alert>
+                      )}
                     </Box>
                   </Stack>
                 </TabPanel>
@@ -1043,85 +1129,117 @@ const AIAgent: React.FC = () => {
                       <AssessmentIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
                       Differential Diagnoses
                     </Typography>
-                    {analysis.diagnoses.map((diagnosis) => (
-                      <Accordion key={diagnosis.id}>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                            <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>
-                              {diagnosis.condition}
-                            </Typography>
-                            <Chip
-                              label={`${Math.round(diagnosis.probability * 100)}% probability`}
-                              color="primary"
-                              size="small"
-                              sx={{ mr: 1 }}
-                            />
-                            <Chip
-                              label={diagnosis.severity}
-                              color={getSeverityColor(diagnosis.severity) as any}
-                              size="small"
-                            />
-                          </Box>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                          <Stack spacing={2}>
-                            <Box>
-                              <Typography variant="body2" color="text.secondary" gutterBottom>
-                                ICD-10 Code: {diagnosis.icd10Code}
-                              </Typography>
-                              <Typography variant="body1" paragraph>
-                                {diagnosis.reasoning}
-                              </Typography>
-                            </Box>
-                            
-                            <Grid container spacing={2}>
-                              <Grid item xs={12} md={6}>
-                                <Typography variant="subtitle2" gutterBottom>
-                                  Supporting Evidence
-                                </Typography>
-                                <List dense>
-                                  {diagnosis.supportingEvidence.map((evidence, index) => (
-                                    <ListItem key={index}>
-                                      <ListItemIcon>
-                                        <CheckCircleIcon color="success" />
-                                      </ListItemIcon>
-                                      <ListItemText primary={evidence} />
-                                    </ListItem>
-                                  ))}
-                                </List>
-                              </Grid>
-                              
-                              <Grid item xs={12} md={6}>
-                                <Typography variant="subtitle2" gutterBottom>
-                                  Against Evidence
-                                </Typography>
-                                <List dense>
-                                  {diagnosis.againstEvidence.map((evidence, index) => (
-                                    <ListItem key={index}>
-                                      <ListItemIcon>
-                                        <ErrorIcon color="error" />
-                                      </ListItemIcon>
-                                      <ListItemText primary={evidence} />
-                                    </ListItem>
-                                  ))}
-                                </List>
-                              </Grid>
-                            </Grid>
+                    {analysis.diagnoses && analysis.diagnoses.length > 0 ? (
+                      <Stack spacing={1}>
+                        {analysis.diagnoses.map((diagnosis, index) => (
+                          <Card key={diagnosis.id} variant="outlined">
+                            <CardContent>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                                <Box sx={{ flex: 1 }}>
+                                  <Typography variant="h6" gutterBottom>
+                                    {diagnosis.condition}
+                                  </Typography>
+                                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                                    <strong>ICD-10 Code:</strong> {diagnosis.icd10Code}
+                                  </Typography>
+                                  <Typography variant="body2" paragraph>
+                                    <strong>Clinical Reasoning:</strong> {diagnosis.reasoning}
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ ml: 2, minWidth: 200 }}>
+                                  <Stack direction="row" spacing={1} sx={{ mb: 1 }} flexWrap="wrap">
+                                    <Chip
+                                      label={`${Math.round(diagnosis.probability * 100)}% probability`}
+                                      color="primary"
+                                      size="small"
+                                    />
+                                    <Chip
+                                      label={diagnosis.severity}
+                                      color={getSeverityColor(diagnosis.severity) as any}
+                                      size="small"
+                                    />
+                                  </Stack>
+                                  <Chip
+                                    label={diagnosis.urgency}
+                                    color={diagnosis.urgency === 'emergent' ? 'error' : diagnosis.urgency === 'urgent' ? 'warning' : 'default'}
+                                    size="small"
+                                  />
+                                </Box>
+                              </Box>
 
-                            <Box>
-                              <Typography variant="subtitle2" gutterBottom>
-                                Additional Tests Needed
-                              </Typography>
-                              <Stack direction="row" spacing={1} flexWrap="wrap">
-                                {diagnosis.additionalTestsNeeded.map((test, index) => (
-                                  <Chip key={index} label={test} variant="outlined" />
-                                ))}
-                              </Stack>
-                            </Box>
-                          </Stack>
-                        </AccordionDetails>
-                      </Accordion>
-                    ))}
+                              <Grid container spacing={2}>
+                                <Grid item xs={12} md={4}>
+                                  <Typography variant="subtitle2" gutterBottom>
+                                    Supporting Evidence
+                                  </Typography>
+                                  {diagnosis.supportingEvidence && diagnosis.supportingEvidence.length > 0 ? (
+                                    <List dense>
+                                      {diagnosis.supportingEvidence.map((evidence, evidenceIndex) => (
+                                        <ListItem key={evidenceIndex} sx={{ py: 0.5 }}>
+                                          <ListItemIcon sx={{ minWidth: 30 }}>
+                                            <CheckCircleIcon color="success" fontSize="small" />
+                                          </ListItemIcon>
+                                          <ListItemText primary={evidence} />
+                                        </ListItem>
+                                      ))}
+                                    </List>
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                      Evidence may be embedded in clinical reasoning
+                                    </Typography>
+                                  )}
+                                </Grid>
+
+                                <Grid item xs={12} md={4}>
+                                  <Typography variant="subtitle2" gutterBottom>
+                                    Against Evidence
+                                  </Typography>
+                                  {diagnosis.againstEvidence && diagnosis.againstEvidence.length > 0 ? (
+                                    <List dense>
+                                      {diagnosis.againstEvidence.map((evidence, evidenceIndex) => (
+                                        <ListItem key={evidenceIndex} sx={{ py: 0.5 }}>
+                                          <ListItemIcon sx={{ minWidth: 30 }}>
+                                            <ErrorIcon color="error" fontSize="small" />
+                                          </ListItemIcon>
+                                          <ListItemText primary={evidence} />
+                                        </ListItem>
+                                      ))}
+                                    </List>
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                      No contradicting evidence identified
+                                    </Typography>
+                                  )}
+                                </Grid>
+
+                                <Grid item xs={12} md={4}>
+                                  <Typography variant="subtitle2" gutterBottom>
+                                    Additional Tests Needed
+                                  </Typography>
+                                  {diagnosis.additionalTestsNeeded && diagnosis.additionalTestsNeeded.length > 0 ? (
+                                    <Stack direction="row" spacing={1} flexWrap="wrap">
+                                      {diagnosis.additionalTestsNeeded.map((test, testIndex) => (
+                                        <Chip key={testIndex} label={test} variant="outlined" size="small" />
+                                      ))}
+                                    </Stack>
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                      No additional tests specified
+                                    </Typography>
+                                  )}
+                                </Grid>
+                              </Grid>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Alert severity="info">
+                        <Typography variant="body2">
+                          No differential diagnoses available. This may indicate the analysis is still processing or no specific diagnoses were identified.
+                        </Typography>
+                      </Alert>
+                    )}
                   </Stack>
                 </TabPanel>
 
@@ -1131,68 +1249,88 @@ const AIAgent: React.FC = () => {
                       <HospitalIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
                       Treatment Recommendations
                     </Typography>
-                    {analysis.treatments.map((treatment) => (
-                      <Card key={treatment.id} variant="outlined">
-                        <CardContent>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                            <Typography variant="h6">
-                              {treatment.recommendation}
-                            </Typography>
-                            <Stack direction="row" spacing={1}>
-                              <Chip
-                                label={treatment.priority}
-                                color={getPriorityColor(treatment.priority) as any}
-                                size="small"
-                              />
-                              <Chip
-                                label={`Evidence Level ${treatment.evidenceLevel}`}
-                                color={getEvidenceColor(treatment.evidenceLevel) as any}
-                                size="small"
-                              />
-                            </Stack>
-                          </Box>
-                          
-                          <Typography variant="body2" color="text.secondary" paragraph>
-                            Category: {treatment.category} | Timeframe: {treatment.timeframe}
-                          </Typography>
-                          
-                          <Typography variant="body1" paragraph>
-                            {treatment.expectedOutcome}
-                          </Typography>
-
-                          <Grid container spacing={2}>
-                            <Grid item xs={12} md={6}>
-                              <Typography variant="subtitle2" gutterBottom>
-                                Contraindications
+                    {analysis.treatments && analysis.treatments.length > 0 ? (
+                      analysis.treatments.map((treatment: Treatment) => (
+                        <Card key={treatment.id} variant="outlined">
+                          <CardContent>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                              <Typography variant="h6">
+                                {treatment.recommendation}
                               </Typography>
-                              <List dense>
-                                {treatment.contraindications.map((contraindication, index) => (
-                                  <ListItem key={index}>
-                                    <ListItemIcon>
-                                      <WarningIcon color="warning" />
-                                    </ListItemIcon>
-                                    <ListItemText primary={contraindication} />
-                                  </ListItem>
-                                ))}
-                              </List>
-                            </Grid>
+                              <Stack direction="row" spacing={1}>
+                                <Chip
+                                  label={treatment.priority}
+                                  color={getPriorityColor(treatment.priority) as any}
+                                  size="small"
+                                />
+                                <Chip
+                                  label={`Evidence Level ${treatment.evidenceLevel}`}
+                                  color={getEvidenceColor(treatment.evidenceLevel) as any}
+                                  size="small"
+                                />
+                              </Stack>
+                            </Box>
                             
-                            <Grid item xs={12} md={6}>
-                              <Typography variant="subtitle2" gutterBottom>
-                                Alternatives
-                              </Typography>
-                              <List dense>
-                                {treatment.alternatives.map((alternative, index) => (
-                                  <ListItem key={index}>
-                                    <ListItemText primary={alternative} />
-                                  </ListItem>
-                                ))}
-                              </List>
+                            <Typography variant="body2" color="text.secondary" paragraph>
+                              Category: {treatment.category} | Timeframe: {treatment.timeframe}
+                            </Typography>
+                            
+                            <Typography variant="body1" paragraph>
+                              {treatment.expectedOutcome}
+                            </Typography>
+
+                            <Grid container spacing={2}>
+                              <Grid item xs={12} md={6}>
+                                <Typography variant="subtitle2" gutterBottom>
+                                  Contraindications
+                                </Typography>
+                                {treatment.contraindications && treatment.contraindications.length > 0 ? (
+                                  <List dense>
+                                    {treatment.contraindications.map((contraindication: string, index: number) => (
+                                      <ListItem key={index}>
+                                        <ListItemIcon>
+                                          <WarningIcon color="warning" />
+                                        </ListItemIcon>
+                                        <ListItemText primary={contraindication} />
+                                      </ListItem>
+                                    ))}
+                                  </List>
+                                ) : (
+                                  <Typography variant="body2" color="text.secondary">
+                                    No specific contraindications identified
+                                  </Typography>
+                                )}
+                              </Grid>
+                              
+                              <Grid item xs={12} md={6}>
+                                <Typography variant="subtitle2" gutterBottom>
+                                  Alternatives
+                                </Typography>
+                                {treatment.alternatives && treatment.alternatives.length > 0 ? (
+                                  <List dense>
+                                    {treatment.alternatives.map((alternative: string, index: number) => (
+                                      <ListItem key={index}>
+                                        <ListItemText primary={alternative} />
+                                      </ListItem>
+                                    ))}
+                                  </List>
+                                ) : (
+                                  <Typography variant="body2" color="text.secondary">
+                                    No alternative treatments specified
+                                  </Typography>
+                                )}
+                              </Grid>
                             </Grid>
-                          </Grid>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      ))
+                    ) : (
+                      <Alert severity="info">
+                        <Typography variant="body2">
+                          No specific treatment recommendations available. This may indicate the analysis is still processing or no specific treatments were identified. Check the Next Steps section in the Analysis Overview for general guidance.
+                        </Typography>
+                      </Alert>
+                    )}
                   </Stack>
                 </TabPanel>
 
@@ -1202,26 +1340,37 @@ const AIAgent: React.FC = () => {
                       <SecurityIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
                       Clinical Concerns & Alerts
                     </Typography>
-                    {analysis.concerns.map((concern) => (
-                      <Alert
-                        key={concern.id}
-                        severity={concern.severity === 'critical' ? 'error' : concern.severity === 'high' ? 'warning' : 'info'}
-                        action={
-                          concern.requiresImmediateAction && (
-                            <Button color="inherit" size="small">
-                              Act Now
-                            </Button>
-                          )
-                        }
-                      >
-                        <Typography variant="subtitle1" gutterBottom>
-                          {concern.message}
-                        </Typography>
+                    {analysis.concerns && analysis.concerns.length > 0 ? (
+                      analysis.concerns.map((concern) => (
+                        <Alert
+                          key={concern.id}
+                          severity={concern.severity === 'critical' ? 'error' : concern.severity === 'high' ? 'warning' : 'info'}
+                          action={
+                            concern.requiresImmediateAction && (
+                              <Button color="inherit" size="small">
+                                Act Now
+                              </Button>
+                            )
+                          }
+                        >
+                          <Typography variant="subtitle1" gutterBottom>
+                            {concern.message}
+                          </Typography>
+                          <Typography variant="body2">
+                            {concern.recommendation}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                            Type: {concern.type.replace('_', ' ')} | Severity: {concern.severity}
+                          </Typography>
+                        </Alert>
+                      ))
+                    ) : (
+                      <Alert severity="success">
                         <Typography variant="body2">
-                          {concern.recommendation}
+                          No immediate clinical concerns or red flags identified in the current analysis. Continue with routine monitoring and follow standard clinical protocols.
                         </Typography>
                       </Alert>
-                    ))}
+                    )}
                   </Stack>
                 </TabPanel>
 
@@ -1336,8 +1485,22 @@ const AIAgent: React.FC = () => {
                             <AutoAwesomeIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
                             Full Reasoning Content
                           </Typography>
-                          <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
-                            <Typography variant="body2" component="pre" sx={{ whiteSpace: 'pre-wrap' }}>
+                          <Paper sx={{ 
+                            p: 2, 
+                            bgcolor: (theme) => theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
+                            border: (theme) => theme.palette.mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(0, 0, 0, 0.12)'
+                          }}>
+                            <Typography 
+                              variant="body2" 
+                              component="pre" 
+                              sx={{ 
+                                whiteSpace: 'pre-wrap',
+                                color: (theme) => theme.palette.mode === 'dark' ? 'grey.100' : 'grey.800',
+                                fontFamily: 'monospace',
+                                fontSize: '0.875rem',
+                                lineHeight: 1.6
+                              }}
+                            >
                               {analysis.reasoningTrace.reasoning}
                             </Typography>
                           </Paper>

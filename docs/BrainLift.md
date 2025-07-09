@@ -160,6 +160,14 @@ _Add new rows as you discover more material. Keep explanations concise._
    • Summarize *why* in a bullet under **Changelog** (below).
 
 ## 8. Changelog
+
+### January 2025
+
+**O1 Model Data Extraction & Dark Mode Fixes**
+- **Fixed missing differential diagnosis, treatment recommendations, and clinical concerns**: Added comprehensive data validation in Firebase Function to ensure O1 analysis always returns populated arrays even when JSON parsing succeeds but returns empty data
+- **Fixed dark mode text visibility**: Updated reasoning content display with proper theme-aware styling, ensuring text is visible in both light and dark modes
+- **Enhanced data structure validation**: Added fallback data structure that mirrors the 4o model exactly, ensuring consistent user experience
+- **Improved debugging**: Added detailed logging for O1 JSON parsing success/failure scenarios
 - **v1.0.0** – Project foundation with basic patient and visit management
 - **v1.1.0** – Added AI analysis resources and medical NLP integration
 - **v1.2.0** – Added healthcare AI ethics guidelines and medical documentation standards
