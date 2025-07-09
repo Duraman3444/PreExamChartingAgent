@@ -1,8 +1,43 @@
 /// <reference types="vite/client" />
-import { initializeApp } from 'firebase/app';
+import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getAuth, setPersistence, browserLocalPersistence, Auth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
+
+// Check if Firebase config is available
+const isFirebaseConfigured = () => {
+  const requiredEnvVars = [
+    'VITE_FIREBASE_API_KEY',
+    'VITE_FIREBASE_AUTH_DOMAIN',
+    'VITE_FIREBASE_PROJECT_ID',
+    'VITE_FIREBASE_STORAGE_BUCKET',
+    'VITE_FIREBASE_MESSAGING_SENDER_ID',
+    'VITE_FIREBASE_APP_ID'
+  ];
+  
+  console.log('🔧 [Firebase Debug] Checking Firebase configuration...');
+  
+  const configStatus = requiredEnvVars.map(varName => {
+    const value = import.meta.env[varName];
+    const isConfigured = value && value !== 'your_firebase_api_key_here' && value !== 'your_firebase_auth_domain_here' && value !== 'your_firebase_project_id_here' && value !== 'your_firebase_storage_bucket_here' && value !== 'your_firebase_messaging_sender_id_here' && value !== 'your_firebase_app_id_here';
+    return {
+      variable: varName,
+      hasValue: !!value,
+      isConfigured,
+      valuePrefix: value?.substring(0, 10) || 'none'
+    };
+  });
+  
+  console.log('🔧 [Firebase Debug] Configuration status:', configStatus);
+  
+  const allConfigured = requiredEnvVars.every(varName => {
+    const value = import.meta.env[varName];
+    return value && value !== 'your_firebase_api_key_here' && value !== 'your_firebase_auth_domain_here' && value !== 'your_firebase_project_id_here' && value !== 'your_firebase_storage_bucket_here' && value !== 'your_firebase_messaging_sender_id_here' && value !== 'your_firebase_app_id_here';
+  });
+  
+  console.log('🔧 [Firebase Debug] All variables configured:', allConfigured);
+  return allConfigured;
+};
 
 // Firebase configuration
 const firebaseConfig = {
@@ -15,19 +50,62 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-
-// Initialize Firebase services
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
-
-// Set auth persistence explicitly
-setPersistence(auth, browserLocalPersistence).catch((error) => {
-  console.error('Failed to set auth persistence:', error);
+console.log('🔧 [Firebase Debug] Firebase config object created:', {
+  hasApiKey: !!firebaseConfig.apiKey,
+  hasAuthDomain: !!firebaseConfig.authDomain,
+  hasProjectId: !!firebaseConfig.projectId,
+  projectId: firebaseConfig.projectId
 });
 
+// Initialize Firebase only if properly configured
+let app: FirebaseApp | undefined;
+let auth: Auth;
+let db: Firestore;
+let storage: FirebaseStorage;
+
+if (isFirebaseConfigured()) {
+  try {
+    console.log('✅ [Firebase Debug] Starting Firebase initialization...');
+    app = initializeApp(firebaseConfig);
+    console.log('✅ [Firebase Debug] Firebase app initialized');
+    
+    auth = getAuth(app);
+    console.log('✅ [Firebase Debug] Firebase Auth initialized');
+    
+    db = getFirestore(app);
+    console.log('✅ [Firebase Debug] Firestore initialized');
+    
+    storage = getStorage(app);
+    console.log('✅ [Firebase Debug] Firebase Storage initialized');
+
+    // Set auth persistence explicitly to ensure session survives refresh
+    setPersistence(auth, browserLocalPersistence)
+      .then(() => {
+        console.log('✅ [Firebase Debug] Auth persistence set to local storage');
+      })
+      .catch((error) => {
+        console.error('❌ [Firebase Debug] Failed to set auth persistence:', error);
+      });
+  } catch (error) {
+    console.error('❌ [Firebase Debug] Firebase initialization failed:', error);
+    // Create mock services for development
+    app = undefined;
+    auth = null as any;
+    db = null as any;
+    storage = null as any;
+  }
+} else {
+  console.warn('⚠️ [Firebase Debug] Firebase configuration not found. Running in development mode without Firebase.');
+  console.warn('⚠️ [Firebase Debug] To enable Firebase, create an .env file in the app directory with your Firebase config.');
+  
+  // Create mock services for development
+  app = undefined;
+  auth = null as any;
+  db = null as any;
+  storage = null as any;
+}
+
+export { auth, db, storage };
 export default app;
 
 // Firebase Functions service wrapper
@@ -42,6 +120,10 @@ export class FirebaseFunctionsService {
 
   // Get auth token for Firebase Functions calls
   private async getAuthToken(): Promise<string> {
+    if (!this.auth) {
+      throw new Error('Firebase not configured');
+    }
+    
     const currentUser = this.auth.currentUser;
     if (!currentUser) {
       throw new Error('User not authenticated');
@@ -51,6 +133,10 @@ export class FirebaseFunctionsService {
 
   // Generic function to call Firebase Functions
   private async callFunction(functionName: string, data: any): Promise<any> {
+    if (!this.auth) {
+      throw new Error('Firebase not configured. Please add Firebase environment variables to .env file.');
+    }
+    
     const token = await this.getAuthToken();
     
     const response = await fetch(`${this.functionsUrl}/${functionName}`, {

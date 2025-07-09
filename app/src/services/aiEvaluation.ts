@@ -40,6 +40,25 @@ export interface EvaluationResult {
   };
 }
 
+export interface EvaluationLog {
+  id: string;
+  timestamp: Date;
+  type: 'info' | 'success' | 'warning' | 'error';
+  message: string;
+  details?: any;
+}
+
+export interface EvaluationProgress {
+  currentStep: number;
+  totalSteps: number;
+  percentage: number;
+  currentRecord: number;
+  totalRecords: number;
+  logs: EvaluationLog[];
+}
+
+export type EvaluationProgressCallback = (progress: EvaluationProgress) => void;
+
 export interface BatchEvaluationConfig {
   sampleSize: number;
   modelType: 'quick' | 'o1_deep_reasoning';
@@ -53,6 +72,52 @@ export interface BatchEvaluationConfig {
 }
 
 class AIEvaluationService {
+  private progressCallback: EvaluationProgressCallback | null = null;
+  private currentLogs: EvaluationLog[] = [];
+  private logCounter = 0;
+
+  private addLog(type: EvaluationLog['type'], message: string, details?: any) {
+    const log: EvaluationLog = {
+      id: `log-${++this.logCounter}`,
+      timestamp: new Date(),
+      type,
+      message,
+      details
+    };
+    
+    this.currentLogs.push(log);
+    
+    // Keep only last 100 logs to prevent memory issues
+    if (this.currentLogs.length > 100) {
+      this.currentLogs = this.currentLogs.slice(-100);
+    }
+    
+    console.log(`[${type.toUpperCase()}] ${message}`, details || '');
+  }
+
+  private updateProgress(currentStep: number, totalSteps: number, currentRecord: number, totalRecords: number) {
+    if (this.progressCallback) {
+      const percentage = Math.round((currentRecord / totalRecords) * 100);
+      this.progressCallback({
+        currentStep,
+        totalSteps,
+        percentage,
+        currentRecord,
+        totalRecords,
+        logs: [...this.currentLogs]
+      });
+    }
+  }
+
+  setProgressCallback(callback: EvaluationProgressCallback | null) {
+    this.progressCallback = callback;
+  }
+
+  private clearLogs() {
+    this.currentLogs = [];
+    this.logCounter = 0;
+  }
+
   private readonly EVALUATION_PROMPT = `You are a medical evaluation expert. Compare the AI's medical analysis with the ground truth medical answer.
 
 Score each category from 0-100 based on these detailed criteria:
@@ -203,27 +268,61 @@ Return your analysis in valid JSON format with the following structure:
   ): Promise<EvaluationResult[]> {
     const sample = dataset.slice(0, sampleSize);
     const results: EvaluationResult[] = [];
+    
+    this.addLog('info', `Starting batch analysis of ${sample.length} records with ${modelType} model`, {
+      sampleSize: sample.length,
+      modelType
+    });
 
     for (let i = 0; i < sample.length; i++) {
       const record = sample[i];
       
+      this.addLog('info', `Processing record ${i + 1}/${sample.length}: ${record.question.substring(0, 50)}...`, {
+        recordIndex: i,
+        questionPreview: record.question.substring(0, 100)
+      });
+      
+      this.updateProgress(1, 3, i + 1, sample.length);
+      
       try {
-        console.log(`Processing ${i + 1}/${sample.length}: ${record.question.substring(0, 50)}...`);
+        this.addLog('info', `🤖 Calling OpenAI API with ${modelType} model...`);
         
         // Run AI analysis
         let aiAnalysis: AnalysisResult;
-                  if (modelType === 'quick') {
-            aiAnalysis = await openAIService.quickAnalyzeTranscript(record.question);
-          } else {
-            aiAnalysis = await openAIService.analyzeTranscript(record.question, undefined, false);
-          }
+        const analysisStart = Date.now();
+        
+        if (modelType === 'quick') {
+          aiAnalysis = await openAIService.quickAnalyzeTranscript(record.question);
+        } else {
+          aiAnalysis = await openAIService.analyzeTranscript(record.question, undefined, false);
+        }
+        
+        const analysisTime = Date.now() - analysisStart;
+        this.addLog('success', `✅ AI analysis completed in ${analysisTime}ms`, {
+          processingTime: analysisTime,
+          symptomsFound: aiAnalysis.symptoms.length,
+          diagnosesFound: aiAnalysis.diagnoses.length,
+          treatmentsFound: aiAnalysis.treatments.length
+        });
 
+        this.addLog('info', `📊 Evaluating against ground truth...`);
+        
         // Evaluate against ground truth
+        const evaluationStart = Date.now();
         const comparisonResult = await this.compareWithGroundTruth(
           record.question,
           record.answer,
           aiAnalysis
         );
+        
+        const evaluationTime = Date.now() - evaluationStart;
+        this.addLog('success', `✅ Evaluation completed in ${evaluationTime}ms - Score: ${comparisonResult.overallScore.toFixed(1)}%`, {
+          evaluationTime,
+          overallScore: comparisonResult.overallScore,
+          category: comparisonResult.category,
+          strengths: comparisonResult.strengths,
+          weaknesses: comparisonResult.weaknesses
+        });
 
         results.push({
           id: `eval-${i}`,
@@ -242,11 +341,16 @@ Return your analysis in valid JSON format with the following structure:
           }
         });
 
+        this.addLog('info', `⏳ Adding 1s delay to avoid rate limiting...`);
         // Add delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000));
         
       } catch (error) {
-        console.error(`Failed to process record ${i}:`, error);
+        this.addLog('error', `❌ Failed to process record ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+          recordIndex: i,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+        
         results.push({
           id: `eval-${i}`,
           originalQuestion: record.question,
@@ -276,6 +380,12 @@ Return your analysis in valid JSON format with the following structure:
         });
       }
     }
+    
+    this.addLog('success', `🎉 Batch analysis completed! Processed ${results.length} records`, {
+      totalRecords: results.length,
+      successfulRecords: results.filter(r => r.comparisonScore > 0).length,
+      failedRecords: results.filter(r => r.comparisonScore === 0).length
+    });
 
     return results;
   }
@@ -612,7 +722,7 @@ Please evaluate the AI's performance and respond with valid JSON only.`;
     );
   }
 
-  // Update method to use Firebase Functions
+  // Update method to use Firebase Functions with fallback to direct OpenAI
   async evaluateAgainstDatasets(options: {
     sampleSize: number;
     modelType: 'quick' | 'comprehensive' | 'o1_deep_reasoning';
@@ -626,11 +736,18 @@ Please evaluate the AI's performance and respond with valid JSON only.`;
   }): Promise<EvaluationMetrics> {
     const startTime = Date.now();
     
+    this.clearLogs();
+    this.addLog('info', `🚀 Starting evaluation with ${options.modelType} model (${options.sampleSize} samples)`, options);
+    
     try {
+      this.addLog('info', `📁 Loading dataset: merged_medical_qa.jsonl`);
+      
       // Load dataset
       const response = await fetch('/evaluation/datasets/merged_medical_qa.jsonl');
       const text = await response.text();
       const lines = text.trim().split('\n');
+      
+      this.addLog('success', `✅ Dataset loaded: ${lines.length} total records available`);
       
       // Sample questions
       const sampleLines = lines.slice(0, options.sampleSize);
@@ -639,11 +756,28 @@ Please evaluate the AI's performance and respond with valid JSON only.`;
         return record.question;
       });
       
-      // Use Firebase Functions for batch analysis
-      const batchResults = await firebaseFunctionsService.batchAnalyzeQuestions(
-        questions,
-        this.ANALYSIS_PROMPT
-      );
+      this.addLog('info', `🎯 Selected ${sampleLines.length} samples for evaluation`);
+      
+      // Try Firebase Functions first, fallback to direct OpenAI
+      let batchResults: any;
+      try {
+        this.addLog('info', `⚡ Attempting Firebase Functions for batch analysis...`);
+        batchResults = await firebaseFunctionsService.batchAnalyzeQuestions(
+          questions,
+          this.ANALYSIS_PROMPT
+        );
+        this.addLog('success', `✅ Firebase Functions batch analysis completed`);
+      } catch (firebaseError) {
+        this.addLog('warning', `⚠️ Firebase Functions failed, falling back to direct OpenAI calls...`, {
+          error: firebaseError instanceof Error ? firebaseError.message : 'Unknown error'
+        });
+        
+        // Fallback to direct OpenAI calls
+        batchResults = await this.directBatchAnalysis(questions, options.modelType);
+        this.addLog('success', `✅ Direct OpenAI batch analysis completed`);
+      }
+      
+      this.addLog('info', `📊 Processing results and running evaluations...`);
       
       // Process results and evaluate
       const results: EvaluationResult[] = [];
@@ -651,6 +785,9 @@ Please evaluate the AI's performance and respond with valid JSON only.`;
       for (let i = 0; i < sampleLines.length; i++) {
         const record = JSON.parse(sampleLines[i]);
         const batchResult = batchResults.results[i];
+        
+        this.addLog('info', `Processing evaluation ${i + 1}/${sampleLines.length}: ${record.question.substring(0, 50)}...`);
+        this.updateProgress(2, 3, i + 1, sampleLines.length);
         
         if (batchResult.success && batchResult.analysis) {
           // Convert to AnalysisResult format
@@ -668,13 +805,33 @@ Please evaluate the AI's performance and respond with valid JSON only.`;
           };
           
           try {
-            // Use Firebase Functions for evaluation
-            const comparisonResult = await firebaseFunctionsService.evaluateQuestion(
-              record.question,
-              record.answer,
-              aiAnalysis,
-              this.EVALUATION_PROMPT
-            );
+            this.addLog('info', `🔍 Evaluating against ground truth...`);
+            
+            // Try Firebase Functions first, fallback to direct evaluation
+            let comparisonResult: any;
+            try {
+              comparisonResult = await firebaseFunctionsService.evaluateQuestion(
+                record.question,
+                record.answer,
+                aiAnalysis,
+                this.EVALUATION_PROMPT
+              );
+            } catch (evaluationError) {
+              this.addLog('warning', `⚠️ Firebase evaluation failed, using direct comparison...`, {
+                error: evaluationError instanceof Error ? evaluationError.message : 'Unknown error'
+              });
+              
+              comparisonResult = await this.compareWithGroundTruth(
+                record.question,
+                record.answer,
+                aiAnalysis
+              );
+            }
+            
+            this.addLog('success', `✅ Evaluation completed - Score: ${comparisonResult.overallScore.toFixed(1)}%`, {
+              overallScore: comparisonResult.overallScore,
+              category: comparisonResult.category
+            });
             
             results.push({
               id: `eval-${i}`,
@@ -693,7 +850,10 @@ Please evaluate the AI's performance and respond with valid JSON only.`;
               }
             });
           } catch (evaluationError) {
-            console.error('Evaluation failed:', evaluationError);
+            this.addLog('warning', `⚠️ Evaluation failed, using fallback scoring...`, {
+              error: evaluationError instanceof Error ? evaluationError.message : 'Unknown error'
+            });
+            
             // Create fallback evaluation using content-based similarity
             const fallbackEvaluation = {
               symptomExtraction: Math.min(90, 70 + Math.random() * 20),
@@ -724,6 +884,11 @@ Please evaluate the AI's performance and respond with valid JSON only.`;
             });
           }
         } else {
+          this.addLog('error', `❌ Analysis failed for record ${i + 1}`, {
+            recordIndex: i,
+            error: batchResult.error || 'Unknown error'
+          });
+          
           // Handle failed analysis
           results.push({
             id: `eval-${i}`,
@@ -756,7 +921,16 @@ Please evaluate the AI's performance and respond with valid JSON only.`;
       }
       
       const processingTime = Date.now() - startTime;
+      this.addLog('info', `📈 Calculating final metrics...`);
+      
       const metrics = this.calculateMetrics(results, processingTime);
+      
+      this.addLog('success', `🎉 Evaluation completed! Overall accuracy: ${metrics.accuracyScore.toFixed(1)}%`, {
+        accuracyScore: metrics.accuracyScore,
+        processingTime: processingTime,
+        sampleSize: options.sampleSize,
+        successfulResults: results.filter(r => r.comparisonScore > 0).length
+      });
       
       return {
         ...metrics,
@@ -766,9 +940,57 @@ Please evaluate the AI's performance and respond with valid JSON only.`;
       };
       
     } catch (error) {
-      console.error('Evaluation failed:', error);
+      this.addLog('error', `❌ Evaluation failed: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
       throw error;
     }
+  }
+
+  // Direct batch analysis fallback method
+  private async directBatchAnalysis(questions: string[], modelType: string): Promise<{ results: any[] }> {
+    const results: any[] = [];
+    
+    for (let i = 0; i < questions.length; i++) {
+      const question = questions[i];
+      
+      this.addLog('info', `🤖 Direct OpenAI call ${i + 1}/${questions.length}...`);
+      
+      try {
+        let aiAnalysis: AnalysisResult;
+        const analysisStart = Date.now();
+        
+        if (modelType === 'quick') {
+          aiAnalysis = await openAIService.quickAnalyzeTranscript(question);
+        } else {
+          aiAnalysis = await openAIService.analyzeTranscript(question, undefined, false);
+        }
+        
+        const analysisTime = Date.now() - analysisStart;
+        this.addLog('success', `✅ Direct analysis completed in ${analysisTime}ms`);
+        
+        results.push({
+          question,
+          analysis: aiAnalysis,
+          success: true
+        });
+        
+        // Add delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+      } catch (error) {
+        this.addLog('error', `❌ Direct analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        
+        results.push({
+          question,
+          analysis: null,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+    
+    return { results };
   }
 
   private calculateMetrics(results: EvaluationResult[], processingTime: number): Omit<EvaluationMetrics, 'datasetSource' | 'sampleSize' | 'detailedResults'> {
@@ -835,8 +1057,8 @@ Please evaluate the AI's performance and respond with valid JSON only.`;
       modelType: 'quick',
       datasets: ['merged_medical_qa.jsonl'],
       evaluationCriteria: {
-        symptomAccuracy: 0.2,
-        diagnosisRelevance: 0.4,
+        symptomAccuracy: 0.25,
+        diagnosisRelevance: 0.35,
         treatmentAppropriate: 0.25,
         coherence: 0.15
       }

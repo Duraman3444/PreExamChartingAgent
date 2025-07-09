@@ -14,8 +14,18 @@ export class AuthService {
   private authInitialized = false;
   private authInitPromise: Promise<void> | null = null;
 
+  // Check if Firebase is configured
+  private isFirebaseConfigured(): boolean {
+    return auth !== null && db !== null;
+  }
+
   // Wait for Firebase Auth to initialize and restore state
-  private async waitForAuthInit(): Promise<void> {
+  async waitForAuthInit(): Promise<void> {
+    if (!this.isFirebaseConfigured()) {
+      this.authInitialized = true;
+      return;
+    }
+
     if (this.authInitialized) {
       return;
     }
@@ -35,6 +45,11 @@ export class AuthService {
 
   // Sign in with email and password
   async signIn(email: string, password: string): Promise<User> {
+    if (!this.isFirebaseConfigured()) {
+      // Return mock user for development
+      return this.getMockUser(email);
+    }
+
     try {
       const credential = await signInWithEmailAndPassword(auth, email, password);
       const user = await this.getUserProfile(credential.user.uid);
@@ -46,6 +61,11 @@ export class AuthService {
 
   // Sign up with email and password
   async signUp(email: string, password: string, name: string, role: User['role']): Promise<User> {
+    if (!this.isFirebaseConfigured()) {
+      // Return mock user for development
+      return this.getMockUser(email, name, role);
+    }
+
     try {
       const credential = await createUserWithEmailAndPassword(auth, email, password);
       
@@ -85,11 +105,18 @@ export class AuthService {
 
   // Sign out
   async signOut(): Promise<void> {
+    if (!this.isFirebaseConfigured()) {
+      return;
+    }
     await signOut(auth);
   }
 
   // Get user profile from Firestore
   async getUserProfile(uid: string): Promise<User> {
+    if (!this.isFirebaseConfigured()) {
+      return this.getMockUser('dev@example.com');
+    }
+
     const userDoc = await getDoc(doc(db, 'users', uid));
     if (!userDoc.exists()) {
       throw new Error('User profile not found');
@@ -99,6 +126,9 @@ export class AuthService {
 
   // Update user profile
   async updateUserProfile(uid: string, updates: Partial<User>): Promise<void> {
+    if (!this.isFirebaseConfigured()) {
+      return;
+    }
     await updateDoc(doc(db, 'users', uid), {
       ...updates,
       updatedAt: new Date(),
@@ -107,6 +137,12 @@ export class AuthService {
 
   // Listen to auth state changes
   onAuthStateChanged(callback: (user: User | null) => void): () => void {
+    if (!this.isFirebaseConfigured()) {
+      // For development, immediately call callback with mock user
+      setTimeout(() => callback(this.getMockUser('dev@example.com')), 100);
+      return () => {}; // Return empty unsubscribe function
+    }
+
     return onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         try {
@@ -124,23 +160,58 @@ export class AuthService {
 
   // Get current user (waits for auth initialization)
   async getCurrentUser(): Promise<FirebaseUser | null> {
+    if (!this.isFirebaseConfigured()) {
+      return null;
+    }
     await this.waitForAuthInit();
     return auth.currentUser;
   }
 
   // Check if user is authenticated (waits for auth initialization)
   async isAuthenticated(): Promise<boolean> {
+    if (!this.isFirebaseConfigured()) {
+      return true; // Always authenticated in development mode
+    }
     await this.waitForAuthInit();
     return !!auth.currentUser;
   }
 
   // Synchronous methods for when auth is already initialized
   getCurrentUserSync(): FirebaseUser | null {
+    if (!this.isFirebaseConfigured()) {
+      return null;
+    }
     return auth.currentUser;
   }
 
   isAuthenticatedSync(): boolean {
+    if (!this.isFirebaseConfigured()) {
+      return true; // Always authenticated in development mode
+    }
     return !!auth.currentUser;
+  }
+
+  // Mock user for development
+  private getMockUser(email: string, name?: string, role?: User['role']): User {
+    return {
+      id: 'mock-user-id',
+      email,
+      displayName: name || 'Development User',
+      role: role || 'doctor',
+      department: 'Development',
+      licenseNumber: 'DEV-001',
+      isActive: true,
+      lastLogin: new Date(),
+      preferences: {
+        theme: 'dark',
+        language: 'en',
+        autoSave: true,
+        notificationsEnabled: true,
+        aiAssistanceLevel: 'comprehensive',
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
   }
 }
 

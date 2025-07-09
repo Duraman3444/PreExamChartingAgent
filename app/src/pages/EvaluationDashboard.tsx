@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -32,6 +32,9 @@ import {
   Select,
   MenuItem,
   TextField,
+  Collapse,
+  IconButton,
+  Divider,
 } from '@mui/material';
 import {
   Assessment as AssessmentIcon,
@@ -44,9 +47,13 @@ import {
   Speed as SpeedIcon,
   TrendingUp as TrendingUpIcon,
   DataUsage as DataUsageIcon,
+  Info as InfoIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
-import { aiEvaluationService, EvaluationMetrics, EvaluationResult } from '../services/aiEvaluation';
+import { aiEvaluationService, EvaluationMetrics, EvaluationResult, EvaluationProgress, EvaluationLog } from '../services/aiEvaluation';
 import { syntheticPatientGenerator } from '../services/syntheticPatientGenerator';
 
 interface TabPanelProps {
@@ -89,6 +96,12 @@ export const EvaluationDashboard: React.FC = () => {
     modelType: 'quick' as 'quick' | 'o1_deep_reasoning',
     evaluationType: 'quick' as 'quick' | 'comprehensive'
   });
+  
+  // New logging state
+  const [currentProgress, setCurrentProgress] = useState<EvaluationProgress | null>(null);
+  const [evaluationLogs, setEvaluationLogs] = useState<EvaluationLog[]>([]);
+  const [showLogs, setShowLogs] = useState(true);
+  const logContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Load any previous evaluation results
@@ -102,19 +115,27 @@ export const EvaluationDashboard: React.FC = () => {
     }
   }, []);
 
+  // Auto-scroll logs to bottom
+  useEffect(() => {
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+    }
+  }, [evaluationLogs]);
+
   const handleRunEvaluation = async () => {
     setIsRunningEvaluation(true);
     setEvaluationProgress(0);
+    setCurrentProgress(null);
+    setEvaluationLogs([]);
 
-    const progressInterval = setInterval(() => {
-      setEvaluationProgress(prev => {
-        if (prev >= 90) {
-          clearInterval(progressInterval);
-          return 90;
-        }
-        return prev + 10;
-      });
-    }, 2000);
+    // Set up progress callback
+    const progressCallback = (progress: EvaluationProgress) => {
+      setCurrentProgress(progress);
+      setEvaluationProgress(progress.percentage);
+      setEvaluationLogs(progress.logs);
+    };
+
+    aiEvaluationService.setProgressCallback(progressCallback);
 
     try {
       let results: EvaluationMetrics;
@@ -125,7 +146,6 @@ export const EvaluationDashboard: React.FC = () => {
         results = await aiEvaluationService.comprehensiveEvaluation(evaluationConfig.sampleSize);
       }
 
-      clearInterval(progressInterval);
       setEvaluationProgress(100);
       setEvaluationResults(results);
       
@@ -134,11 +154,14 @@ export const EvaluationDashboard: React.FC = () => {
 
     } catch (error) {
       console.error('Evaluation failed:', error);
-      clearInterval(progressInterval);
       setEvaluationProgress(0);
     } finally {
       setIsRunningEvaluation(false);
-      setTimeout(() => setEvaluationProgress(0), 2000);
+      aiEvaluationService.setProgressCallback(null);
+      setTimeout(() => {
+        setEvaluationProgress(0);
+        setCurrentProgress(null);
+      }, 3000);
     }
   };
 
@@ -197,6 +220,32 @@ export const EvaluationDashboard: React.FC = () => {
     if (score >= 80) return <CheckIcon color="success" />;
     if (score >= 60) return <WarningIcon color="warning" />;
     return <ErrorIcon color="error" />;
+  };
+
+  const getLogIcon = (type: EvaluationLog['type']) => {
+    switch (type) {
+      case 'success':
+        return <CheckIcon sx={{ color: 'success.main', fontSize: 16 }} />;
+      case 'warning':
+        return <WarningIcon sx={{ color: 'warning.main', fontSize: 16 }} />;
+      case 'error':
+        return <ErrorIcon sx={{ color: 'error.main', fontSize: 16 }} />;
+      default:
+        return <InfoIcon sx={{ color: 'info.main', fontSize: 16 }} />;
+    }
+  };
+
+  const getLogColor = (type: EvaluationLog['type']) => {
+    switch (type) {
+      case 'success':
+        return 'success.main';
+      case 'warning':
+        return 'warning.main';
+      case 'error':
+        return 'error.main';
+      default:
+        return 'text.primary';
+    }
   };
 
   return (
@@ -290,8 +339,130 @@ export const EvaluationDashboard: React.FC = () => {
             </Card>
           </Grid>
 
+          {/* Real-time Evaluation Logs */}
+          {(isRunningEvaluation || evaluationLogs.length > 0) && (
+            <Grid item xs={12} md={8}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6">
+                      Evaluation Progress
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {currentProgress && (
+                        <Typography variant="body2" color="text.secondary">
+                          {currentProgress.currentRecord}/{currentProgress.totalRecords} records
+                        </Typography>
+                      )}
+                      <IconButton
+                        size="small"
+                        onClick={() => setShowLogs(!showLogs)}
+                        aria-label={showLogs ? 'Hide logs' : 'Show logs'}
+                      >
+                        {showLogs ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                      </IconButton>
+                    </Box>
+                  </Box>
+
+                  {currentProgress && (
+                    <Box sx={{ mb: 2 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Step {currentProgress.currentStep} of {currentProgress.totalSteps}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {currentProgress.percentage}%
+                        </Typography>
+                      </Box>
+                      <LinearProgress variant="determinate" value={currentProgress.percentage} />
+                    </Box>
+                  )}
+
+                  <Collapse in={showLogs}>
+                    <Paper 
+                      variant="outlined" 
+                      sx={{ 
+                        height: 400, 
+                        overflow: 'auto',
+                        backgroundColor: '#fafafa',
+                        border: '1px solid #e0e0e0'
+                      }}
+                    >
+                      <Box
+                        ref={logContainerRef}
+                        sx={{
+                          p: 2,
+                          fontFamily: 'monospace',
+                          fontSize: '0.875rem',
+                          lineHeight: 1.4,
+                          height: '100%',
+                          overflow: 'auto'
+                        }}
+                      >
+                        {evaluationLogs.length === 0 ? (
+                          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mt: 2 }}>
+                            No logs yet. Click "Run AI Evaluation" to start.
+                          </Typography>
+                        ) : (
+                          evaluationLogs.map((log, index) => (
+                            <Box
+                              key={log.id}
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                mb: 1,
+                                gap: 1,
+                                p: 1,
+                                borderRadius: 1,
+                                backgroundColor: log.type === 'error' ? '#ffebee' : 
+                                                log.type === 'warning' ? '#fff3e0' :
+                                                log.type === 'success' ? '#e8f5e8' : 'transparent'
+                              }}
+                            >
+                              <Box sx={{ mt: 0.5 }}>
+                                {getLogIcon(log.type)}
+                              </Box>
+                              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    color: getLogColor(log.type),
+                                    fontFamily: 'monospace',
+                                    fontSize: '0.8rem',
+                                    wordBreak: 'break-word'
+                                  }}
+                                >
+                                  [{format(log.timestamp, 'HH:mm:ss')}] {log.message}
+                                </Typography>
+                                {log.details && (
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      color: 'text.secondary',
+                                      fontFamily: 'monospace',
+                                      fontSize: '0.75rem',
+                                      mt: 0.5,
+                                      pl: 1,
+                                      borderLeft: '2px solid #e0e0e0'
+                                    }}
+                                  >
+                                    {typeof log.details === 'string' ? log.details : JSON.stringify(log.details, null, 2)}
+                                  </Typography>
+                                )}
+                              </Box>
+                            </Box>
+                          ))
+                        )}
+                      </Box>
+                    </Paper>
+                  </Collapse>
+                </CardContent>
+              </Card>
+            </Grid>
+          )}
+
           {/* Overall Performance Metrics */}
-          <Grid item xs={12} md={8}>
+          <Grid item xs={12}>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>

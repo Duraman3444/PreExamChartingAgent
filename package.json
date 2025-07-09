@@ -1,5 +1,9 @@
 {
+  "scripts": {
+    "dev": "npm --prefix app run dev --"
+  },
   "dependencies": {
-    "firebase": "^11.10.0"
+    "firebase": "^11.10.0",
+    "openai": "^5.8.3"
   }
 }

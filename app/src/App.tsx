@@ -779,10 +779,10 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, isInitialized } = useAuthStore();
   
   // Show loading state while checking authentication
-  if (isLoading) {
+  if (isLoading || !isInitialized) {
     return (
       <Box
         sx={{
@@ -801,17 +801,26 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 };
 
 function App() {
-  const { initialize, isAuthenticated, isLoading } = useAuthStore();
+  const { initialize, isAuthenticated, isLoading, isInitialized } = useAuthStore();
   const { theme: themeMode } = useAppStore();
+  
+  console.log('🚀 [App Debug] App component initializing...');
+  console.log('🚀 [App Debug] Auth state:', {
+    isAuthenticated,
+    isLoading,
+    isInitialized
+  });
   
   const theme = createAppTheme(themeMode);
 
   useEffect(() => {
+    console.log('🚀 [App Debug] Calling auth initialize...');
     initialize();
   }, [initialize]);
 
   // Show loading state while initializing
-  if (isLoading) {
+  if (isLoading || !isInitialized) {
+    console.log('🚀 [App Debug] Showing loading state...');
     return (
       <ThemeProvider theme={theme}>
         <CssBaseline />
@@ -829,6 +838,9 @@ function App() {
       </ThemeProvider>
     );
   }
+
+  console.log('🚀 [App Debug] Rendering main app...');
+  console.log('🚀 [App Debug] User authenticated:', isAuthenticated);
 
   return (
     <ThemeProvider theme={theme}>

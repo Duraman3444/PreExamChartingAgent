@@ -7,18 +7,37 @@ let openai: OpenAI | null = null;
 const getOpenAIClient = (): OpenAI => {
   if (!openai) {
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    if (!apiKey) {
-      console.warn('⚠️ OpenAI API key not found. Using Firebase Functions for AI operations.');
+    
+    // Enhanced debug logging
+    console.log('🔧 [OpenAI Debug] Initializing OpenAI client...');
+    console.log('🔧 [OpenAI Debug] Environment check:', {
+      hasApiKey: !!apiKey,
+      keyLength: apiKey?.length || 0,
+      keyPrefix: apiKey?.substring(0, 10) || 'none',
+      keyIsPlaceholder: apiKey === 'sk-proj-PUT_YOUR_REAL_API_KEY_HERE',
+      isDev: import.meta.env.DEV,
+      mode: import.meta.env.MODE
+    });
+    
+    if (!apiKey || apiKey === 'your_openai_api_key_here' || apiKey === 'sk-proj-PUT_YOUR_REAL_API_KEY_HERE') {
+      console.warn('⚠️ [OpenAI Debug] API key not configured properly. Current value:', apiKey);
+      console.warn('⚠️ [OpenAI Debug] Please replace the placeholder value in your .env file with a real OpenAI API key.');
+      console.warn('⚠️ [OpenAI Debug] The app will run in development mode with mock responses.');
+      
       // Return a dummy client that will fail gracefully
       openai = new OpenAI({
         apiKey: 'placeholder-key-use-firebase-functions',
         dangerouslyAllowBrowser: true
       });
+      
+      console.log('🔧 [OpenAI Debug] Created dummy client for development mode');
     } else {
+      console.log('✅ [OpenAI Debug] Valid API key detected, creating real OpenAI client');
       openai = new OpenAI({
         apiKey,
         dangerouslyAllowBrowser: true // Note: In production, API calls should go through your backend
       });
+      console.log('✅ [OpenAI Debug] Real OpenAI client created successfully');
     }
   }
   return openai;
@@ -223,7 +242,7 @@ export interface ModelConfig {
 class OpenAIService {
   private validateApiKey(): void {
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    if (!apiKey || apiKey === 'your_openai_api_key_here') {
+    if (!apiKey || apiKey === 'your_openai_api_key_here' || apiKey === 'sk-proj-PUT_YOUR_REAL_API_KEY_HERE') {
       throw new Error('OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your .env file.');
     }
   }
@@ -1412,7 +1431,7 @@ Be thorough but concise. Focus on most likely diagnoses and key clinical actions
    */
   getStatus(): { configured: boolean; hasApiKey: boolean; message: string } {
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    const hasApiKey = !!apiKey && apiKey !== 'your_openai_api_key_here';
+    const hasApiKey = !!apiKey && apiKey !== 'your_openai_api_key_here' && apiKey !== 'sk-proj-PUT_YOUR_REAL_API_KEY_HERE';
     
     return {
       configured: hasApiKey,
