@@ -69,6 +69,7 @@ export interface BatchEvaluationConfig {
     treatmentAppropriate: number;
     coherence: number;
   };
+  focusCategories?: string[];
 }
 
 class AIEvaluationService {
@@ -733,6 +734,7 @@ Please evaluate the AI's performance and respond with valid JSON only.`;
       treatmentAppropriate: number;
       coherence: number;
     };
+    focusCategories?: string[];
   }): Promise<EvaluationMetrics> {
     const startTime = Date.now();
     
@@ -749,14 +751,25 @@ Please evaluate the AI's performance and respond with valid JSON only.`;
       
       this.addLog('success', `✅ Dataset loaded: ${lines.length} total records available`);
       
-      // Sample questions
-      const sampleLines = lines.slice(0, options.sampleSize);
-      const questions = sampleLines.map(line => {
-        const record = JSON.parse(line);
-        return record.question;
-      });
+      // Parse all records and filter by categories if specified
+      const allRecords = lines.map(line => JSON.parse(line));
+      let filteredRecords = allRecords;
       
-      this.addLog('info', `🎯 Selected ${sampleLines.length} samples for evaluation`);
+      if (options.focusCategories && options.focusCategories.length > 0 && !options.focusCategories.includes('all')) {
+        const initialCount = filteredRecords.length;
+        filteredRecords = allRecords.filter(record => {
+          const category = this.categorizeQuestion(record.question);
+          return options.focusCategories!.includes(category);
+        });
+        
+        this.addLog('info', `🎯 Filtered by categories [${options.focusCategories.join(', ')}]: ${filteredRecords.length} records (from ${initialCount} total)`);
+      }
+      
+      // Sample questions from filtered records
+      const sampleRecords = filteredRecords.slice(0, options.sampleSize);
+      const questions = sampleRecords.map(record => record.question);
+      
+      this.addLog('info', `🎯 Selected ${sampleRecords.length} samples for evaluation`);
       
       // Try Firebase Functions first, fallback to direct OpenAI
       let batchResults: any;
@@ -782,12 +795,12 @@ Please evaluate the AI's performance and respond with valid JSON only.`;
       // Process results and evaluate
       const results: EvaluationResult[] = [];
       
-      for (let i = 0; i < sampleLines.length; i++) {
-        const record = JSON.parse(sampleLines[i]);
+      for (let i = 0; i < sampleRecords.length; i++) {
+        const record = sampleRecords[i];
         const batchResult = batchResults.results[i];
         
-        this.addLog('info', `Processing evaluation ${i + 1}/${sampleLines.length}: ${record.question.substring(0, 50)}...`);
-        this.updateProgress(2, 3, i + 1, sampleLines.length);
+        this.addLog('info', `Processing evaluation ${i + 1}/${sampleRecords.length}: ${record.question.substring(0, 50)}...`);
+        this.updateProgress(2, 3, i + 1, sampleRecords.length);
         
         if (batchResult.success && batchResult.analysis) {
           // Convert to AnalysisResult format
@@ -1051,7 +1064,7 @@ Please evaluate the AI's performance and respond with valid JSON only.`;
 
 
 
-  async quickEvaluation(sampleSize: number = 50): Promise<EvaluationMetrics> {
+  async quickEvaluation(sampleSize: number = 50, focusCategories: string[] = ['all']): Promise<EvaluationMetrics> {
     return this.evaluateAgainstDatasets({
       sampleSize,
       modelType: 'quick',
@@ -1061,11 +1074,12 @@ Please evaluate the AI's performance and respond with valid JSON only.`;
         diagnosisRelevance: 0.35,
         treatmentAppropriate: 0.25,
         coherence: 0.15
-      }
+      },
+      focusCategories
     });
   }
 
-  async comprehensiveEvaluation(sampleSize: number = 200): Promise<EvaluationMetrics> {
+  async comprehensiveEvaluation(sampleSize: number = 200, focusCategories: string[] = ['all']): Promise<EvaluationMetrics> {
     return this.evaluateAgainstDatasets({
       sampleSize,
       modelType: 'o1_deep_reasoning',
@@ -1075,7 +1089,8 @@ Please evaluate the AI's performance and respond with valid JSON only.`;
         diagnosisRelevance: 0.4,
         treatmentAppropriate: 0.25,
         coherence: 0.15
-      }
+      },
+      focusCategories
     });
   }
 }

@@ -34,7 +34,6 @@ import {
   TextField,
   Collapse,
   IconButton,
-  Divider,
 } from '@mui/material';
 import {
   Assessment as AssessmentIcon,
@@ -50,7 +49,6 @@ import {
   Info as InfoIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
-  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { aiEvaluationService, EvaluationMetrics, EvaluationResult, EvaluationProgress, EvaluationLog } from '../services/aiEvaluation';
@@ -94,7 +92,8 @@ export const EvaluationDashboard: React.FC = () => {
   const [evaluationConfig, setEvaluationConfig] = useState({
     sampleSize: 50,
     modelType: 'quick' as 'quick' | 'o1_deep_reasoning',
-    evaluationType: 'quick' as 'quick' | 'comprehensive'
+    evaluationType: 'quick' as 'quick' | 'comprehensive',
+    focusCategories: ['all'] as string[]
   });
   
   // New logging state
@@ -149,9 +148,15 @@ export const EvaluationDashboard: React.FC = () => {
       let results: EvaluationMetrics;
       
       if (evaluationConfig.evaluationType === 'quick') {
-        results = await aiEvaluationService.quickEvaluation(evaluationConfig.sampleSize);
+        results = await aiEvaluationService.quickEvaluation(
+          evaluationConfig.sampleSize,
+          evaluationConfig.focusCategories
+        );
       } else {
-        results = await aiEvaluationService.comprehensiveEvaluation(evaluationConfig.sampleSize);
+        results = await aiEvaluationService.comprehensiveEvaluation(
+          evaluationConfig.sampleSize,
+          evaluationConfig.focusCategories
+        );
       }
 
       setEvaluationProgress(100);
@@ -418,6 +423,54 @@ export const EvaluationDashboard: React.FC = () => {
                   sx={{ mb: 2 }}
                 />
 
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Focus Categories</InputLabel>
+                  <Select
+                    multiple
+                    value={evaluationConfig.focusCategories}
+                    label="Focus Categories"
+                    onChange={(e) => {
+                      const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
+                      
+                      // Handle "All Categories" selection
+                      if (value.includes('all')) {
+                        setEvaluationConfig(prev => ({ ...prev, focusCategories: ['all'] }));
+                      } else if (value.length === 0) {
+                        setEvaluationConfig(prev => ({ ...prev, focusCategories: ['all'] }));
+                      } else {
+                        setEvaluationConfig(prev => ({ ...prev, focusCategories: value }));
+                      }
+                    }}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => (
+                          <Chip key={value} label={value === 'all' ? 'All Categories' : value.replace('_', ' ')} size="small" />
+                        ))}
+                      </Box>
+                    )}
+                  >
+                    <MenuItem value="all">All Categories</MenuItem>
+                    <MenuItem value="symptom_extraction">Symptom Extraction</MenuItem>
+                    <MenuItem value="diagnosis">Diagnosis</MenuItem>
+                    <MenuItem value="treatment">Treatment</MenuItem>
+                    <MenuItem value="general">General</MenuItem>
+                  </Select>
+                </FormControl>
+
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    {evaluationConfig.focusCategories.includes('all') 
+                      ? 'Evaluating all question types in the dataset'
+                      : `Focusing on: ${evaluationConfig.focusCategories.map(cat => cat.replace('_', ' ')).join(', ')}`
+                    }
+                  </Typography>
+                  {!evaluationConfig.focusCategories.includes('all') && (
+                    <Typography variant="body2" color="warning.main" sx={{ mt: 0.5 }}>
+                      Note: Category filtering may reduce available sample size
+                    </Typography>
+                  )}
+                </Box>
+
                 <Button
                   fullWidth
                   variant="contained"
@@ -506,7 +559,7 @@ export const EvaluationDashboard: React.FC = () => {
                             No logs yet. Click "Run AI Evaluation" to start.
                           </Typography>
                         ) : (
-                          evaluationLogs.map((log, index) => (
+                          evaluationLogs.map((log) => (
                             <Box
                               key={log.id}
                               sx={{
