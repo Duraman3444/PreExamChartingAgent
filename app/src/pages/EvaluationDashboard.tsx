@@ -480,8 +480,9 @@ export const EvaluationDashboard: React.FC = () => {
                     }
                   </Typography>
                   {!evaluationConfig.focusCategories.includes('all') && (
-                    <Typography variant="body2" color="warning.main" sx={{ mt: 0.5 }}>
-                      Note: Category filtering may reduce available sample size
+                    <Typography variant="body2" color="info.main" sx={{ mt: 0.5 }}>
+                      The system will try to collect {evaluationConfig.sampleSize} samples from the selected categories, 
+                      distributing evenly across each category when possible.
                     </Typography>
                   )}
                 </Box>

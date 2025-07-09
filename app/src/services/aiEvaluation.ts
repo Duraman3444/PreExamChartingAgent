@@ -751,25 +751,99 @@ Please evaluate the AI's performance and respond with valid JSON only.`;
       
       this.addLog('success', `✅ Dataset loaded: ${lines.length} total records available`);
       
-      // Parse all records and filter by categories if specified
+      // Parse all records and intelligently sample by categories
       const allRecords = lines.map(line => JSON.parse(line));
-      let filteredRecords = allRecords;
+      let sampleRecords: any[] = [];
       
       if (options.focusCategories && options.focusCategories.length > 0 && !options.focusCategories.includes('all')) {
-        const initialCount = filteredRecords.length;
-        filteredRecords = allRecords.filter(record => {
+        // Group records by category
+        const recordsByCategory: { [key: string]: any[] } = {
+          'symptom_extraction': [],
+          'diagnosis': [],
+          'treatment': [],
+          'general': []
+        };
+        
+        // Categorize all records
+        allRecords.forEach(record => {
           const category = this.categorizeQuestion(record.question);
-          return options.focusCategories!.includes(category);
+          recordsByCategory[category].push(record);
         });
         
-        this.addLog('info', `🎯 Filtered by categories [${options.focusCategories.join(', ')}]: ${filteredRecords.length} records (from ${initialCount} total)`);
+        // Log category distribution
+        this.addLog('info', `📊 Dataset distribution: Symptom(${recordsByCategory.symptom_extraction.length}), Diagnosis(${recordsByCategory.diagnosis.length}), Treatment(${recordsByCategory.treatment.length}), General(${recordsByCategory.general.length})`);
+        
+        // Calculate samples needed per category
+        const requestedCategories = options.focusCategories;
+        const samplesPerCategory = Math.ceil(options.sampleSize / requestedCategories.length);
+        
+        this.addLog('info', `🎯 Targeting ${samplesPerCategory} samples per category [${requestedCategories.join(', ')}]`);
+        
+        // Collect samples from each requested category
+        for (const category of requestedCategories) {
+          const categoryRecords = recordsByCategory[category] || [];
+          const availableInCategory = categoryRecords.length;
+          const samplesToTake = Math.min(samplesPerCategory, availableInCategory);
+          
+          // Shuffle the category records for better distribution
+          const shuffledRecords = [...categoryRecords].sort(() => Math.random() - 0.5);
+          const categorySamples = shuffledRecords.slice(0, samplesToTake);
+          
+          sampleRecords.push(...categorySamples);
+          
+          this.addLog('info', `📝 ${category}: took ${samplesToTake} samples (${availableInCategory} available)`);
+        }
+        
+        // If we still need more samples and have room, fill from any remaining records
+        if (sampleRecords.length < options.sampleSize) {
+          const usedRecordIds = new Set(sampleRecords.map((r, i) => `${r.question}-${i}`));
+          const remainingRecords = allRecords.filter((record, i) => 
+            !usedRecordIds.has(`${record.question}-${i}`)
+          );
+          
+          const needed = options.sampleSize - sampleRecords.length;
+          const additionalSamples = remainingRecords
+            .sort(() => Math.random() - 0.5)
+            .slice(0, needed);
+          
+          if (additionalSamples.length > 0) {
+            sampleRecords.push(...additionalSamples);
+            this.addLog('info', `🔄 Added ${additionalSamples.length} additional samples from other categories to reach target size`);
+          }
+        }
+        
+                 // Shuffle final sample set for random distribution
+         sampleRecords = sampleRecords.sort(() => Math.random() - 0.5);
+         
+         // Ensure we don't exceed the requested sample size
+         if (sampleRecords.length > options.sampleSize) {
+           sampleRecords = sampleRecords.slice(0, options.sampleSize);
+           this.addLog('info', `✂️ Trimmed to exactly ${options.sampleSize} samples as requested`);
+         }
+         
+         this.addLog('success', `✅ Collected ${sampleRecords.length} samples from requested categories (target: ${options.sampleSize})`);
+        
+      } else {
+        // Use all categories - random sampling
+        const shuffledRecords = [...allRecords].sort(() => Math.random() - 0.5);
+        sampleRecords = shuffledRecords.slice(0, options.sampleSize);
+        this.addLog('info', `🎯 Random sampling: selected ${sampleRecords.length} samples from all categories`);
       }
       
-      // Sample questions from filtered records
-      const sampleRecords = filteredRecords.slice(0, options.sampleSize);
       const questions = sampleRecords.map(record => record.question);
       
-      this.addLog('info', `🎯 Selected ${sampleRecords.length} samples for evaluation`);
+      // Final verification of category distribution
+      if (options.focusCategories && !options.focusCategories.includes('all')) {
+        const finalDistribution: { [key: string]: number } = {};
+        sampleRecords.forEach(record => {
+          const category = this.categorizeQuestion(record.question);
+          finalDistribution[category] = (finalDistribution[category] || 0) + 1;
+        });
+        
+        this.addLog('success', `📈 Final sample distribution: ${Object.entries(finalDistribution)
+          .map(([cat, count]) => `${cat}(${count})`)
+          .join(', ')}`);
+      }
       
       // Try Firebase Functions first, fallback to direct OpenAI
       let batchResults: any;
