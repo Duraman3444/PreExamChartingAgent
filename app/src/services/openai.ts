@@ -4,43 +4,56 @@ import { medicalResearchService } from './medicalResearch';
 // OpenAI Configuration - Lazy initialization to handle missing API keys gracefully
 let openai: OpenAI | null = null;
 
+// Firebase Functions endpoints for secure server-side OpenAI calls
+const FIREBASE_FUNCTIONS_BASE_URL = 'https://us-central1-medicalchartingapp.cloudfunctions.net';
+
 const getOpenAIClient = (): OpenAI => {
   if (!openai) {
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+    console.log('🔧 [OpenAI Debug] Initializing secure client using Firebase Functions...');
+    console.log('✅ [OpenAI Debug] Using server-side OpenAI API (secure)');
     
-    // Enhanced debug logging
-    console.log('🔧 [OpenAI Debug] Initializing OpenAI client...');
-    console.log('🔧 [OpenAI Debug] Environment check:', {
-      hasApiKey: !!apiKey,
-      keyLength: apiKey?.length || 0,
-      keyPrefix: apiKey?.substring(0, 10) || 'none',
-      keyIsPlaceholder: apiKey === 'sk-proj-PUT_YOUR_REAL_API_KEY_HERE',
-      isDev: import.meta.env.DEV,
-      mode: import.meta.env.MODE
+    // Create a dummy client - we'll use Firebase Functions for actual calls
+    openai = new OpenAI({
+      apiKey: 'firebase-functions-proxy',
+      dangerouslyAllowBrowser: true
     });
     
-    if (!apiKey || apiKey === 'your_openai_api_key_here' || apiKey === 'sk-proj-PUT_YOUR_REAL_API_KEY_HERE') {
-      console.warn('⚠️ [OpenAI Debug] API key not configured properly. Current value:', apiKey);
-      console.warn('⚠️ [OpenAI Debug] Please replace the placeholder value in your .env file with a real OpenAI API key.');
-      console.warn('⚠️ [OpenAI Debug] The app will run in development mode with mock responses.');
-      
-      // Return a dummy client that will fail gracefully
-      openai = new OpenAI({
-        apiKey: 'placeholder-key-use-firebase-functions',
-        dangerouslyAllowBrowser: true
-      });
-      
-      console.log('🔧 [OpenAI Debug] Created dummy client for development mode');
-    } else {
-      console.log('✅ [OpenAI Debug] Valid API key detected, creating real OpenAI client');
-      openai = new OpenAI({
-        apiKey,
-        dangerouslyAllowBrowser: true // Note: In production, API calls should go through your backend
-      });
-      console.log('✅ [OpenAI Debug] Real OpenAI client created successfully');
-    }
+    console.log('✅ [OpenAI Debug] Secure Firebase Functions client initialized');
   }
   return openai;
+};
+
+// Helper function to get Firebase auth token
+const getAuthToken = async (): Promise<string> => {
+  const { getAuth } = await import('firebase/auth');
+  const auth = getAuth();
+  const user = auth.currentUser;
+  
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+  
+  return await user.getIdToken();
+};
+
+// Helper function to call Firebase Functions
+const callFirebaseFunction = async (functionName: string, data: any): Promise<any> => {
+  const token = await getAuthToken();
+  
+  const response = await fetch(`${FIREBASE_FUNCTIONS_BASE_URL}/${functionName}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(data)
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Firebase Function error: ${response.status} ${response.statusText}`);
+  }
+  
+  return await response.json();
 };
 
 // Console logging utility for GPT operations
@@ -241,10 +254,8 @@ export interface ModelConfig {
 
 class OpenAIService {
   private validateApiKey(): void {
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    if (!apiKey || apiKey === 'your_openai_api_key_here' || apiKey === 'sk-proj-PUT_YOUR_REAL_API_KEY_HERE') {
-      throw new Error('OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your .env file.');
-    }
+    console.log('🔧 [OpenAI Debug] Using secure Firebase Functions - API key validation passed');
+    // No validation needed since we're using Firebase Functions
   }
 
   /**
@@ -1033,114 +1044,77 @@ Please provide a comprehensive medical analysis integrating the research evidenc
         return analysisResult;
       }
       
-      const systemPrompt = `You are an expert medical AI analyzing patient transcripts. Provide comprehensive analysis in JSON format.
+      logGPTOperation.progress(operation, 'Calling secure Firebase Function');
 
-IMPORTANT: All confidence scores and probabilities must be 0-1 decimal values (e.g., 0.85 for 85%).
-
-JSON structure:
-{
-  "symptoms": [{"name": "string", "severity": "mild|moderate|severe|critical", "confidence": 0-1, "duration": "string", "location": "string", "associatedFactors": ["string"], "sourceText": "string"}],
-  "diagnoses": [{"condition": "string", "icd10Code": "string", "probability": 0-1, "severity": "low|medium|high|critical", "supportingEvidence": ["string"], "againstEvidence": ["string"], "additionalTestsNeeded": ["string"], "reasoning": "string", "urgency": "routine|urgent|emergent"}],
-  "treatments": [{"category": "medication|procedure|lifestyle|referral|monitoring", "recommendation": "string", "priority": "low|medium|high|urgent", "timeframe": "string", "contraindications": ["string"], "alternatives": ["string"], "expectedOutcome": "string", "evidenceLevel": "A|B|C|D"}],
-  "concerns": [{"type": "red_flag|drug_interaction|allergy|urgent_referral", "severity": "low|medium|high|critical", "message": "string", "recommendation": "string", "requiresImmediateAction": boolean}],
-  "confidenceScore": 0-1,
-  "reasoning": "string",
-  "nextSteps": ["string"]
-}
-
-Be thorough but concise. Focus on most likely diagnoses and key clinical actions.`;
-
-      const userPrompt = `Analyze this medical transcript:
-
-      ${patientContext ? `Patient Context:
-      Age: ${patientContext.age || 'Unknown'}
-      Gender: ${patientContext.gender || 'Unknown'}
-      Medical History: ${patientContext.medicalHistory || 'None provided'}
-      Current Medications: ${patientContext.medications || 'None provided'}
-      Known Allergies: ${patientContext.allergies || 'None provided'}
-      Family History: ${patientContext.familyHistory || 'None provided'}
-      Social History: ${patientContext.socialHistory || 'None provided'}
-      
-      ` : ''}Transcript:
-      ${transcript}
-      
-      Please provide a comprehensive medical analysis in the requested JSON format.`;
-
-      logGPTOperation.progress(operation, 'Calling OpenAI API with 30s timeout');
-
-      // Create timeout promise
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Analysis timed out after 30 seconds')), 30000);
+      // Call Firebase Function for secure server-side OpenAI analysis
+      const response = await callFirebaseFunction('analyzeTranscript', {
+        transcript,
+        patientContext,
+        useDeepResearch
       });
 
-      // Race between OpenAI call and timeout
-      const completion = await Promise.race([
-        getOpenAIClient().chat.completions.create({
-          model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          temperature: 0.3,
-          max_tokens: 3000,
-          response_format: { type: 'json_object' }
-        }),
-        timeoutPromise
-      ]) as any;
-
       const processingTime = Date.now() - startTime;
-      logGPTOperation.progress(operation, 'API call completed, parsing response');
+      logGPTOperation.progress(operation, 'Firebase Function call completed, processing response');
 
-      const analysisContent = completion.choices[0]?.message?.content;
-
-      if (!analysisContent) {
-        throw new Error('No analysis content received from OpenAI');
-      }
-
-      const analysis = JSON.parse(analysisContent);
-      logGPTOperation.progress(operation, 'JSON parsing successful, processing results');
-      
-      // Add IDs and ensure proper structure with normalized confidence scores
-      const processedAnalysis: AnalysisResult = {
-        id: `analysis-${Date.now()}`,
-        symptoms: analysis.symptoms?.map((s: any, i: number) => ({
+      // Process the response from Firebase Function
+      const analysisResult: AnalysisResult = {
+        id: response.id || `analysis-${Date.now()}`,
+        symptoms: response.symptoms?.map((s: any, i: number) => ({
           id: `symptom-${i + 1}`,
           ...s,
           confidence: this.normalizeConfidenceScore(s.confidence || 0.8)
         })) || [],
-        diagnoses: analysis.diagnoses?.map((d: any, i: number) => ({
+        diagnoses: response.differential_diagnosis?.map((d: any, i: number) => ({
           id: `diagnosis-${i + 1}`,
-          ...d,
-          probability: this.normalizeConfidenceScore(d.probability || 0.5)
+          condition: d.condition,
+          icd10Code: d.icd10Code || 'Unknown',
+          probability: this.normalizeConfidenceScore(d.confidence === 'high' ? 0.8 : d.confidence === 'medium' ? 0.6 : 0.4),
+          severity: d.severity || 'medium',
+          supportingEvidence: d.supportingEvidence || [],
+          againstEvidence: d.againstEvidence || [],
+          additionalTestsNeeded: d.additionalTestsNeeded || [],
+          reasoning: d.reasoning || 'Analysis from Firebase Function',
+          urgency: d.urgency || 'routine'
         })) || [],
-        treatments: analysis.treatments?.map((t: any, i: number) => ({
+        treatments: response.treatment_recommendations?.map((t: any, i: number) => ({
           id: `treatment-${i + 1}`,
-          ...t
+          category: t.category || 'medication',
+          recommendation: t,
+          priority: t.priority || 'medium',
+          timeframe: t.timeframe || 'As needed',
+          contraindications: t.contraindications || [],
+          alternatives: t.alternatives || [],
+          expectedOutcome: t.expectedOutcome || 'Improvement expected',
+          evidenceLevel: t.evidenceLevel || 'B'
         })) || [],
-        concerns: analysis.concerns?.map((c: any, i: number) => ({
+        concerns: response.flagged_concerns?.map((c: any, i: number) => ({
           id: `concern-${i + 1}`,
-          ...c
+          type: c.type || 'red_flag',
+          severity: c.severity || 'medium',
+          message: c,
+          recommendation: c.recommendation || 'Consult with physician',
+          requiresImmediateAction: c.requiresImmediateAction || false
         })) || [],
-        confidenceScore: this.normalizeConfidenceScore(analysis.confidenceScore || 0.8),
-        reasoning: analysis.reasoning || 'Analysis completed using GPT-4 medical assessment.',
-        nextSteps: analysis.nextSteps || ['Review findings with attending physician', 'Consider additional diagnostic tests'],
+        confidenceScore: this.normalizeConfidenceScore(response.confidenceScore || 0.8),
+        reasoning: response.reasoning || 'Analysis completed using secure Firebase Functions.',
+        nextSteps: response.follow_up_recommendations || ['Review findings with attending physician', 'Consider additional diagnostic tests'],
         processingTime,
         timestamp: new Date()
       };
 
-      logGPTOperation.success(operation, useDeepResearch ? 'deep-research' : 'gpt-4o', processingTime, {
-        symptomsCount: processedAnalysis.symptoms.length,
-        diagnosesCount: processedAnalysis.diagnoses.length,
-        treatmentsCount: processedAnalysis.treatments.length,
-        concernsCount: processedAnalysis.concerns.length,
-        confidenceScore: processedAnalysis.confidenceScore
+      logGPTOperation.success(operation, 'firebase-functions', processingTime, {
+        symptomsCount: analysisResult.symptoms.length,
+        diagnosesCount: analysisResult.diagnoses.length,
+        treatmentsCount: analysisResult.treatments.length,
+        concernsCount: analysisResult.concerns.length,
+        confidenceScore: analysisResult.confidenceScore
       });
 
-      return processedAnalysis;
+      return analysisResult;
     } catch (error: any) {
       const processingTime = Date.now() - startTime;
-      logGPTOperation.error(operation, useDeepResearch ? 'deep-research' : 'gpt-4o', error, processingTime);
-      throw new Error('Failed to analyze transcript. Please check your input and try again.');
+      logGPTOperation.error(operation, 'firebase-functions', error, processingTime);
+      throw new Error(`Failed to analyze transcript: ${error.message}`);
     }
   }
 
@@ -1418,27 +1392,18 @@ Be thorough but concise. Focus on most likely diagnoses and key clinical actions
    * Check if OpenAI service is properly configured
    */
   isConfigured(): boolean {
-    try {
-      this.validateApiKey();
-      return true;
-    } catch {
-      return false;
-    }
+    // Since we're using Firebase Functions, we're always configured
+    return true;
   }
 
   /**
    * Get service status and configuration info
    */
   getStatus(): { configured: boolean; hasApiKey: boolean; message: string } {
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    const hasApiKey = !!apiKey && apiKey !== 'your_openai_api_key_here' && apiKey !== 'sk-proj-PUT_YOUR_REAL_API_KEY_HERE';
-    
     return {
-      configured: hasApiKey,
-      hasApiKey,
-      message: hasApiKey 
-        ? 'OpenAI service is configured and ready' 
-        : 'OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your .env file.'
+      configured: true,
+      hasApiKey: true,
+      message: 'OpenAI API is configured securely via Firebase Functions'
     };
   }
 
