@@ -1041,8 +1041,9 @@ export const analyzeWithReasoning = functions.https.onRequest(async (request, re
           { role: 'system', content: MEDICAL_ANALYSIS_PROMPT },
           { role: 'user', content: promptContent }
         ],
-        temperature: 1.0, // O1 models use temperature 1.0
-        max_completion_tokens: 4000,
+        temperature: 0.3, // Lower temperature for more deterministic clinical output
+        max_tokens: 4000, // Correct parameter so model can return full structured JSON
+        response_format: { type: 'json_object' },
       });
 
       const analysisText = completion.choices[0]?.message?.content;
