@@ -168,7 +168,6 @@ _Add new rows as you discover more material. Keep explanations concise._
 - **Fixed dark mode text visibility**: Updated reasoning content display with proper theme-aware styling, ensuring text is visible in both light and dark modes
 - **Enhanced data structure validation**: Added fallback data structure that mirrors the 4o model exactly, ensuring consistent user experience
 - **Improved debugging**: Added detailed logging for O1 JSON parsing success/failure scenarios
-- **Implemented transcript-based analysis**: Replaced generic fallback data with transcript-specific analysis that detects symptoms (chest pain, headache, abdominal pain) and generates appropriate medical recommendations based on actual patient presentation
 - **v1.0.0** – Project foundation with basic patient and visit management
 - **v1.1.0** – Added AI analysis resources and medical NLP integration
 - **v1.2.0** – Added healthcare AI ethics guidelines and medical documentation standards
