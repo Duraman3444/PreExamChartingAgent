@@ -128,32 +128,46 @@ export class FirebaseFunctionsService {
     if (!currentUser) {
       throw new Error('User not authenticated');
     }
-    return await currentUser.getIdToken();
+    // Force-refresh the token to avoid using an expired one (tokens expire after ~1h)
+    return await currentUser.getIdToken(true);
   }
 
   // Generic function to call Firebase Functions
-  private async callFunction(functionName: string, data: any): Promise<any> {
+  private async callFunction(functionName: string, data: any, timeoutMs: number = 60000): Promise<any> {
     if (!this.auth) {
       throw new Error('Firebase not configured. Please add Firebase environment variables to .env file.');
     }
     
     const token = await this.getAuthToken();
     
-    const response = await fetch(`${this.functionsUrl}/${functionName}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(data)
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    
+    try {
+      const response = await fetch(`${this.functionsUrl}/${functionName}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data),
+        signal: controller.signal
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Function call failed');
+      if (!response.ok) {
+        const errorText = await response.text();
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.error || `Function call failed with status ${response.status}`);
+        } catch (e) {
+          throw new Error(errorText || `Function call failed with status ${response.status}`);
+        }
+      }
+
+      return await response.json();
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    return await response.json();
   }
 
   // Analyze transcript
@@ -185,10 +199,11 @@ export class FirebaseFunctionsService {
 
   // Batch analyze questions
   async batchAnalyzeQuestions(questions: string[], analysisPrompt: string): Promise<{ results: any[] }> {
+    // Increased timeout for long-running batch process
     return await this.callFunction('batchAnalyzeQuestions', {
       questions,
       analysisPrompt
-    });
+    }, 300000); // 5 minutes
   }
 
   // Analyze with reasoning (O1 model support)

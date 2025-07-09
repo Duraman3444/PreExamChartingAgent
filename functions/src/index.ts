@@ -201,6 +201,41 @@ REQUIREMENTS:
 Focus on creating a realistic medical scenario with comprehensive differential diagnosis.
 `;
 
+const GENERAL_MEDICAL_QUESTION_PROMPT = `
+You are an expert medical AI assistant. The user has asked a general medical question. Provide a clear, structured, and informative answer in JSON format. Do not attempt to diagnose or treat.
+
+CRITICAL: Return ONLY valid JSON in the following exact structure - no markdown, no code blocks, no explanations:
+
+{
+  "symptoms": [],
+  "differential_diagnosis": [],
+  "treatment_recommendations": [],
+  "flagged_concerns": [
+    {
+      "type": "information_only",
+      "severity": "low",
+      "message": "This is a general informational response and not medical advice.",
+      "recommendation": "Consult a healthcare professional for medical advice.",
+      "requiresImmediateAction": false
+    }
+  ],
+  "follow_up_recommendations": [
+    "Consult a healthcare professional for personalized medical advice."
+  ],
+  "reasoning": "A clear, detailed answer to the user's question. Explain the topic comprehensively and accurately, citing general medical knowledge. This is for informational purposes only.",
+  "confidenceScore": 0.95,
+  "nextSteps": [
+    "If you have health concerns, please see a doctor."
+  ]
+}
+
+REQUIREMENTS:
+1. Set "symptoms", "differential_diagnosis", and "treatment_recommendations" to empty arrays.
+2. Provide a detailed answer to the question in the "reasoning" field.
+3. Keep the "flagged_concerns" and "follow_up_recommendations" as provided.
+4. Do not provide medical advice, diagnoses, or treatment plans.
+`;
+
 // Analyze transcript function
 export const analyzeTranscript = functions.https.onRequest(async (request, response) => {
   return corsHandler(request, response, async () => {
@@ -229,12 +264,17 @@ export const analyzeTranscript = functions.https.onRequest(async (request, respo
         return;
       }
 
+      // Determine if the input is a question or a transcript
+      const isQuestion = transcript.trim().endsWith('?') || transcript.trim().split(' ').length < 20;
+      const prompt = isQuestion ? GENERAL_MEDICAL_QUESTION_PROMPT : MEDICAL_ANALYSIS_PROMPT;
+      const userContent = isQuestion ? `Question: ${transcript}` : `Transcript: ${transcript}`;
+
       // Call OpenAI API
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o',
         messages: [
-          { role: 'system', content: MEDICAL_ANALYSIS_PROMPT },
-          { role: 'user', content: `Transcript: ${transcript}` }
+          { role: 'system', content: prompt },
+          { role: 'user', content: userContent }
         ],
         temperature: 0.1,
         max_tokens: 2000,
@@ -915,7 +955,10 @@ export const evaluateQuestion = functions.https.onRequest(async (request, respon
 });
 
 // Batch Analysis function for evaluation
-export const batchAnalyzeQuestions = functions.https.onRequest(async (request, response) => {
+export const batchAnalyzeQuestions = functions.runWith({
+  timeoutSeconds: 300, // 5 minutes
+  memory: '1GB'
+}).https.onRequest(async (request, response) => {
   return corsHandler(request, response, async () => {
     try {
       // Check authentication
@@ -941,56 +984,73 @@ export const batchAnalyzeQuestions = functions.https.onRequest(async (request, r
         return;
       }
 
-      const results = [];
-      
-      for (const question of questions) {
-        try {
-          const completion = await openai.chat.completions.create({
-            model: 'gpt-4o',
-            messages: [
-              { role: 'system', content: analysisPrompt },
-              { role: 'user', content: question }
-            ],
-            temperature: 0.1,
-            max_tokens: 1000,
-            response_format: { type: 'json_object' }
-          });
+      const results: any[] = [];
+      const promises = questions.map(question => {
+        return (async () => {
+          try {
+            const completion = await openai.chat.completions.create({
+              model: 'gpt-4o',
+              messages: [
+                { role: 'system', content: analysisPrompt },
+                { role: 'user', content: question }
+              ],
+              temperature: 0.1,
+              max_tokens: 1000,
+              response_format: { type: 'json_object' }
+            });
 
-          const analysisText = completion.choices[0]?.message?.content;
-          
-          if (analysisText) {
-            try {
-              const analysis = JSON.parse(analysisText);
-              results.push({
-                question,
-                analysis,
-                success: true
-              });
-            } catch (parseError) {
-              results.push({
+            const analysisText = completion.choices[0]?.message?.content;
+            
+            if (analysisText) {
+              try {
+                const analysis = JSON.parse(analysisText);
+                return {
+                  question,
+                  analysis,
+                  success: true
+                };
+              } catch (parseError) {
+                return {
+                  question,
+                  analysis: null,
+                  success: false,
+                  error: 'Failed to parse analysis'
+                };
+              }
+            } else {
+              return {
                 question,
                 analysis: null,
                 success: false,
-                error: 'Failed to parse analysis'
-              });
+                error: 'No analysis received'
+              };
             }
-          } else {
-            results.push({
+          } catch (error) {
+            return {
               question,
               analysis: null,
               success: false,
-              error: 'No analysis received'
-            });
+              error: error instanceof Error ? error.message : 'Unknown error'
+            };
           }
-        } catch (error) {
+        })();
+      });
+      
+      const settledResults = await Promise.allSettled(promises);
+      
+      settledResults.forEach(result => {
+        if (result.status === 'fulfilled') {
+          results.push(result.value);
+        } else {
+          // This should ideally not happen as the inner try/catch handles errors
           results.push({
-            question,
+            question: 'Unknown',
             analysis: null,
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: 'An unexpected error occurred in Promise.allSettled'
           });
         }
-      }
+      });
 
       response.json({ results });
 
