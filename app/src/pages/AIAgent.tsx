@@ -69,7 +69,6 @@ import { mockVisits } from '../data/mockData';
 import { ReasoningStep as OpenAIReasoningStep, ReasoningTrace as OpenAIReasoningTrace, O1AnalysisResult } from '../services/openai';
 import { AIValidationResult, validateAIIntegration } from '../utils/aiTestUtils';
 import StreamingReasoningDisplay from '../components/common/StreamingReasoningDisplay';
-import O1TestButton from '../components/common/O1TestButton';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -451,7 +450,7 @@ const AIAgent: React.FC = () => {
         if (progressInterval) clearInterval(progressInterval);
         setAnalysis(mockAnalysis);
         setAnalysisProgress(100);
-        setTabValue(1);
+        setTabValue(0);
         return;
       }
 
@@ -566,7 +565,7 @@ const AIAgent: React.FC = () => {
           if (progressInterval) clearInterval(progressInterval);
           setAnalysis(fallbackAnalysis);
           setAnalysisProgress(100);
-          setTabValue(1);
+          setTabValue(0);
           return;
         }
       } else {
@@ -587,7 +586,7 @@ const AIAgent: React.FC = () => {
             }));
 
             // Switch to reasoning tab immediately for streaming
-            setTabValue(4);
+            setTabValue(5);
 
             await openAIService.analyzeTranscriptWithStreamingReasoning(
               transcript,
@@ -638,7 +637,7 @@ const AIAgent: React.FC = () => {
 
                 setAnalysis(aiAnalysis);
                 setAnalysisProgress(100);
-                setTabValue(1); // Switch to results tab
+                setTabValue(0); // Switch to summary tab
               },
               // onError
               (error: Error) => {
@@ -757,7 +756,7 @@ const AIAgent: React.FC = () => {
           if (progressInterval) clearInterval(progressInterval);
           setAnalysis(errorAnalysis);
           setAnalysisProgress(100);
-          setTabValue(1);
+          setTabValue(0);
           return;
         }
       }
@@ -766,7 +765,7 @@ const AIAgent: React.FC = () => {
       if (progressInterval) clearInterval(progressInterval);
       setAnalysis(aiAnalysis);
       setAnalysisProgress(100);
-      setTabValue(1);
+      setTabValue(0);
 
     } catch (error) {
       console.error('Error in analysis:', error);
@@ -839,7 +838,7 @@ const AIAgent: React.FC = () => {
       };
       
       setAnalysis(errorAnalysis);
-      setTabValue(1);
+      setTabValue(0);
     } finally {
       setIsAnalyzing(false);
     }
@@ -1266,11 +1265,7 @@ const AIAgent: React.FC = () => {
                   {isTesting ? 'Testing AI...' : 'Test AI Integration'}
                 </Button>
 
-                <Box sx={{ mt: 2 }}>
-                  <O1TestButton onTestComplete={(success, error) => {
-                    console.log('O1 test completed:', { success, error });
-                  }} />
-                </Box>
+
 
                 {testResult && (
                   <Alert 
@@ -1366,65 +1361,7 @@ const AIAgent: React.FC = () => {
                       </Typography>
                     </Box>
 
-                    <Box>
-                      <Typography variant="h6" gutterBottom>
-                        <Timeline sx={{ mr: 1, verticalAlign: 'middle' }} />
-                        Extracted Symptoms
-                      </Typography>
-                      {analysis.symptoms.length > 0 ? (
-                        <Grid container spacing={2}>
-                          {analysis.symptoms.map((symptom) => (
-                            <Grid item xs={12} sm={6} key={symptom.id}>
-                              <Card variant="outlined">
-                                <CardContent>
-                                  <Typography variant="subtitle1" gutterBottom>
-                                    {symptom.name}
-                                  </Typography>
-                                  <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-                                    <Chip
-                                      label={symptom.severity}
-                                      color={getSeverityColor(symptom.severity) as any}
-                                      size="small"
-                                    />
-                                    <Chip
-                                      label={`${Math.round(symptom.confidence * 100)}% confidence`}
-                                      variant="outlined"
-                                      size="small"
-                                    />
-                                  </Stack>
-                                  <Typography variant="body2" color="text.secondary">
-                                    Duration: {symptom.duration}
-                                  </Typography>
-                                  {symptom.location && (
-                                    <Typography variant="body2" color="text.secondary">
-                                      Location: {symptom.location}
-                                    </Typography>
-                                  )}
-                                  {symptom.quality && (
-                                    <Typography variant="body2" color="text.secondary">
-                                      Quality: {symptom.quality}
-                                    </Typography>
-                                  )}
-                                  {symptom.associatedFactors && symptom.associatedFactors.length > 0 && (
-                                    <Box sx={{ mt: 1 }}>
-                                      <Typography variant="caption" color="text.secondary">
-                                        Associated factors: {symptom.associatedFactors.join(', ')}
-                                      </Typography>
-                                    </Box>
-                                  )}
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        <Alert severity="info">
-                          <Typography variant="body2">
-                            No specific symptoms extracted from the analysis. Check the Reasoning Process tab for detailed symptom analysis.
-                          </Typography>
-                        </Alert>
-                      )}
-                    </Box>
+
 
                     <Box>
                       <Typography variant="h6" gutterBottom>
@@ -1499,6 +1436,68 @@ const AIAgent: React.FC = () => {
                 </TabPanel>
 
                 <TabPanel value={tabValue} index={1}>
+                  <Stack spacing={2}>
+                    <Typography variant="h6" gutterBottom>
+                      <Timeline sx={{ mr: 1, verticalAlign: 'middle' }} />
+                      Extracted Symptoms
+                    </Typography>
+                    {analysis.symptoms.length > 0 ? (
+                      <Grid container spacing={2}>
+                        {analysis.symptoms.map((symptom) => (
+                          <Grid item xs={12} sm={6} key={symptom.id}>
+                            <Card variant="outlined">
+                              <CardContent>
+                                <Typography variant="subtitle1" gutterBottom>
+                                  {symptom.name}
+                                </Typography>
+                                <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                                  <Chip
+                                    label={symptom.severity}
+                                    color={getSeverityColor(symptom.severity) as any}
+                                    size="small"
+                                  />
+                                  <Chip
+                                    label={`${Math.round(symptom.confidence * 100)}% confidence`}
+                                    variant="outlined"
+                                    size="small"
+                                  />
+                                </Stack>
+                                <Typography variant="body2" color="text.secondary">
+                                  Duration: {symptom.duration}
+                                </Typography>
+                                {symptom.location && (
+                                  <Typography variant="body2" color="text.secondary">
+                                    Location: {symptom.location}
+                                  </Typography>
+                                )}
+                                {symptom.quality && (
+                                  <Typography variant="body2" color="text.secondary">
+                                    Quality: {symptom.quality}
+                                  </Typography>
+                                )}
+                                {symptom.associatedFactors && symptom.associatedFactors.length > 0 && (
+                                  <Box sx={{ mt: 1 }}>
+                                    <Typography variant="caption" color="text.secondary">
+                                      Associated factors: {symptom.associatedFactors.join(', ')}
+                                    </Typography>
+                                  </Box>
+                                )}
+                              </CardContent>
+                            </Card>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    ) : (
+                      <Alert severity="info">
+                        <Typography variant="body2">
+                          No specific symptoms extracted from the analysis. Check the Summary tab for symptom information or the Reasoning Process tab for detailed symptom analysis.
+                        </Typography>
+                      </Alert>
+                    )}
+                  </Stack>
+                </TabPanel>
+
+                <TabPanel value={tabValue} index={2}>
                   <Stack spacing={2}>
                     <Typography variant="h6" gutterBottom>
                       <Assessment sx={{ mr: 1, verticalAlign: 'middle' }} />
@@ -1618,7 +1617,7 @@ const AIAgent: React.FC = () => {
                   </Stack>
                 </TabPanel>
 
-                <TabPanel value={tabValue} index={2}>
+                <TabPanel value={tabValue} index={3}>
                   <Stack spacing={2}>
                     <Typography variant="h6" gutterBottom>
                       <LocalHospital sx={{ mr: 1, verticalAlign: 'middle' }} />
@@ -1709,7 +1708,7 @@ const AIAgent: React.FC = () => {
                   </Stack>
                 </TabPanel>
 
-                <TabPanel value={tabValue} index={3}>
+                <TabPanel value={tabValue} index={4}>
                   <Stack spacing={2}>
                     <Typography variant="h6" gutterBottom>
                       <Security sx={{ mr: 1, verticalAlign: 'middle' }} />
@@ -1751,7 +1750,7 @@ const AIAgent: React.FC = () => {
 
                 {/* Reasoning Process Tab Panel */}
                 {analysis.reasoningTrace && (
-                  <TabPanel value={tabValue} index={4}>
+                  <TabPanel value={tabValue} index={5}>
                     {streamingEnabled && (streamingState.isStreaming || streamingState.reasoningSteps.length > 0) ? (
                       <StreamingReasoningDisplay
                         isStreaming={streamingState.isStreaming}
