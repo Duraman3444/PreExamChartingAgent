@@ -14,37 +14,47 @@ const getAuthToken = async (): Promise<string> => {
   return await user.getIdToken();
 };
 
-// Helper function to call Firebase Functions with enhanced error handling
-const callFirebaseFunction = async (functionName: string, data: any, timeoutMs: number = 30000): Promise<any> => {
+// Helper function to call Firebase Functions with enhanced error handling and retry logic
+const callFirebaseFunction = async (functionName: string, data: any, timeoutMs: number = 30000, maxRetries: number = 2): Promise<any> => {
   console.log(`🔍 [Firebase Debug] Calling function: ${functionName}`);
   console.log(`📊 [Firebase Debug] Function data:`, data);
   console.log(`⏰ [Firebase Debug] Timeout set to: ${timeoutMs}ms`);
+  console.log(`🔄 [Firebase Debug] Max retries: ${maxRetries}`);
   
-  try {
-    const token = await getAuthToken();
-    console.log(`🔑 [Firebase Debug] Auth token obtained successfully`);
+  let lastError: any;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (attempt > 0) {
+      console.log(`🔄 [Firebase Debug] Retry attempt ${attempt} for function ${functionName}`);
+      // Wait before retrying (exponential backoff)
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+    }
     
-    const url = `${FIREBASE_FUNCTIONS_BASE_URL}/${functionName}`;
-    console.log(`🌐 [Firebase Debug] Calling URL: ${url}`);
-    
-    // Create an AbortController for timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-      console.log(`⏰ [Firebase Debug] Function ${functionName} timed out after ${timeoutMs}ms`);
-    }, timeoutMs);
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(data),
-      signal: controller.signal
-    });
-    
-    clearTimeout(timeoutId);
+    try {
+      const token = await getAuthToken();
+      console.log(`🔑 [Firebase Debug] Auth token obtained successfully (attempt ${attempt + 1})`);
+      
+      const url = `${FIREBASE_FUNCTIONS_BASE_URL}/${functionName}`;
+      console.log(`🌐 [Firebase Debug] Calling URL: ${url} (attempt ${attempt + 1})`);
+      
+      // Create an AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+        console.log(`⏰ [Firebase Debug] Function ${functionName} timed out after ${timeoutMs}ms (attempt ${attempt + 1})`);
+      }, timeoutMs);
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
     
     console.log(`📈 [Firebase Debug] Response status: ${response.status} ${response.statusText}`);
     
@@ -63,15 +73,35 @@ const callFirebaseFunction = async (functionName: string, data: any, timeoutMs: 
       throw new Error(errorMessage);
     }
     
-    const result = await response.json();
-    console.log(`✅ [Firebase Debug] Function ${functionName} completed successfully`);
-    console.log(`📊 [Firebase Debug] Result keys:`, Object.keys(result));
-    
-    return result;
-  } catch (error) {
-    console.error(`❌ [Firebase Debug] Function ${functionName} failed:`, error);
-    throw error;
+      const result = await response.json();
+      console.log(`✅ [Firebase Debug] Function ${functionName} completed successfully (attempt ${attempt + 1})`);
+      console.log(`📊 [Firebase Debug] Result keys:`, Object.keys(result));
+      
+      return result;
+      
+    } catch (error: any) {
+      lastError = error;
+      console.error(`❌ [Firebase Debug] Function ${functionName} failed (attempt ${attempt + 1}):`, error);
+      
+      // Check if this is a network error that might be retryable
+      const isNetworkError = error.name === 'AbortError' || 
+                           error.message.includes('Load failed') || 
+                           error.message.includes('network') ||
+                           error.message.includes('timeout');
+      
+      // If it's the last attempt or not a network error, don't retry
+      if (attempt === maxRetries || !isNetworkError) {
+        console.error(`❌ [Firebase Debug] Final failure for ${functionName} after ${attempt + 1} attempts`);
+        break;
+      }
+      
+      console.log(`🔄 [Firebase Debug] Will retry ${functionName} (${maxRetries - attempt} attempts remaining)`);
+    }
   }
+  
+  // If we get here, all retries failed
+  console.error(`❌ [Firebase Debug] Function ${functionName} failed after ${maxRetries + 1} attempts`);
+  throw lastError;
 };
 
 // Console logging utility for GPT operations
@@ -318,7 +348,7 @@ class OpenAIService {
         visitId: null,
         patientContext,
         modelType
-      }, 60000); // 60 second timeout for O1 analysis
+      }, 90000); // 90 second timeout for O1 analysis
 
       const processingTime = Date.now() - startTime;
       logGPTOperation.success(operation, modelType, processingTime, response);
@@ -434,7 +464,7 @@ class OpenAIService {
         visitId: null,
         patientContext,
         modelType
-      }, 60000); // 60 second timeout for O1 deep analysis
+      }, 90000); // 90 second timeout for O1 deep analysis
 
       const processingTime = Date.now() - startTime;
       logGPTOperation.success(operation, modelType, processingTime, response);

@@ -993,7 +993,10 @@ export const batchAnalyzeQuestions = functions.https.onRequest(async (request, r
 });
 
 // Enhanced Analysis function with O1 reasoning support
-export const analyzeWithReasoning = functions.https.onRequest(async (request, response) => {
+export const analyzeWithReasoning = functions.runWith({
+  timeoutSeconds: 120, // 2 minutes timeout for O1 analysis
+  memory: '1GB'
+}).https.onRequest(async (request, response) => {
   return corsHandler(request, response, async () => {
     console.log('🚀 [O1 DEBUG] analyzeWithReasoning function started at', new Date().toISOString());
     console.log('🚀 [O1 DEBUG] Request method:', request.method);
