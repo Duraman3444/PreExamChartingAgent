@@ -431,14 +431,29 @@ export const EvaluationDashboard: React.FC = () => {
                     label="Focus Categories"
                     onChange={(e) => {
                       const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
+                      const currentCategories = evaluationConfig.focusCategories;
                       
-                      // Handle "All Categories" selection
-                      if (value.includes('all')) {
+                      // If the user clicked "All Categories"
+                      if (value.includes('all') && !currentCategories.includes('all')) {
                         setEvaluationConfig(prev => ({ ...prev, focusCategories: ['all'] }));
-                      } else if (value.length === 0) {
+                      }
+                      // If the user clicked a specific category while "All Categories" was selected
+                      else if (currentCategories.includes('all') && value.length > 1) {
+                        // Remove "all" and keep only the newly selected specific categories
+                        const specificCategories = value.filter(cat => cat !== 'all');
+                        setEvaluationConfig(prev => ({ ...prev, focusCategories: specificCategories }));
+                      }
+                      // If no categories are selected, default to "all"
+                      else if (value.length === 0) {
                         setEvaluationConfig(prev => ({ ...prev, focusCategories: ['all'] }));
-                      } else {
+                      }
+                      // Normal case: user is selecting/deselecting specific categories
+                      else if (!value.includes('all')) {
                         setEvaluationConfig(prev => ({ ...prev, focusCategories: value }));
+                      }
+                      // If somehow "all" is included with other categories, prefer "all"
+                      else {
+                        setEvaluationConfig(prev => ({ ...prev, focusCategories: ['all'] }));
                       }
                     }}
                     renderValue={(selected) => (
