@@ -15,9 +15,10 @@ const getAuthToken = async (): Promise<string> => {
 };
 
 // Helper function to call Firebase Functions with enhanced error handling
-const callFirebaseFunction = async (functionName: string, data: any): Promise<any> => {
+const callFirebaseFunction = async (functionName: string, data: any, timeoutMs: number = 30000): Promise<any> => {
   console.log(`🔍 [Firebase Debug] Calling function: ${functionName}`);
   console.log(`📊 [Firebase Debug] Function data:`, data);
+  console.log(`⏰ [Firebase Debug] Timeout set to: ${timeoutMs}ms`);
   
   try {
     const token = await getAuthToken();
@@ -26,14 +27,24 @@ const callFirebaseFunction = async (functionName: string, data: any): Promise<an
     const url = `${FIREBASE_FUNCTIONS_BASE_URL}/${functionName}`;
     console.log(`🌐 [Firebase Debug] Calling URL: ${url}`);
     
+    // Create an AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      console.log(`⏰ [Firebase Debug] Function ${functionName} timed out after ${timeoutMs}ms`);
+    }, timeoutMs);
+    
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     
     console.log(`📈 [Firebase Debug] Response status: ${response.status} ${response.statusText}`);
     
@@ -307,7 +318,7 @@ class OpenAIService {
         visitId: null,
         patientContext,
         modelType
-      });
+      }, 60000); // 60 second timeout for O1 analysis
 
       const processingTime = Date.now() - startTime;
       logGPTOperation.success(operation, modelType, processingTime, response);
@@ -423,7 +434,7 @@ class OpenAIService {
         visitId: null,
         patientContext,
         modelType
-      });
+      }, 60000); // 60 second timeout for O1 deep analysis
 
       const processingTime = Date.now() - startTime;
       logGPTOperation.success(operation, modelType, processingTime, response);
