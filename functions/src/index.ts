@@ -16,23 +16,72 @@ const openai = new OpenAI({
 
 // Medical analysis prompt
 const MEDICAL_ANALYSIS_PROMPT = `
-You are a medical AI assistant. Analyze the following patient transcript and provide a structured analysis in JSON format with the following fields:
+You are an expert medical AI assistant. Analyze the following patient transcript and provide a comprehensive, structured medical analysis in JSON format. Be thorough and clinically accurate.
+
+IMPORTANT: Return ONLY valid JSON in the following exact structure:
 
 {
-  "symptoms": ["list of symptoms mentioned"],
-  "differential_diagnosis": [
+  "symptoms": [
     {
-      "condition": "condition name",
-      "confidence": "high/medium/low",
-      "reasoning": "brief explanation"
+      "name": "symptom name",
+      "severity": "mild|moderate|severe|critical",
+      "confidence": 0.85,
+      "duration": "time period",
+      "location": "anatomical location",
+      "quality": "description of how it feels",
+      "sourceText": "exact quote from transcript showing this symptom",
+      "associatedFactors": ["factors that worsen/improve it"]
     }
   ],
-  "treatment_recommendations": ["list of treatment recommendations"],
-  "flagged_concerns": ["any urgent concerns or red flags"],
-  "follow_up_recommendations": ["recommended follow-up actions"]
+  "differential_diagnosis": [
+    {
+      "condition": "medical condition name",
+      "icd10Code": "valid ICD-10 code (e.g., I20.9, R06.00, Z99.9)",
+      "confidence": "high|medium|low",
+      "probability": 0.75,
+      "severity": "low|medium|high|critical",
+      "reasoning": "detailed clinical reasoning for this diagnosis based on symptoms and history",
+      "supportingEvidence": ["evidence supporting this diagnosis"],
+      "urgency": "routine|urgent|emergent"
+    }
+  ],
+  "treatment_recommendations": [
+    {
+      "recommendation": "specific treatment recommendation",
+      "category": "medication|procedure|lifestyle|referral|monitoring",
+      "priority": "low|medium|high|urgent",
+      "timeframe": "when to implement",
+      "evidenceLevel": "A|B|C|D"
+    }
+  ],
+  "flagged_concerns": [
+    {
+      "type": "red_flag|urgent_referral|drug_interaction",
+      "severity": "low|medium|high|critical",
+      "message": "detailed concern description",
+      "recommendation": "immediate action needed",
+      "requiresImmediateAction": true
+    }
+  ],
+  "follow_up_recommendations": [
+    "specific follow-up action 1",
+    "specific follow-up action 2"
+  ],
+  "reasoning": "Comprehensive clinical reasoning explaining the analysis, differential diagnosis process, and treatment rationale. This should be detailed and demonstrate medical knowledge.",
+  "confidenceScore": 0.82,
+  "nextSteps": ["immediate next steps", "monitoring requirements"]
 }
 
-Be thorough but concise. Focus on clinical accuracy and patient safety.
+CLINICAL REQUIREMENTS:
+1. Use proper ICD-10 codes (A-Z followed by 2+ digits)
+2. Include direct quotes from transcript in symptom sourceText
+3. Provide detailed clinical reasoning (200+ characters)
+4. Base all recommendations on evidence-based medicine
+5. Flag any urgent concerns or red flags
+6. Consider differential diagnoses systematically
+7. Provide confidence scores between 0 and 1
+
+Focus on patient safety, clinical accuracy, and comprehensive assessment.
 `;
 
 // Analyze transcript function
@@ -706,6 +755,131 @@ export const analyzeWithReasoning = functions.https.onRequest(async (request, re
       console.error('Error analyzing with reasoning:', error);
       response.status(500).json({ 
         error: 'Failed to analyze with reasoning',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+}); 
+
+// Generate text function
+export const generateText = functions.https.onRequest(async (request, response) => {
+  return corsHandler(request, response, async () => {
+    try {
+      // Check authentication
+      const authHeader = request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        response.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      const token = authHeader.split('Bearer ')[1];
+      
+      try {
+        await admin.auth().verifyIdToken(token);
+      } catch (error) {
+        response.status(401).json({ error: 'Invalid token' });
+        return;
+      }
+
+      const { prompt, model = 'gpt-4o' } = request.body;
+      
+      if (!prompt) {
+        response.status(400).json({ error: 'Prompt is required' });
+        return;
+      }
+
+      // Call OpenAI API
+      const completion = await openai.chat.completions.create({
+        model: model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+        max_tokens: 1500
+      });
+
+      const text = completion.choices[0]?.message?.content || 'Response could not be generated.';
+      
+      response.json({ text });
+
+    } catch (error) {
+      console.error('Error generating text:', error);
+      response.status(500).json({ 
+        error: 'Failed to generate text',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+});
+
+// Generate treatment protocol function
+export const generateTreatmentProtocol = functions.https.onRequest(async (request, response) => {
+  return corsHandler(request, response, async () => {
+    try {
+      // Check authentication
+      const authHeader = request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        response.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      const token = authHeader.split('Bearer ')[1];
+      
+      try {
+        await admin.auth().verifyIdToken(token);
+      } catch (error) {
+        response.status(401).json({ error: 'Invalid token' });
+        return;
+      }
+
+      const { diagnosis, patientContext } = request.body;
+      
+      if (!diagnosis) {
+        response.status(400).json({ error: 'Diagnosis is required' });
+        return;
+      }
+
+      const systemPrompt = `You are a medical protocol specialist. Create an evidence-based treatment protocol for the given diagnosis and patient context.
+
+Return JSON with:
+{
+  "protocol": [
+    {
+      "step": number,
+      "intervention": "string",
+      "category": "medication|procedure|lifestyle|referral|monitoring",
+      "priority": "low|medium|high|urgent",
+      "timeframe": "string",
+      "expectedOutcome": "string",
+      "evidenceLevel": "A|B|C|D",
+      "contraindications": ["string"],
+      "alternatives": ["string"]
+    }
+  ],
+  "monitoring": ["monitoring parameters"],
+  "followUp": ["follow-up schedule and parameters"],
+  "contraindications": ["absolute and relative contraindications"],
+  "evidenceLevel": "Overall evidence quality assessment"
+}`;
+
+      // Call OpenAI API
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Diagnosis: ${diagnosis}\n\nPatient Context: ${JSON.stringify(patientContext)}` }
+        ],
+        temperature: 0.2,
+        max_tokens: 1500,
+        response_format: { type: 'json_object' }
+      });
+
+      const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
+      
+      response.json(result);
+
+    } catch (error) {
+      console.error('Error generating treatment protocol:', error);
+      response.status(500).json({ 
+        error: 'Failed to generate treatment protocol',
         details: error instanceof Error ? error.message : 'Unknown error'
       });
     }

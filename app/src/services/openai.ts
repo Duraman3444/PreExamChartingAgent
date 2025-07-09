@@ -254,8 +254,8 @@ export interface ModelConfig {
 
 class OpenAIService {
   private validateApiKey(): void {
-    console.log('🔧 [OpenAI Debug] Using secure Firebase Functions - API key validation passed');
-    // No validation needed since we're using Firebase Functions
+    // Always use Firebase Functions - no direct API key validation needed
+    console.log('✅ [OpenAI Debug] Using secure Firebase Functions proxy');
   }
 
   /**
@@ -391,212 +391,56 @@ class OpenAIService {
     },
     modelType: 'o1' | 'o1-mini' = 'o1-mini'
   ): Promise<O1AnalysisResult> {
-    const operation = 'REASONING_ANALYSIS';
+    const operation = 'TRANSCRIPT_ANALYSIS_WITH_REASONING';
     const startTime = Date.now();
     
-    this.validateApiKey();
-    
     try {
-      const config = this.getModelConfig('reasoning');
-      config.model = modelType;
-      
-      logGPTOperation.start(operation, config.model, {
+      logGPTOperation.start(operation, modelType, {
         transcriptLength: transcript.length,
         hasPatientContext: !!patientContext,
         modelType
       });
 
-      const systemPrompt = `You are an expert medical AI with advanced reasoning capabilities. Analyze this medical transcript with detailed step-by-step reasoning.
+      logGPTOperation.progress(operation, 'Routing through Firebase Functions for secure analysis');
 
-Show your thinking process clearly as you:
-1. Analyze the patient's presentation
-2. Consider differential diagnoses
-3. Evaluate evidence and risk factors
-4. Synthesize findings into clinical recommendations
-5. Assess confidence and next steps
-
-Provide comprehensive medical analysis in JSON format with detailed reasoning for each conclusion.
-
-IMPORTANT: All confidence scores and probabilities must be 0-1 decimal values.
-
-JSON structure:
-{
-  "symptoms": [{"name": "string", "severity": "mild|moderate|severe|critical", "confidence": 0-1, "duration": "string", "location": "string", "associatedFactors": ["string"], "sourceText": "string", "reasoning": "why this symptom is significant"}],
-  "diagnoses": [{"condition": "string", "icd10Code": "string", "probability": 0-1, "severity": "low|medium|high|critical", "supportingEvidence": ["string"], "againstEvidence": ["string"], "additionalTestsNeeded": ["string"], "reasoning": "detailed reasoning for this diagnosis", "urgency": "routine|urgent|emergent"}],
-  "treatments": [{"category": "medication|procedure|lifestyle|referral|monitoring", "recommendation": "string", "priority": "low|medium|high|urgent", "timeframe": "string", "contraindications": ["string"], "alternatives": ["string"], "expectedOutcome": "string", "evidenceLevel": "A|B|C|D", "reasoning": "why this treatment is recommended"}],
-  "concerns": [{"type": "red_flag|drug_interaction|allergy|urgent_referral", "severity": "low|medium|high|critical", "message": "string", "recommendation": "string", "requiresImmediateAction": boolean, "reasoning": "why this is concerning"}],
-  "confidenceScore": 0-1,
-  "reasoning": "comprehensive reasoning summary",
-  "nextSteps": ["string"],
-  "clinicalReasoning": "detailed clinical reasoning process"
-}`;
-
-      const userPrompt = `Patient Context:
-${patientContext ? `
-Age: ${patientContext.age || 'Unknown'}
-Gender: ${patientContext.gender || 'Unknown'}
-Medical History: ${patientContext.medicalHistory || 'None provided'}
-Current Medications: ${patientContext.medications || 'None provided'}
-Known Allergies: ${patientContext.allergies || 'None provided'}
-Family History: ${patientContext.familyHistory || 'None provided'}
-Social History: ${patientContext.socialHistory || 'None provided'}
-` : 'Limited patient context provided'}
-
-Medical Transcript:
-${transcript}
-
-Please provide a comprehensive medical analysis with detailed reasoning for each conclusion.`;
-
-      logGPTOperation.progress(operation, 'Preparing API call parameters');
-
-      // O1 models use different parameters and message structure
-      const isO1Model = config.model.startsWith('o1');
-      const completionParams: any = {
-        model: config.model
-      };
-      
-      if (isO1Model) {
-        // O1 models use max_completion_tokens, don't support temperature/response_format, and need combined messages
-        completionParams.max_completion_tokens = config.maxTokens;
-        completionParams.messages = [
-          { role: 'user', content: `${systemPrompt}\n\n${userPrompt}` }
-        ];
-      } else {
-        // GPT models use the traditional parameters and separate messages
-        completionParams.temperature = config.temperature;
-        completionParams.max_tokens = config.maxTokens;
-        completionParams.response_format = { type: config.responseFormat as 'json_object' };
-        completionParams.messages = [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ];
-      }
-
-      logGPTOperation.progress(operation, 'Calling OpenAI API', { 
-        model: config.model, 
-        isO1Model,
-        maxTokens: completionParams.max_completion_tokens || completionParams.max_tokens
+      // Route through Firebase Functions
+      const response = await callFirebaseFunction('analyzeTranscript', {
+        transcript,
+        patientContext,
+        modelType,
+        analysisType: 'reasoning'
       });
-
-      const completion = await getOpenAIClient().chat.completions.create(completionParams);
 
       const processingTime = Date.now() - startTime;
-      logGPTOperation.progress(operation, 'API call completed, processing response');
+      logGPTOperation.success(operation, modelType, processingTime, response);
 
-      const thinkingTime = Date.now() - startTime;
-      const reasoningTrace = this.parseReasoning(completion);
-      
-      const analysisContent = completion.choices[0]?.message?.content;
-      if (!analysisContent) {
-        throw new Error('No analysis content received from OpenAI');
-      }
-
-      logGPTOperation.progress(operation, 'Parsing response content', {
-        contentLength: analysisContent.length,
-        hasReasoning: !!(completion.choices[0]?.message as any)?.reasoning
-      });
-
-      // Extract JSON from O1 model response (handles markdown formatting)
-      const jsonContent = isO1Model ? this.extractJsonFromMarkdown(analysisContent) : analysisContent;
-      
-      let analysis;
-      try {
-        analysis = JSON.parse(jsonContent);
-        logGPTOperation.progress(operation, 'JSON parsing successful');
-              } catch (parseError: any) {
-          logGPTOperation.error(operation, config.model, parseError, processingTime);
-        console.error('JSON parsing failed:', parseError);
-        console.error('Raw content:', analysisContent);
-        console.error('Extracted JSON:', jsonContent);
-        
-        // Fallback: Create a basic analysis structure
-        analysis = {
-          symptoms: [],
-          diagnoses: [{
-            condition: "Analysis parsing failed",
-            icd10Code: "Z99.9",
-            probability: 0.1,
-            severity: "low",
-            supportingEvidence: ["System error during analysis"],
-            againstEvidence: [],
-            additionalTestsNeeded: ["Retry analysis"],
-            reasoning: "Failed to parse AI response",
-            urgency: "routine"
-          }],
-          treatments: [],
-          concerns: [],
-          confidenceScore: 0.1,
-          reasoning: "Analysis failed due to response parsing error",
-          nextSteps: ["Retry analysis with different parameters"],
-          clinicalReasoning: "System error occurred during analysis"
-        };
-      }
-
-      // Process and structure the result
+      // Convert response to O1AnalysisResult format
       const result: O1AnalysisResult = {
-        id: `o1-analysis-${Date.now()}`,
-        symptoms: analysis.symptoms?.map((s: any, i: number) => ({
-          id: `symptom-${i + 1}`,
-          name: s.name || 'Unknown symptom',
-          severity: s.severity || 'mild',
-          confidence: this.normalizeConfidenceScore(s.confidence || 0.5),
-          duration: s.duration || 'Unknown',
-          location: s.location,
-          quality: s.quality,
-          associatedFactors: s.associatedFactors || [],
-          sourceText: s.sourceText || ''
-        })) || [],
-        diagnoses: analysis.diagnoses?.map((d: any, i: number) => ({
-          id: `diagnosis-${i + 1}`,
-          condition: d.condition || 'Unknown',
-          icd10Code: d.icd10Code || 'Z99.9',
-          probability: this.normalizeConfidenceScore(d.probability || 0.5),
-          severity: d.severity || 'low',
-          supportingEvidence: d.supportingEvidence || [],
-          againstEvidence: d.againstEvidence || [],
-          additionalTestsNeeded: d.additionalTestsNeeded || [],
-          reasoning: d.reasoning || '',
-          urgency: d.urgency || 'routine'
-        })) || [],
-        treatments: analysis.treatments?.map((t: any, i: number) => ({
-          id: `treatment-${i + 1}`,
-          category: t.category || 'monitoring',
-          recommendation: t.recommendation || 'Continue monitoring',
-          priority: t.priority || 'low',
-          timeframe: t.timeframe || 'As needed',
-          contraindications: t.contraindications || [],
-          alternatives: t.alternatives || [],
-          expectedOutcome: t.expectedOutcome || 'Unknown',
-          evidenceLevel: t.evidenceLevel || 'D'
-        })) || [],
-        concerns: analysis.concerns?.map((c: any, i: number) => ({
-          id: `concern-${i + 1}`,
-          type: c.type || 'urgent_referral',
-          severity: c.severity || 'low',
-          message: c.message || 'No specific concerns identified',
-          recommendation: c.recommendation || 'Continue routine care',
-          requiresImmediateAction: c.requiresImmediateAction || false
-        })) || [],
-        confidenceScore: this.normalizeConfidenceScore(analysis.confidenceScore || 0.8),
-        reasoning: analysis.reasoning || analysis.clinicalReasoning || 'O1 analysis completed',
-        nextSteps: analysis.nextSteps || ['Follow up as needed'],
-        processingTime: processingTime,
+        id: response.id || `analysis-${Date.now()}`,
+        symptoms: response.symptoms || [],
+        diagnoses: response.diagnoses || [],
+        treatments: response.treatments || [],
+        concerns: response.concerns || [],
+        confidenceScore: response.confidenceScore || 0.5,
+        reasoning: response.reasoning || 'Analysis completed via Firebase Functions',
+        nextSteps: response.nextSteps || [],
+        processingTime,
         timestamp: new Date(),
-        reasoningTrace,
-        modelUsed: config.model as 'o1' | 'o1-mini' | 'gpt-4o',
-        thinkingTime
+        reasoningTrace: response.reasoningTrace || {
+          sessionId: `session-${Date.now()}`,
+          totalSteps: 1,
+          steps: [],
+          startTime: Date.now(),
+          endTime: Date.now(),
+          model: modelType,
+          reasoning: response.reasoning || 'Analysis completed via Firebase Functions'
+        },
+        modelUsed: modelType,
+        thinkingTime: processingTime
       };
 
-      logGPTOperation.success(operation, config.model, processingTime, {
-        symptomsCount: result.symptoms.length,
-        diagnosesCount: result.diagnoses.length,
-        treatmentsCount: result.treatments.length,
-        concernsCount: result.concerns.length,
-        confidenceScore: result.confidenceScore,
-        reasoningSteps: reasoningTrace.totalSteps
-      });
-
       return result;
+
     } catch (error: any) {
       const processingTime = Date.now() - startTime;
       logGPTOperation.error(operation, modelType, error, processingTime);
@@ -620,10 +464,8 @@ Please provide a comprehensive medical analysis with detailed reasoning for each
     },
     modelType: 'o1' | 'o1-mini' = 'o1'
   ): Promise<O1DeepAnalysisResult> {
-    const operation = 'DEEP_REASONING_ANALYSIS';
+    const operation = 'DEEP_MEDICAL_ANALYSIS_WITH_REASONING';
     const startTime = Date.now();
-    
-    this.validateApiKey();
     
     try {
       logGPTOperation.start(operation, modelType, {
@@ -631,297 +473,67 @@ Please provide a comprehensive medical analysis with detailed reasoning for each
         hasPatientContext: !!patientContext,
         modelType
       });
-      
-      // Step 1: Perform comprehensive medical research
-      logGPTOperation.progress(operation, 'Performing medical research');
-      const researchContext = await this.performMedicalResearch(transcript, patientContext);
-      
-      // Step 2: Use o1 model for deep analysis with research integration
-      logGPTOperation.progress(operation, 'Configuring model for deep analysis');
-      const config = this.getModelConfig('reasoning');
-      config.model = modelType;
-      
-      const systemPrompt = `You are an expert medical AI with advanced reasoning capabilities and access to current medical research. 
 
-Perform a comprehensive medical analysis that integrates research evidence with clinical reasoning.
+      logGPTOperation.progress(operation, 'Routing through Firebase Functions for secure deep analysis');
 
-Show your step-by-step thinking process as you:
-1. Analyze the patient's clinical presentation
-2. Review and synthesize research evidence
-3. Consider differential diagnoses with evidence support
-4. Evaluate treatment options based on current evidence
-5. Assess risks and develop follow-up protocols
-6. Provide confidence assessment with evidence quality analysis
-
-IMPORTANT: All confidence scores and probabilities must be 0-1 decimal values.
-
-JSON structure:
-{
-  "primaryDiagnosis": {
-    "condition": "string",
-    "icd10Code": "string", 
-    "probability": 0-1,
-    "severity": "low|medium|high|critical",
-    "supportingEvidence": ["string"],
-    "researchSupport": ["string"],
-    "reasoning": "detailed reasoning with evidence integration",
-    "urgency": "routine|urgent|emergent"
-  },
-  "differentialDiagnoses": [
-    {
-      "condition": "string",
-      "icd10Code": "string",
-      "probability": 0-1,
-      "likelihood": "high|medium|low",
-      "supportingEvidence": ["string"],
-      "againstEvidence": ["string"],
-      "additionalTestsNeeded": ["string"],
-      "reasoning": "evidence-based reasoning for differential"
-    }
-  ],
-  "researchEvidence": [
-    {
-      "source": "string",
-      "type": "clinical_study|systematic_review|guideline|case_study|meta_analysis",
-      "reliability": "high|medium|low",
-      "yearPublished": number,
-      "summary": "string",
-      "relevanceScore": 0-1,
-      "clinicalImplication": "string"
-    }
-  ],
-  "clinicalRecommendations": [
-    {
-      "category": "medication|procedure|lifestyle|referral|monitoring",
-      "recommendation": "string",
-      "priority": "low|medium|high|urgent",
-      "evidenceLevel": "A|B|C|D",
-      "timeframe": "string",
-      "expectedOutcome": "string",
-      "contraindications": ["string"],
-      "alternatives": ["string"],
-      "reasoning": "evidence-based reasoning for recommendation"
-    }
-  ],
-  "riskFactors": ["string"],
-  "prognosticFactors": ["string"],
-  "followUpProtocol": ["string"],
-  "contraindications": ["string"],
-  "emergencyFlags": [
-    {
-      "type": "red_flag|drug_interaction|allergy|urgent_referral",
-      "severity": "low|medium|high|critical",
-      "message": "string",
-      "recommendation": "string",
-      "requiresImmediateAction": boolean,
-      "reasoning": "why this requires attention"
-    }
-  ],
-  "confidenceAssessment": {
-    "evidenceQuality": "high|medium|low",
-    "consistencyScore": 0-1,
-    "gaps": ["string"],
-    "recommendations": ["string"],
-    "reasoning": "assessment of evidence quality and consistency"
-  },
-  "clinicalReasoning": "comprehensive reasoning summary with evidence integration"
-}`;
-
-      const userPrompt = `Research Context:
-${JSON.stringify(researchContext, null, 2)}
-
-Patient Context:
-${patientContext ? `
-Age: ${patientContext.age || 'Unknown'}
-Gender: ${patientContext.gender || 'Unknown'}
-Medical History: ${patientContext.medicalHistory || 'None provided'}
-Current Medications: ${patientContext.medications || 'None provided'}
-Known Allergies: ${patientContext.allergies || 'None provided'}
-Family History: ${patientContext.familyHistory || 'None provided'}
-Social History: ${patientContext.socialHistory || 'None provided'}
-` : 'Limited patient context provided'}
-
-Clinical Presentation:
-${transcript}
-
-Please provide a comprehensive medical analysis integrating the research evidence with advanced clinical reasoning. Show your thinking process clearly.`;
-
-      // O1 models use different parameters and message structure
-      const isO1Model = config.model.startsWith('o1');
-      const completionParams: any = {
-        model: config.model
-      };
-      
-      if (isO1Model) {
-        // O1 models use max_completion_tokens, don't support temperature/response_format, and need combined messages
-        completionParams.max_completion_tokens = config.maxTokens;
-        completionParams.messages = [
-          { role: 'user', content: `${systemPrompt}\n\n${userPrompt}` }
-        ];
-      } else {
-        // GPT models use the traditional parameters and separate messages
-        completionParams.temperature = config.temperature;
-        completionParams.max_tokens = config.maxTokens;
-        completionParams.response_format = { type: config.responseFormat as 'json_object' };
-        completionParams.messages = [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ];
-      }
-
-      logGPTOperation.progress(operation, 'Calling OpenAI API for deep analysis', {
-        model: config.model,
-        isO1Model,
-        researchEvidenceCount: researchContext.evidence.length
+      // Route through Firebase Functions
+      const response = await callFirebaseFunction('analyzeTranscript', {
+        transcript,
+        patientContext,
+        modelType,
+        analysisType: 'deep_reasoning'
       });
 
-      const completion = await getOpenAIClient().chat.completions.create(completionParams);
+      const processingTime = Date.now() - startTime;
+      logGPTOperation.success(operation, modelType, processingTime, response);
 
-      const apiCallTime = Date.now() - startTime;
-      logGPTOperation.progress(operation, 'API call completed, processing deep analysis response');
-
-      const thinkingTime = Date.now() - startTime;
-      const reasoningTrace = this.parseReasoning(completion);
-      
-      const analysisContent = completion.choices[0]?.message?.content;
-      if (!analysisContent) {
-        throw new Error('No analysis content received from OpenAI');
-      }
-
-      logGPTOperation.progress(operation, 'Parsing deep analysis response', {
-        contentLength: analysisContent.length,
-        hasReasoning: !!(completion.choices[0]?.message as any)?.reasoning
-      });
-
-      // Extract JSON from O1 model response (handles markdown formatting)
-      const jsonContent = isO1Model ? this.extractJsonFromMarkdown(analysisContent) : analysisContent;
-      
-      let analysisData;
-      try {
-        analysisData = JSON.parse(jsonContent);
-        logGPTOperation.progress(operation, 'JSON parsing successful for deep analysis');
-      } catch (parseError: any) {
-        logGPTOperation.error(operation, config.model, parseError, apiCallTime);
-        console.error('JSON parsing failed in deep analysis:', parseError);
-        console.error('Raw content:', analysisContent);
-        console.error('Extracted JSON:', jsonContent);
-        
-        // Fallback: Create a basic deep analysis structure
-        analysisData = {
-          primaryDiagnosis: {
-            condition: "Analysis Error",
-            icd10Code: "Z00.00",
-            probability: 0.5,
-            severity: "medium",
-            supportingEvidence: ["Unable to parse AI response"],
-            reasoning: "Response parsing failed - please try again",
-            urgency: "routine"
-          },
-          differentialDiagnoses: [],
-          researchEvidence: [],
-          clinicalRecommendations: [],
-          riskFactors: [],
-          prognosticFactors: [],
-          followUpProtocol: ["Retry analysis with O1 model"],
-          contraindications: [],
-          emergencyFlags: [],
-          confidenceAssessment: {
-            evidenceQuality: "low",
-            consistencyScore: 0.1,
-            gaps: ["Response parsing failed"],
-            recommendations: ["Please try the analysis again"]
-          },
-          clinicalReasoning: analysisContent // Include raw content for debugging
-        };
-      }
-
-      // Convert to deep analysis format
+      // Convert response to O1DeepAnalysisResult format
       const result: O1DeepAnalysisResult = {
-        primaryDiagnosis: {
-          id: `primary-diagnosis-${Date.now()}`,
-          condition: analysisData.primaryDiagnosis?.condition || 'Unknown',
-          icd10Code: analysisData.primaryDiagnosis?.icd10Code || '',
-          probability: this.normalizeConfidenceScore(analysisData.primaryDiagnosis?.probability || 0.5),
-          severity: analysisData.primaryDiagnosis?.severity || 'medium',
-          supportingEvidence: analysisData.primaryDiagnosis?.supportingEvidence || [],
+        primaryDiagnosis: response.primaryDiagnosis || {
+          id: 'primary-1',
+          condition: 'Analysis completed via Firebase Functions',
+          icd10Code: 'Z00.00',
+          probability: 0.5,
+          severity: 'medium',
+          supportingEvidence: [],
           againstEvidence: [],
           additionalTestsNeeded: [],
-          reasoning: analysisData.primaryDiagnosis?.reasoning || '',
-          urgency: analysisData.primaryDiagnosis?.urgency || 'routine'
-        },
-        differentialDiagnoses: analysisData.differentialDiagnoses.map((dx: any, index: number) => ({
-          id: `differential-${index + 1}`,
-          condition: dx.condition,
-          icd10Code: dx.icd10Code,
-          probability: this.normalizeConfidenceScore(dx.probability),
-          severity: dx.likelihood === 'high' ? 'high' : dx.likelihood === 'medium' ? 'medium' : 'low',
-          supportingEvidence: dx.supportingEvidence,
-          againstEvidence: dx.againstEvidence,
-          additionalTestsNeeded: dx.additionalTestsNeeded,
-          reasoning: dx.reasoning,
+          reasoning: 'Processed through secure Firebase Functions',
           urgency: 'routine'
-        })),
-        researchEvidence: (analysisData.researchEvidence || []).map((evidence: any, index: number) => ({
-          id: `research-evidence-${index + 1}`,
-          source: evidence.source,
-          type: evidence.type,
-          reliability: evidence.reliability,
-          yearPublished: evidence.yearPublished,
-          summary: evidence.summary,
-          relevanceScore: this.normalizeConfidenceScore(evidence.relevanceScore),
-          url: evidence.url
-        })),
-        clinicalRecommendations: (analysisData.clinicalRecommendations || []).map((rec: any, index: number) => ({
-          id: `recommendation-${index + 1}`,
-          category: rec.category,
-          recommendation: rec.recommendation,
-          priority: rec.priority,
-          timeframe: rec.timeframe,
-          contraindications: rec.contraindications,
-          alternatives: rec.alternatives,
-          expectedOutcome: rec.expectedOutcome,
-          evidenceLevel: rec.evidenceLevel
-        })),
-        riskFactors: analysisData.riskFactors || [],
-        prognosticFactors: analysisData.prognosticFactors || [],
-        followUpProtocol: analysisData.followUpProtocol || [],
-        contraindications: analysisData.contraindications || [],
-        emergencyFlags: (analysisData.emergencyFlags || []).map((flag: any, index: number) => ({
-          id: `emergency-flag-${index + 1}`,
-          type: flag.type,
-          severity: flag.severity,
-          message: flag.message,
-          recommendation: flag.recommendation,
-          requiresImmediateAction: flag.requiresImmediateAction || false
-        })),
-        confidenceAssessment: {
-          evidenceQuality: analysisData.confidenceAssessment?.evidenceQuality || 'medium',
-          consistencyScore: this.normalizeConfidenceScore(analysisData.confidenceAssessment?.consistencyScore || 0.7),
-          gaps: analysisData.confidenceAssessment?.gaps || [],
-          recommendations: analysisData.confidenceAssessment?.recommendations || []
         },
-        reasoningTrace,
-        modelUsed: config.model as 'o1' | 'o1-mini' | 'gpt-4o',
-        thinkingTime
+        differentialDiagnoses: response.differentialDiagnoses || [],
+        researchEvidence: response.researchEvidence || [],
+        clinicalRecommendations: response.clinicalRecommendations || [],
+        riskFactors: response.riskFactors || [],
+        prognosticFactors: response.prognosticFactors || [],
+        followUpProtocol: response.followUpProtocol || [],
+        contraindications: response.contraindications || [],
+        emergencyFlags: response.emergencyFlags || [],
+        confidenceAssessment: response.confidenceAssessment || {
+          evidenceQuality: 'medium',
+          consistencyScore: 0.5,
+          gaps: [],
+          recommendations: []
+        },
+        reasoningTrace: response.reasoningTrace || {
+          sessionId: `session-${Date.now()}`,
+          totalSteps: 1,
+          steps: [],
+          startTime: Date.now(),
+          endTime: Date.now(),
+          model: modelType,
+          reasoning: response.reasoning || 'Analysis completed via Firebase Functions'
+        },
+        modelUsed: modelType,
+        thinkingTime: processingTime
       };
 
-      const finalProcessingTime = Date.now() - startTime;
-      logGPTOperation.success(operation, config.model, finalProcessingTime, {
-        primaryDiagnosis: result.primaryDiagnosis.condition,
-        differentialDiagnosesCount: result.differentialDiagnoses.length,
-        researchEvidenceCount: result.researchEvidence.length,
-        recommendationsCount: result.clinicalRecommendations.length,
-        emergencyFlagsCount: result.emergencyFlags.length,
-        confidenceScore: result.confidenceAssessment.consistencyScore,
-        evidenceQuality: result.confidenceAssessment.evidenceQuality,
-        reasoningSteps: reasoningTrace.totalSteps
-      });
-
       return result;
+
     } catch (error: any) {
       const processingTime = Date.now() - startTime;
       logGPTOperation.error(operation, modelType, error, processingTime);
-      throw new Error(`Failed to perform deep analysis with reasoning: ${error.message}`);
+      throw new Error(`Failed to perform deep medical analysis with reasoning: ${error.message}`);
     }
   }
 
@@ -1061,14 +673,20 @@ Please provide a comprehensive medical analysis integrating the research evidenc
         id: response.id || `analysis-${Date.now()}`,
         symptoms: response.symptoms?.map((s: any, i: number) => ({
           id: `symptom-${i + 1}`,
-          ...s,
-          confidence: this.normalizeConfidenceScore(s.confidence || 0.8)
+          name: s.name || 'Unknown',
+          severity: s.severity || 'mild',
+          confidence: this.normalizeConfidenceScore(s.confidence || 0.8),
+          duration: s.duration || 'Unknown',
+          location: s.location || '',
+          quality: s.quality || '',
+          associatedFactors: s.associatedFactors || [],
+          sourceText: s.sourceText || ''
         })) || [],
         diagnoses: response.differential_diagnosis?.map((d: any, i: number) => ({
           id: `diagnosis-${i + 1}`,
-          condition: d.condition,
-          icd10Code: d.icd10Code || 'Unknown',
-          probability: this.normalizeConfidenceScore(d.confidence === 'high' ? 0.8 : d.confidence === 'medium' ? 0.6 : 0.4),
+          condition: d.condition || 'Unknown',
+          icd10Code: d.icd10Code || 'Z99.9',
+          probability: this.normalizeConfidenceScore(d.probability || (d.confidence === 'high' ? 0.8 : d.confidence === 'medium' ? 0.6 : 0.4)),
           severity: d.severity || 'medium',
           supportingEvidence: d.supportingEvidence || [],
           againstEvidence: d.againstEvidence || [],
@@ -1078,8 +696,8 @@ Please provide a comprehensive medical analysis integrating the research evidenc
         })) || [],
         treatments: response.treatment_recommendations?.map((t: any, i: number) => ({
           id: `treatment-${i + 1}`,
-          category: t.category || 'medication',
-          recommendation: t,
+          category: t.category || 'monitoring',
+          recommendation: t.recommendation || 'Continue monitoring',
           priority: t.priority || 'medium',
           timeframe: t.timeframe || 'As needed',
           contraindications: t.contraindications || [],
@@ -1089,15 +707,15 @@ Please provide a comprehensive medical analysis integrating the research evidenc
         })) || [],
         concerns: response.flagged_concerns?.map((c: any, i: number) => ({
           id: `concern-${i + 1}`,
-          type: c.type || 'red_flag',
+          type: c.type || 'urgent_referral',
           severity: c.severity || 'medium',
-          message: c,
+          message: c.message || 'No immediate concerns',
           recommendation: c.recommendation || 'Consult with physician',
           requiresImmediateAction: c.requiresImmediateAction || false
         })) || [],
         confidenceScore: this.normalizeConfidenceScore(response.confidenceScore || 0.8),
         reasoning: response.reasoning || 'Analysis completed using secure Firebase Functions.',
-        nextSteps: response.follow_up_recommendations || ['Review findings with attending physician', 'Consider additional diagnostic tests'],
+        nextSteps: response.nextSteps || response.follow_up_recommendations || ['Review findings with attending physician', 'Consider additional diagnostic tests'],
         processingTime,
         timestamp: new Date()
       };
@@ -1133,54 +751,24 @@ Please provide a comprehensive medical analysis integrating the research evidenc
         mode: 'quick'
       });
       
-      const systemPrompt = `You are a medical AI. Provide rapid analysis in JSON format.
-      
-      JSON structure:
-      {
-        "symptoms": [{"name": "string", "severity": "mild|moderate|severe|critical", "confidence": 0-1, "duration": "string", "sourceText": "string"}],
-        "diagnoses": [{"condition": "string", "icd10Code": "string", "probability": 0-1, "severity": "low|medium|high|critical", "reasoning": "string", "urgency": "routine|urgent|emergent"}],
-        "treatments": [{"recommendation": "string", "priority": "low|medium|high|urgent", "evidenceLevel": "A|B|C|D"}],
-        "concerns": [{"type": "red_flag|urgent_referral", "severity": "low|medium|high|critical", "message": "string", "requiresImmediateAction": boolean}],
-        "confidenceScore": 0-1,
-        "reasoning": "string",
-        "nextSteps": ["string"]
-      }
-      
-      Focus on top 3 most likely diagnoses and immediate actions.`;
+      logGPTOperation.progress(operation, 'Routing through Firebase Functions for secure quick analysis');
 
-      const userPrompt = `Quick analysis of: ${transcript}`;
-
-      logGPTOperation.progress(operation, 'Calling OpenAI API with 15s timeout');
-
-      const completion = await Promise.race([
-        getOpenAIClient().chat.completions.create({
-          model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          temperature: 0.4,
-          max_tokens: 1500,
-          response_format: { type: 'json_object' }
-        }),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Quick analysis timed out after 15 seconds')), 15000)
-        )
-      ]) as any;
+      // Route through Firebase Functions - use correct parameter format
+      const response = await callFirebaseFunction('analyzeTranscript', {
+        transcript,
+        patientId: null,
+        visitId: null
+      });
 
       const processingTime = Date.now() - startTime;
-      logGPTOperation.progress(operation, 'API call completed, processing response');
+      logGPTOperation.progress(operation, 'Firebase Function call completed, processing response');
 
-      const analysisContent = completion.choices[0]?.message?.content;
-      if (!analysisContent) {
-        throw new Error('No analysis content received from OpenAI');
-      }
-
-      const analysis = JSON.parse(analysisContent);
+      // The Firebase Function now returns a detailed structure
+      // Parse the new comprehensive response format
       
       const result: AnalysisResult = {
-        id: `quick-analysis-${Date.now()}`,
-        symptoms: analysis.symptoms?.map((s: any, i: number) => ({
+        id: response.id || `quick-analysis-${Date.now()}`,
+        symptoms: response.symptoms?.map((s: any, i: number) => ({
           id: `symptom-${i + 1}`,
           name: s.name || 'Unknown',
           severity: s.severity || 'mild',
@@ -1191,11 +779,11 @@ Please provide a comprehensive medical analysis integrating the research evidenc
           associatedFactors: s.associatedFactors || [],
           sourceText: s.sourceText || ''
         })) || [],
-        diagnoses: analysis.diagnoses?.map((d: any, i: number) => ({
+        diagnoses: response.differential_diagnosis?.map((d: any, i: number) => ({
           id: `diagnosis-${i + 1}`,
           condition: d.condition || 'Unknown',
           icd10Code: d.icd10Code || 'Z99.9',
-          probability: this.normalizeConfidenceScore(d.probability || 0.5),
+          probability: this.normalizeConfidenceScore(d.probability || (d.confidence === 'high' ? 0.8 : d.confidence === 'medium' ? 0.6 : 0.4)),
           severity: d.severity || 'low',
           supportingEvidence: d.supportingEvidence || [],
           againstEvidence: d.againstEvidence || [],
@@ -1203,7 +791,7 @@ Please provide a comprehensive medical analysis integrating the research evidenc
           reasoning: d.reasoning || 'Quick analysis performed',
           urgency: d.urgency || 'routine'
         })) || [],
-        treatments: analysis.treatments?.map((t: any, i: number) => ({
+        treatments: response.treatment_recommendations?.map((t: any, i: number) => ({
           id: `treatment-${i + 1}`,
           category: t.category || 'monitoring',
           recommendation: t.recommendation || 'Continue monitoring',
@@ -1214,7 +802,7 @@ Please provide a comprehensive medical analysis integrating the research evidenc
           expectedOutcome: t.expectedOutcome || 'Unknown',
           evidenceLevel: t.evidenceLevel || 'D'
         })) || [],
-        concerns: analysis.concerns?.map((c: any, i: number) => ({
+        concerns: response.flagged_concerns?.map((c: any, i: number) => ({
           id: `concern-${i + 1}`,
           type: c.type || 'urgent_referral',
           severity: c.severity || 'low',
@@ -1222,9 +810,9 @@ Please provide a comprehensive medical analysis integrating the research evidenc
           recommendation: c.recommendation || 'Continue routine care',
           requiresImmediateAction: c.requiresImmediateAction || false
         })) || [],
-        confidenceScore: this.normalizeConfidenceScore(analysis.confidenceScore || 0.7),
-        reasoning: analysis.reasoning || 'Quick analysis completed',
-        nextSteps: analysis.nextSteps || ['Follow up as needed'],
+        confidenceScore: this.normalizeConfidenceScore(response.confidenceScore || 0.7),
+        reasoning: response.reasoning || 'Quick analysis completed',
+        nextSteps: response.nextSteps || response.follow_up_recommendations || ['Follow up as needed'],
         processingTime,
         timestamp: new Date()
       };
@@ -1260,35 +848,21 @@ Please provide a comprehensive medical analysis integrating the research evidenc
         summaryType: type
       });
 
-      const completion = await getOpenAIClient().chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a medical scribe creating concise, professional clinical summaries. 
-            Focus on key medical information: chief complaint, history of present illness, 
-            physical examination findings, assessment, and plan.`
-          },
-          {
-            role: 'user',
-            content: `Create a ${type} summary from this medical transcript:
+      logGPTOperation.progress(operation, 'Routing through Firebase Functions for secure summary generation');
 
-            ${transcript}`
-          }
-        ],
-        temperature: 0.2,
-        max_tokens: 800
+      // Route through Firebase Functions
+      const response = await callFirebaseFunction('generateSummary', {
+        transcript,
+        type
       });
 
       const processingTime = Date.now() - startTime;
-      const result = completion.choices[0]?.message?.content || 'Summary could not be generated.';
-
       logGPTOperation.success(operation, 'gpt-4o', processingTime, {
-        summaryLength: result.length,
-        summaryType: type
+        summaryLength: response.summary?.length || 0
       });
 
-      return result;
+      return response.summary || 'Summary could not be generated.';
+
     } catch (error: any) {
       const processingTime = Date.now() - startTime;
       logGPTOperation.error(operation, 'gpt-4o', error, processingTime);
@@ -1312,21 +886,21 @@ Please provide a comprehensive medical analysis integrating the research evidenc
         requestedModel: model
       });
 
-      const completion = await getOpenAIClient().chat.completions.create({
-        model: actualModel,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-        max_tokens: 1500
+      logGPTOperation.progress(operation, 'Routing through Firebase Functions for secure text generation');
+
+      // Route through Firebase Functions
+      const response = await callFirebaseFunction('generateText', {
+        prompt,
+        model: actualModel
       });
 
       const processingTime = Date.now() - startTime;
-      const result = completion.choices[0]?.message?.content || 'Response could not be generated.';
-
       logGPTOperation.success(operation, actualModel, processingTime, {
-        responseLength: result.length
+        responseLength: response.text?.length || 0
       });
 
-      return result;
+      return response.text || 'Response could not be generated.';
+
     } catch (error: any) {
       const processingTime = Date.now() - startTime;
       logGPTOperation.error(operation, actualModel, error, processingTime);
@@ -1392,7 +966,7 @@ Please provide a comprehensive medical analysis integrating the research evidenc
    * Check if OpenAI service is properly configured
    */
   isConfigured(): boolean {
-    // Since we're using Firebase Functions, we're always configured
+    // Always return true since we're using Firebase Functions
     return true;
   }
 
@@ -1400,10 +974,11 @@ Please provide a comprehensive medical analysis integrating the research evidenc
    * Get service status and configuration info
    */
   getStatus(): { configured: boolean; hasApiKey: boolean; message: string } {
+    // Always return configured since we're using Firebase Functions
     return {
       configured: true,
       hasApiKey: true,
-      message: 'OpenAI API is configured securely via Firebase Functions'
+      message: 'Using secure Firebase Functions for OpenAI API calls'
     };
   }
 
@@ -1422,204 +997,63 @@ Please provide a comprehensive medical analysis integrating the research evidenc
       socialHistory?: string;
     }
   ): Promise<DeepAnalysisResult> {
-    this.validateApiKey();
+    const operation = 'DEEP_MEDICAL_ANALYSIS';
+    const startTime = Date.now();
     
     try {
-      // const startTime = Date.now();
-      
-      // Step 1: Perform research on the patient's symptoms and conditions
-      const researchContext = await this.performMedicalResearch(transcript, patientContext);
-      
-      // Step 2: Generate deep analysis with research context
-      const systemPrompt = `You are an expert medical AI with access to current medical research and evidence-based medicine. 
-      
-Your task is to provide a comprehensive medical analysis that integrates:
-1. Current medical evidence and research
-2. Clinical reasoning and differential diagnosis
-3. Evidence-based treatment recommendations
-4. Risk stratification and prognosis
-5. Quality assessment of available evidence
-
-IMPORTANT: All confidence scores and probabilities must be 0-1 decimal values.
-
-Use the provided research context to inform your analysis. Consider:
-- Quality and consistency of evidence
-- Potential contradictions in research
-- Gaps in knowledge
-- Clinical applicability of research findings
-- Risk-benefit analysis based on evidence
-
-JSON structure:
-{
-  "primaryDiagnosis": {
-    "condition": "string",
-    "icd10Code": "string", 
-    "probability": 0-1,
-    "severity": "low|medium|high|critical",
-    "supportingEvidence": ["string"],
-    "researchSupport": ["string"],
-    "reasoning": "string",
-    "urgency": "routine|urgent|emergent"
-  },
-  "differentialDiagnoses": [
-    {
-      "condition": "string",
-      "icd10Code": "string",
-      "probability": 0-1,
-      "likelihood": "high|medium|low",
-      "supportingEvidence": ["string"],
-      "againstEvidence": ["string"],
-      "additionalTestsNeeded": ["string"],
-      "reasoning": "string"
-    }
-  ],
-  "researchEvidence": [
-    {
-      "source": "string",
-      "type": "clinical_study|systematic_review|guideline|case_study|meta_analysis",
-      "reliability": "high|medium|low",
-      "yearPublished": number,
-      "summary": "string",
-      "relevanceScore": 0-1,
-      "clinicalImplication": "string"
-    }
-  ],
-  "clinicalRecommendations": [
-    {
-      "category": "medication|procedure|lifestyle|referral|monitoring",
-      "recommendation": "string",
-      "priority": "low|medium|high|urgent",
-      "evidenceLevel": "A|B|C|D",
-      "timeframe": "string",
-      "expectedOutcome": "string",
-      "contraindications": ["string"],
-      "alternatives": ["string"]
-    }
-  ],
-  "riskFactors": ["string"],
-  "prognosticFactors": ["string"],
-  "followUpProtocol": ["string"],
-  "contraindications": ["string"],
-  "emergencyFlags": [
-    {
-      "type": "red_flag|drug_interaction|allergy|urgent_referral",
-      "severity": "low|medium|high|critical",
-      "message": "string",
-      "recommendation": "string",
-      "requiresImmediateAction": boolean
-    }
-  ],
-  "confidenceAssessment": {
-    "evidenceQuality": "high|medium|low",
-    "consistencyScore": 0-1,
-    "gaps": ["string"],
-    "recommendations": ["string"]
-  }
-}`;
-
-      const userPrompt = `Research Context:
-      ${JSON.stringify(researchContext, null, 2)}
-      
-      Patient Context:
-      ${patientContext ? `
-      Age: ${patientContext.age || 'Unknown'}
-      Gender: ${patientContext.gender || 'Unknown'}
-      Medical History: ${patientContext.medicalHistory || 'None provided'}
-      Current Medications: ${patientContext.medications || 'None provided'}
-      Known Allergies: ${patientContext.allergies || 'None provided'}
-      Family History: ${patientContext.familyHistory || 'None provided'}
-      Social History: ${patientContext.socialHistory || 'None provided'}
-      ` : 'Limited patient context provided'}
-      
-      Clinical Presentation:
-      ${transcript}
-      
-      Please provide a comprehensive medical analysis integrating the research evidence with clinical reasoning. Focus on evidence-based medicine and current best practices.`;
-
-      const completion = await getOpenAIClient().chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.2, // Lower temperature for more consistent medical analysis
-        max_tokens: 4000,
-        response_format: { type: 'json_object' }
+      logGPTOperation.start(operation, 'gpt-4o', {
+        transcriptLength: transcript.length,
+        hasPatientContext: !!patientContext
       });
 
-      const analysisContent = completion.choices[0]?.message?.content;
-      if (!analysisContent) {
-        throw new Error('No analysis content received from OpenAI');
-      }
+      logGPTOperation.progress(operation, 'Routing through Firebase Functions for secure deep analysis');
 
-      const analysisData = JSON.parse(analysisContent);
-      
-      // Convert to our interface format
-      const deepAnalysis: DeepAnalysisResult = {
-        primaryDiagnosis: {
-          id: `dx-primary-${Date.now()}`,
-          condition: analysisData.primaryDiagnosis.condition,
-          icd10Code: analysisData.primaryDiagnosis.icd10Code,
-          probability: analysisData.primaryDiagnosis.probability,
-          severity: analysisData.primaryDiagnosis.severity,
-          supportingEvidence: analysisData.primaryDiagnosis.supportingEvidence,
+      // Route through Firebase Functions
+      const response = await callFirebaseFunction('analyzeTranscript', {
+        transcript,
+        patientContext,
+        analysisType: 'deep'
+      });
+
+      const processingTime = Date.now() - startTime;
+      logGPTOperation.success(operation, 'gpt-4o', processingTime, response);
+
+      // Convert response to DeepAnalysisResult format
+      const result: DeepAnalysisResult = {
+        primaryDiagnosis: response.primaryDiagnosis || {
+          id: 'primary-1',
+          condition: 'Deep analysis completed via Firebase Functions',
+          icd10Code: 'Z00.00',
+          probability: 0.5,
+          severity: 'medium',
+          supportingEvidence: [],
           againstEvidence: [],
           additionalTestsNeeded: [],
-          reasoning: analysisData.primaryDiagnosis.reasoning,
-          urgency: analysisData.primaryDiagnosis.urgency
-        },
-        differentialDiagnoses: analysisData.differentialDiagnoses.map((dx: any, index: number) => ({
-          id: `dx-diff-${index}`,
-          condition: dx.condition,
-          icd10Code: dx.icd10Code,
-          probability: dx.probability,
-          severity: dx.likelihood === 'high' ? 'high' : dx.likelihood === 'medium' ? 'medium' : 'low',
-          supportingEvidence: dx.supportingEvidence,
-          againstEvidence: dx.againstEvidence,
-          additionalTestsNeeded: dx.additionalTestsNeeded,
-          reasoning: dx.reasoning,
+          reasoning: 'Processed through secure Firebase Functions',
           urgency: 'routine'
-        })),
-        researchEvidence: analysisData.researchEvidence.map((evidence: any, index: number) => ({
-          id: `evidence-${index}`,
-          source: evidence.source,
-          type: evidence.type,
-          reliability: evidence.reliability,
-          yearPublished: evidence.yearPublished,
-          summary: evidence.summary,
-          relevanceScore: evidence.relevanceScore,
-          url: evidence.url
-        })),
-        clinicalRecommendations: analysisData.clinicalRecommendations.map((rec: any, index: number) => ({
-          id: `rec-${index}`,
-          category: rec.category,
-          recommendation: rec.recommendation,
-          priority: rec.priority,
-          timeframe: rec.timeframe,
-          contraindications: rec.contraindications,
-          alternatives: rec.alternatives,
-          expectedOutcome: rec.expectedOutcome,
-          evidenceLevel: rec.evidenceLevel
-        })),
-        riskFactors: analysisData.riskFactors,
-        prognosticFactors: analysisData.prognosticFactors,
-        followUpProtocol: analysisData.followUpProtocol,
-        contraindications: analysisData.contraindications,
-        emergencyFlags: analysisData.emergencyFlags.map((flag: any, index: number) => ({
-          id: `flag-${index}`,
-          type: flag.type,
-          severity: flag.severity,
-          message: flag.message,
-          recommendation: flag.recommendation,
-          requiresImmediateAction: flag.requiresImmediateAction
-        })),
-        confidenceAssessment: analysisData.confidenceAssessment
+        },
+        differentialDiagnoses: response.differentialDiagnoses || [],
+        researchEvidence: response.researchEvidence || [],
+        clinicalRecommendations: response.clinicalRecommendations || [],
+        riskFactors: response.riskFactors || [],
+        prognosticFactors: response.prognosticFactors || [],
+        followUpProtocol: response.followUpProtocol || [],
+        contraindications: response.contraindications || [],
+        emergencyFlags: response.emergencyFlags || [],
+        confidenceAssessment: response.confidenceAssessment || {
+          evidenceQuality: 'medium',
+          consistencyScore: 0.5,
+          gaps: [],
+          recommendations: []
+        }
       };
 
-      return deepAnalysis;
-    } catch (error) {
-      console.error('Error in deep medical analysis:', error);
-      throw new Error('Failed to perform deep medical analysis. Please try again.');
+      return result;
+
+    } catch (error: any) {
+      const processingTime = Date.now() - startTime;
+      logGPTOperation.error(operation, 'gpt-4o', error, processingTime);
+      throw new Error(`Failed to perform deep medical analysis: ${error.message}`);
     }
   }
 
@@ -1650,7 +1084,8 @@ JSON structure:
    * Extract relevant research queries from medical transcript
    */
   private async extractResearchQueries(transcript: string): Promise<string[]> {
-    const systemPrompt = `You are a medical research assistant. Extract key medical concepts, symptoms, and conditions from the patient transcript that would benefit from current research evidence.
+    try {
+      const systemPrompt = `You are a medical research assistant. Extract key medical concepts, symptoms, and conditions from the patient transcript that would benefit from current research evidence.
 
 Return a JSON array of specific research queries that would help with diagnosis and treatment planning.
 
@@ -1663,26 +1098,26 @@ Focus on:
 - Risk factors
 - Complications`;
 
-    const completion = await getOpenAIClient().chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Extract research queries from: ${transcript}` }
-      ],
-      temperature: 0.3,
-      max_tokens: 500,
-      response_format: { type: 'json_object' }
-    });
+      // Route through Firebase Functions
+      const response = await callFirebaseFunction('generateText', {
+        prompt: `${systemPrompt}\n\nExtract research queries from: ${transcript}`,
+        model: 'gpt-4o'
+      });
 
-    const result = JSON.parse(completion.choices[0]?.message?.content || '{"queries": []}');
-    return result.queries || [];
+      const result = JSON.parse(response.text || '{"queries": []}');
+      return result.queries || [];
+    } catch (error) {
+      console.error('Error extracting research queries:', error);
+      return [];
+    }
   }
 
   /**
    * Extract potential diagnoses from medical transcript
    */
   private async extractPotentialDiagnoses(transcript: string): Promise<string[]> {
-    const systemPrompt = `You are a medical diagnostic assistant. Extract potential diagnoses and medical conditions from the patient transcript that would benefit from research evidence.
+    try {
+      const systemPrompt = `You are a medical diagnostic assistant. Extract potential diagnoses and medical conditions from the patient transcript that would benefit from research evidence.
 
 Return a JSON array of potential diagnoses and conditions.
 
@@ -1694,19 +1129,18 @@ Focus on:
 - Medical conditions mentioned
 - Related disease states`;
 
-    const completion = await getOpenAIClient().chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Extract potential diagnoses from: ${transcript}` }
-      ],
-      temperature: 0.3,
-      max_tokens: 500,
-      response_format: { type: 'json_object' }
-    });
+      // Route through Firebase Functions
+      const response = await callFirebaseFunction('generateText', {
+        prompt: `${systemPrompt}\n\nExtract potential diagnoses from: ${transcript}`,
+        model: 'gpt-4o'
+      });
 
-    const result = JSON.parse(completion.choices[0]?.message?.content || '{"diagnoses": []}');
-    return result.diagnoses || [];
+      const result = JSON.parse(response.text || '{"diagnoses": []}');
+      return result.diagnoses || [];
+    } catch (error) {
+      console.error('Error extracting potential diagnoses:', error);
+      return [];
+    }
   }
 
   /**
@@ -1800,42 +1234,39 @@ Return JSON with:
     contraindications: string[];
     evidenceLevel: string;
   }> {
-    const systemPrompt = `You are a medical protocol specialist. Create an evidence-based treatment protocol for the given diagnosis and patient context.
+    const operation = 'TREATMENT_PROTOCOL_GENERATION';
+    const startTime = Date.now();
+    
+    try {
+      logGPTOperation.start(operation, 'gpt-4o', {
+        diagnosis,
+        hasPatientContext: !!patientContext
+      });
 
-Return JSON with:
-{
-  "protocol": [
-    {
-      "step": number,
-      "intervention": "string",
-      "category": "medication|procedure|lifestyle|referral|monitoring",
-      "priority": "low|medium|high|urgent",
-      "timeframe": "string",
-      "expectedOutcome": "string",
-      "evidenceLevel": "A|B|C|D",
-      "contraindications": ["string"],
-      "alternatives": ["string"]
+      logGPTOperation.progress(operation, 'Routing through Firebase Functions for secure treatment protocol generation');
+
+      // Route through Firebase Functions
+      const response = await callFirebaseFunction('generateTreatmentProtocol', {
+        diagnosis,
+        patientContext
+      });
+
+      const processingTime = Date.now() - startTime;
+      logGPTOperation.success(operation, 'gpt-4o', processingTime, response);
+
+      return response || {
+        protocol: [],
+        monitoring: [],
+        followUp: [],
+        contraindications: [],
+        evidenceLevel: 'C'
+      };
+
+    } catch (error: any) {
+      const processingTime = Date.now() - startTime;
+      logGPTOperation.error(operation, 'gpt-4o', error, processingTime);
+      throw new Error(`Failed to generate treatment protocol: ${error.message}`);
     }
-  ],
-  "monitoring": ["monitoring parameters"],
-  "followUp": ["follow-up schedule and parameters"],
-  "contraindications": ["absolute and relative contraindications"],
-  "evidenceLevel": "Overall evidence quality assessment"
-}`;
-
-    const completion = await getOpenAIClient().chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Diagnosis: ${diagnosis}\n\nPatient Context: ${JSON.stringify(patientContext)}` }
-      ],
-      temperature: 0.2,
-      max_tokens: 1500,
-      response_format: { type: 'json_object' }
-    });
-
-    const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
-    return result;
   }
 }
 
