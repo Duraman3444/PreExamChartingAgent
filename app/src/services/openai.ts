@@ -1,27 +1,5 @@
-import OpenAI from 'openai';
-import { medicalResearchService } from './medicalResearch';
-
-// OpenAI Configuration - Lazy initialization to handle missing API keys gracefully
-let openai: OpenAI | null = null;
-
 // Firebase Functions endpoints for secure server-side OpenAI calls
 const FIREBASE_FUNCTIONS_BASE_URL = 'https://us-central1-medicalchartingapp.cloudfunctions.net';
-
-const getOpenAIClient = (): OpenAI => {
-  if (!openai) {
-    console.log('🔧 [OpenAI Debug] Initializing secure client using Firebase Functions...');
-    console.log('✅ [OpenAI Debug] Using server-side OpenAI API (secure)');
-    
-    // Create a dummy client - we'll use Firebase Functions for actual calls
-    openai = new OpenAI({
-      apiKey: 'firebase-functions-proxy',
-      dangerouslyAllowBrowser: true
-    });
-    
-    console.log('✅ [OpenAI Debug] Secure Firebase Functions client initialized');
-  }
-  return openai;
-};
 
 // Helper function to get Firebase auth token
 const getAuthToken = async (): Promise<string> => {
@@ -254,125 +232,8 @@ export interface ModelConfig {
 
 class OpenAIService {
   private validateApiKey(): void {
-    // Always use Firebase Functions - no direct API key validation needed
+    // Always use Firebase Functions - no API key validation needed
     console.log('✅ [OpenAI Debug] Using secure Firebase Functions proxy');
-  }
-
-  /**
-   * Get optimal model configuration based on analysis type
-   */
-  private getModelConfig(analysisType: 'quick' | 'deep' | 'reasoning'): ModelConfig {
-    switch (analysisType) {
-      case 'quick':
-        return {
-          model: 'gpt-4o',
-          temperature: 0.3,
-          maxTokens: 1500,
-          responseFormat: 'json_object',
-          reasoningEnabled: false
-        };
-      case 'deep':
-        return {
-          model: 'o1-mini',
-          temperature: 1, // o1 models use temperature 1
-          maxTokens: 4000,
-          responseFormat: 'json_object',
-          reasoningEnabled: true
-        };
-      case 'reasoning':
-        return {
-          model: 'o1',
-          temperature: 1, // o1 models use temperature 1
-          maxTokens: 6000,
-          responseFormat: 'json_object',
-          reasoningEnabled: true
-        };
-      default:
-        return {
-          model: 'gpt-4o',
-          temperature: 0.3,
-          maxTokens: 2000,
-          responseFormat: 'json_object',
-          reasoningEnabled: false
-        };
-    }
-  }
-
-  /**
-   * Extract JSON from markdown text (handles O1 model responses)
-   */
-  private extractJsonFromMarkdown(text: string): string {
-    // Remove markdown code blocks
-    const jsonMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-    if (jsonMatch) {
-      return jsonMatch[1];
-    }
-    
-    // Try to find JSON object directly
-    const directJsonMatch = text.match(/\{[\s\S]*\}/);
-    if (directJsonMatch) {
-      return directJsonMatch[0];
-    }
-    
-    // If no JSON found, return the original text
-    return text;
-  }
-
-  /**
-   * Parse reasoning content from o1 model response
-   */
-  private parseReasoning(completion: any): ReasoningTrace {
-    const sessionId = `reasoning-${Date.now()}`;
-    const startTime = Date.now();
-    
-    // Extract reasoning from o1 model if available
-    const reasoningContent = completion.choices[0]?.message?.reasoning || '';
-    
-    // Parse reasoning into steps (simplified for now)
-    const steps: ReasoningStep[] = [];
-    
-    if (reasoningContent) {
-      const reasoningLines = reasoningContent.split('\n').filter((line: string) => line.trim());
-      let stepCount = 0;
-      
-      for (let i = 0; i < reasoningLines.length; i++) {
-        const line: string = reasoningLines[i];
-        
-        // Identify reasoning steps (look for common patterns)
-        if (line.match(/^(Step|Analysis|Considering|Evaluating|Conclusion|Let me|I need to|Looking at)/i)) {
-          stepCount++;
-          
-          // Determine step type based on content
-          let type: ReasoningStep['type'] = 'analysis';
-          if (line.match(/research|literature|study|evidence/i)) type = 'research';
-          if (line.match(/evaluat|assess|consider|weigh/i)) type = 'evaluation';
-          if (line.match(/synthesis|combining|integrat/i)) type = 'synthesis';
-          if (line.match(/decision|recommend|conclude/i)) type = 'decision';
-          if (line.match(/validat|verify|check/i)) type = 'validation';
-          
-          steps.push({
-            id: `step-${stepCount}`,
-            timestamp: startTime + (i * 100), // Simulate timing
-            type,
-            title: line.substring(0, 100) + (line.length > 100 ? '...' : ''),
-            content: line,
-            confidence: 0.85 + (Math.random() * 0.15), // Simulate confidence
-            evidence: [],
-            considerations: []
-          });
-        }
-      }
-    }
-    
-    return {
-      sessionId,
-      totalSteps: steps.length,
-      steps,
-      startTime,
-      endTime: Date.now(),
-      model: completion.model || 'o1',
-      reasoning: reasoningContent
-    };
   }
 
   /**
@@ -541,7 +402,7 @@ class OpenAIService {
    * Transcribe audio file using OpenAI Whisper
    */
   async transcribeAudio(audioFile: File): Promise<TranscriptionResult> {
-    const operation = 'TRANSCRIPTION';
+    const operation = 'AUDIO_TRANSCRIPTION';
     const startTime = Date.now();
     
     this.validateApiKey();
@@ -553,20 +414,27 @@ class OpenAIService {
         fileType: audioFile.type
       });
 
-      logGPTOperation.progress(operation, 'Uploading audio file to OpenAI');
+      logGPTOperation.progress(operation, 'Uploading audio file to Firebase Function');
 
-      // Use OpenAI Whisper for transcription
-      const transcription = await getOpenAIClient().audio.transcriptions.create({
-        file: audioFile,
-        model: 'whisper-1',
-        response_format: 'verbose_json',
-        timestamp_granularities: ['segment']
+      // Convert file to base64 for Firebase Function
+      const reader = new FileReader();
+      const fileData = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(audioFile);
+      });
+
+      // Route through Firebase Functions
+      const response = await callFirebaseFunction('transcribeAudio', {
+        audioData: fileData,
+        fileName: audioFile.name,
+        fileType: audioFile.type
       });
 
       logGPTOperation.progress(operation, 'Processing transcription segments');
 
       // Process the transcription into our format
-      const segments = transcription.segments?.map((segment, index) => ({
+      const segments = response.segments?.map((segment: any, index: number) => ({
         id: `segment-${index + 1}`,
         speaker: this.identifySpeaker(segment.text, index),
         timestamp: segment.start,
@@ -576,10 +444,10 @@ class OpenAIService {
       })) || [];
 
       const result = {
-        text: transcription.text,
+        text: response.text || '',
         segments,
-        confidence: this.normalizeConfidenceScore(segments.reduce((acc, seg) => acc + seg.confidence, 0) / segments.length || 0.85),
-        duration: transcription.duration || 0
+        confidence: this.normalizeConfidenceScore(segments.reduce((acc: number, seg: any) => acc + seg.confidence, 0) / segments.length || 0.85),
+        duration: response.duration || 0
       };
 
       const finalProcessingTime = Date.now() - startTime;
@@ -594,7 +462,7 @@ class OpenAIService {
     } catch (error) {
       const processingTime = Date.now() - startTime;
       logGPTOperation.error(operation, 'whisper-1', error, processingTime);
-      throw new Error('Failed to transcribe audio. Please check your API key and try again.');
+      throw new Error('Failed to transcribe audio. Please check your connection and try again.');
     }
   }
 
@@ -1056,170 +924,6 @@ class OpenAIService {
       throw new Error(`Failed to perform deep medical analysis: ${error.message}`);
     }
   }
-
-  /**
-   * Perform medical research using web search and knowledge base
-   */
-  private async performMedicalResearch(
-    transcript: string,
-    patientContext?: any
-  ): Promise<ResearchContext> {
-    // Extract key medical terms and conditions from transcript
-    const researchQueries = await this.extractResearchQueries(transcript);
-    
-    // Extract potential diagnoses for more targeted research
-    const potentialDiagnoses = await this.extractPotentialDiagnoses(transcript);
-    
-    // Use enhanced medical research service
-    const researchContext = await medicalResearchService.performComprehensiveResearch(
-      researchQueries,
-      potentialDiagnoses,
-      patientContext || {}
-    );
-    
-    return researchContext;
-  }
-
-  /**
-   * Extract relevant research queries from medical transcript
-   */
-  private async extractResearchQueries(transcript: string): Promise<string[]> {
-    try {
-      const systemPrompt = `You are a medical research assistant. Extract key medical concepts, symptoms, and conditions from the patient transcript that would benefit from current research evidence.
-
-Return a JSON array of specific research queries that would help with diagnosis and treatment planning.
-
-Format: {"queries": ["query1", "query2", "query3"]}
-
-Focus on:
-- Primary symptoms and their combinations
-- Potential diagnoses mentioned
-- Treatment considerations
-- Risk factors
-- Complications`;
-
-      // Route through Firebase Functions
-      const response = await callFirebaseFunction('generateText', {
-        prompt: `${systemPrompt}\n\nExtract research queries from: ${transcript}`,
-        model: 'gpt-4o'
-      });
-
-      const result = JSON.parse(response.text || '{"queries": []}');
-      return result.queries || [];
-    } catch (error) {
-      console.error('Error extracting research queries:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Extract potential diagnoses from medical transcript
-   */
-  private async extractPotentialDiagnoses(transcript: string): Promise<string[]> {
-    try {
-      const systemPrompt = `You are a medical diagnostic assistant. Extract potential diagnoses and medical conditions from the patient transcript that would benefit from research evidence.
-
-Return a JSON array of potential diagnoses and conditions.
-
-Format: {"diagnoses": ["diagnosis1", "diagnosis2", "diagnosis3"]}
-
-Focus on:
-- Most likely diagnoses based on symptoms
-- Differential diagnoses to consider
-- Medical conditions mentioned
-- Related disease states`;
-
-      // Route through Firebase Functions
-      const response = await callFirebaseFunction('generateText', {
-        prompt: `${systemPrompt}\n\nExtract potential diagnoses from: ${transcript}`,
-        model: 'gpt-4o'
-      });
-
-      const result = JSON.parse(response.text || '{"diagnoses": []}');
-      return result.diagnoses || [];
-    } catch (error) {
-      console.error('Error extracting potential diagnoses:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Search medical literature (simulated with AI knowledge)
-   */
-  /* private async searchMedicalLiterature(query: string): Promise<MedicalEvidence[]> {
-    const systemPrompt = `You are a medical literature search engine. For the given query, provide relevant medical evidence from recent research, guidelines, and clinical studies.
-
-Return JSON array of evidence with the following structure:
-[
-  {
-    "source": "Study/guideline title and authors",
-    "type": "clinical_study|systematic_review|guideline|case_study|meta_analysis",
-    "reliability": "high|medium|low",
-    "yearPublished": number (2020-2024),
-    "summary": "Brief summary of findings",
-    "relevanceScore": 0-1,
-    "clinicalImplication": "How this applies to clinical practice"
-  }
-]
-
-Focus on:
-- Recent evidence (2020-2024)
-- High-quality studies
-- Clinical applicability
-- Guidelines from major medical organizations`;
-
-    const completion = await getOpenAIClient().chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Search for evidence on: ${query}` }
-      ],
-      temperature: 0.2,
-      max_tokens: 1000,
-      response_format: { type: 'json_object' }
-    });
-
-    const result = JSON.parse(completion.choices[0]?.message?.content || '{"evidence": []}');
-    return (result.evidence || []).map((evidence: any, index: number) => ({
-      id: `evidence-${query}-${index}`,
-      ...evidence
-    }));
-  } */
-
-  /**
-   * Analyze evidence for contradictions and gaps
-   */
-  /* private async analyzeEvidence(evidence: MedicalEvidence[], transcript: string): Promise<{
-    contradictions: string[];
-    gaps: string[];
-    recommendations: string[];
-  }> {
-    const systemPrompt = `You are a medical evidence analyst. Review the provided evidence and identify:
-1. Contradictions between different studies
-2. Gaps in the evidence
-3. Recommendations for clinical practice
-
-Return JSON with:
-{
-  "contradictions": ["description of contradictions"],
-  "gaps": ["areas where evidence is lacking"],
-  "recommendations": ["evidence-based recommendations"]
-}`;
-
-    const completion = await getOpenAIClient().chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Evidence: ${JSON.stringify(evidence)}\n\nCase: ${transcript}` }
-      ],
-      temperature: 0.2,
-      max_tokens: 800,
-      response_format: { type: 'json_object' }
-    });
-
-    const result = JSON.parse(completion.choices[0]?.message?.content || '{"contradictions": [], "gaps": [], "recommendations": []}');
-    return result;
-  } */
 
   /**
    * Generate evidence-based treatment protocols
