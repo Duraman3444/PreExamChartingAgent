@@ -102,6 +102,14 @@ export const EvaluationDashboard: React.FC = () => {
   const [evaluationLogs, setEvaluationLogs] = useState<EvaluationLog[]>([]);
   const [showLogs, setShowLogs] = useState(true);
   const logContainerRef = useRef<HTMLDivElement>(null);
+  
+  // New state for detailed results view
+  const [showAllResults, setShowAllResults] = useState(false);
+  const [resultsPage, setResultsPage] = useState(0);
+  const [resultsPerPage, setResultsPerPage] = useState(10);
+  const [resultsFilter, setResultsFilter] = useState<string>('all');
+  const [resultsSortBy, setResultsSortBy] = useState<'score' | 'id' | 'category'>('score');
+  const [resultsSortOrder, setResultsSortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     // Load any previous evaluation results
@@ -187,25 +195,54 @@ export const EvaluationDashboard: React.FC = () => {
   const handleExportResults = () => {
     if (!evaluationResults) return;
 
-    const csvData = evaluationResults.detailedResults.map(result => ({
+    // Export filtered and sorted results
+    const resultsToExport = getFilteredAndSortedResults();
+    
+    const csvData = resultsToExport.map(result => ({
       id: result.id,
-      question: result.originalQuestion.substring(0, 100),
-      score: result.comparisonScore,
+      question: result.originalQuestion.substring(0, 200),
+      expectedAnswer: result.expectedAnswer.substring(0, 200),
+      overallScore: result.comparisonScore,
       category: result.category,
+      symptomScore: result.detailedScores.symptomExtraction,
+      diagnosisScore: result.detailedScores.diagnosisAccuracy,
+      treatmentScore: result.detailedScores.treatmentRecommendations,
+      coherenceScore: result.detailedScores.overallCoherence,
       strengths: result.strengths.join('; '),
-      weaknesses: result.weaknesses.join('; ')
+      weaknesses: result.weaknesses.join('; '),
+      aiSymptoms: result.aiAnalysis.symptoms.map((s: any) => s.name).join(', '),
+      aiDiagnoses: result.aiAnalysis.diagnoses.map((d: any) => d.condition).join(', '),
+      aiTreatments: result.aiAnalysis.treatments.map((t: any) => t.recommendation).join(', ')
     }));
 
     const csvContent = [
-      ['ID', 'Question', 'Score', 'Category', 'Strengths', 'Weaknesses'],
-      ...csvData.map(row => [row.id, row.question, row.score.toString(), row.category, row.strengths, row.weaknesses])
+      ['ID', 'Question', 'Expected Answer', 'Overall Score', 'Category', 'Symptom Score', 'Diagnosis Score', 'Treatment Score', 'Coherence Score', 'Strengths', 'Weaknesses', 'AI Symptoms', 'AI Diagnoses', 'AI Treatments'],
+      ...csvData.map(row => [
+        row.id, 
+        row.question, 
+        row.expectedAnswer,
+        row.overallScore.toString(), 
+        row.category,
+        row.symptomScore.toString(),
+        row.diagnosisScore.toString(),
+        row.treatmentScore.toString(),
+        row.coherenceScore.toString(),
+        row.strengths, 
+        row.weaknesses,
+        row.aiSymptoms,
+        row.aiDiagnoses,
+        row.aiTreatments
+      ])
     ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `evaluation_results_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.csv`;
+    
+    // Include filter info in filename
+    const filterSuffix = resultsFilter !== 'all' ? `_${resultsFilter}` : '';
+    link.download = `evaluation_results${filterSuffix}_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -247,6 +284,71 @@ export const EvaluationDashboard: React.FC = () => {
         return 'text.primary';
     }
   };
+
+  // Helper functions for detailed results
+  const getFilteredAndSortedResults = () => {
+    if (!evaluationResults) return [];
+    
+    let filtered = evaluationResults.detailedResults;
+    
+    // Apply filter
+    if (resultsFilter !== 'all') {
+      filtered = filtered.filter(result => result.category === resultsFilter);
+    }
+    
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aVal, bVal;
+      
+      switch (resultsSortBy) {
+        case 'score':
+          aVal = a.comparisonScore;
+          bVal = b.comparisonScore;
+          break;
+        case 'id':
+          aVal = a.id;
+          bVal = b.id;
+          break;
+        case 'category':
+          aVal = a.category;
+          bVal = b.category;
+          break;
+        default:
+          aVal = a.comparisonScore;
+          bVal = b.comparisonScore;
+      }
+      
+      if (resultsSortOrder === 'asc') {
+        return aVal > bVal ? 1 : -1;
+      } else {
+        return aVal < bVal ? 1 : -1;
+      }
+    });
+    
+    return filtered;
+  };
+
+  const getPaginatedResults = () => {
+    const filteredResults = getFilteredAndSortedResults();
+    
+    if (showAllResults) {
+      return filteredResults;
+    }
+    
+    const start = resultsPage * resultsPerPage;
+    const end = start + resultsPerPage;
+    return filteredResults.slice(start, end);
+  };
+
+  const getTotalPages = () => {
+    const filteredResults = getFilteredAndSortedResults();
+    return Math.ceil(filteredResults.length / resultsPerPage);
+  };
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setResultsPage(0);
+  }, [resultsFilter, resultsSortBy, resultsSortOrder]);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -632,9 +734,88 @@ export const EvaluationDashboard: React.FC = () => {
             <Grid item xs={12}>
               <Card>
                 <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Detailed Results
-                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6">
+                      Detailed Results ({getFilteredAndSortedResults().length} total)
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                      <Button
+                        variant={showAllResults ? "contained" : "outlined"}
+                        size="small"
+                        onClick={() => setShowAllResults(!showAllResults)}
+                      >
+                        {showAllResults ? 'Show Paginated' : 'Show All Results'}
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<DownloadIcon />}
+                        onClick={handleExportResults}
+                      >
+                        Export Results
+                      </Button>
+                    </Box>
+                  </Box>
+
+                  {/* Filters and Controls */}
+                  <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+                    <FormControl size="small" sx={{ minWidth: 120 }}>
+                      <InputLabel>Filter by Category</InputLabel>
+                      <Select
+                        value={resultsFilter}
+                        label="Filter by Category"
+                        onChange={(e) => setResultsFilter(e.target.value)}
+                      >
+                        <MenuItem value="all">All Categories</MenuItem>
+                        <MenuItem value="symptom_extraction">Symptom Extraction</MenuItem>
+                        <MenuItem value="diagnosis">Diagnosis</MenuItem>
+                        <MenuItem value="treatment">Treatment</MenuItem>
+                        <MenuItem value="general">General</MenuItem>
+                      </Select>
+                    </FormControl>
+
+                    <FormControl size="small" sx={{ minWidth: 120 }}>
+                      <InputLabel>Sort by</InputLabel>
+                      <Select
+                        value={resultsSortBy}
+                        label="Sort by"
+                        onChange={(e) => setResultsSortBy(e.target.value as 'score' | 'id' | 'category')}
+                      >
+                        <MenuItem value="score">Score</MenuItem>
+                        <MenuItem value="id">ID</MenuItem>
+                        <MenuItem value="category">Category</MenuItem>
+                      </Select>
+                    </FormControl>
+
+                    <FormControl size="small" sx={{ minWidth: 100 }}>
+                      <InputLabel>Order</InputLabel>
+                      <Select
+                        value={resultsSortOrder}
+                        label="Order"
+                        onChange={(e) => setResultsSortOrder(e.target.value as 'asc' | 'desc')}
+                      >
+                        <MenuItem value="desc">Desc</MenuItem>
+                        <MenuItem value="asc">Asc</MenuItem>
+                      </Select>
+                    </FormControl>
+
+                    {!showAllResults && (
+                      <FormControl size="small" sx={{ minWidth: 120 }}>
+                        <InputLabel>Results per page</InputLabel>
+                        <Select
+                          value={resultsPerPage}
+                          label="Results per page"
+                          onChange={(e) => setResultsPerPage(Number(e.target.value))}
+                        >
+                          <MenuItem value={10}>10</MenuItem>
+                          <MenuItem value={25}>25</MenuItem>
+                          <MenuItem value={50}>50</MenuItem>
+                          <MenuItem value={100}>100</MenuItem>
+                        </Select>
+                      </FormControl>
+                    )}
+                  </Box>
+
                   <TableContainer component={Paper} variant="outlined">
                     <Table>
                       <TableHead>
@@ -643,11 +824,14 @@ export const EvaluationDashboard: React.FC = () => {
                           <TableCell>Question</TableCell>
                           <TableCell>Score</TableCell>
                           <TableCell>Category</TableCell>
+                          <TableCell>Symptom Score</TableCell>
+                          <TableCell>Diagnosis Score</TableCell>
+                          <TableCell>Treatment Score</TableCell>
                           <TableCell>Actions</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {evaluationResults.detailedResults.slice(0, 10).map((result) => (
+                        {getPaginatedResults().map((result) => (
                           <TableRow key={result.id}>
                             <TableCell>{result.id}</TableCell>
                             <TableCell>
@@ -671,6 +855,21 @@ export const EvaluationDashboard: React.FC = () => {
                               />
                             </TableCell>
                             <TableCell>
+                              <Typography variant="body2" color={result.detailedScores.symptomExtraction >= 80 ? 'success.main' : result.detailedScores.symptomExtraction >= 60 ? 'warning.main' : 'error.main'}>
+                                {result.detailedScores.symptomExtraction.toFixed(1)}%
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" color={result.detailedScores.diagnosisAccuracy >= 80 ? 'success.main' : result.detailedScores.diagnosisAccuracy >= 60 ? 'warning.main' : 'error.main'}>
+                                {result.detailedScores.diagnosisAccuracy.toFixed(1)}%
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" color={result.detailedScores.treatmentRecommendations >= 80 ? 'success.main' : result.detailedScores.treatmentRecommendations >= 60 ? 'warning.main' : 'error.main'}>
+                                {result.detailedScores.treatmentRecommendations.toFixed(1)}%
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
                               <Button
                                 size="small"
                                 onClick={() => handleViewResult(result)}
@@ -683,11 +882,42 @@ export const EvaluationDashboard: React.FC = () => {
                       </TableBody>
                     </Table>
                   </TableContainer>
-                  {evaluationResults.detailedResults.length > 10 && (
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                      Showing first 10 of {evaluationResults.detailedResults.length} results
-                    </Typography>
+
+                  {/* Pagination Controls */}
+                  {!showAllResults && getTotalPages() > 1 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2, gap: 2 }}>
+                      <Button
+                        disabled={resultsPage === 0}
+                        onClick={() => setResultsPage(resultsPage - 1)}
+                      >
+                        Previous
+                      </Button>
+                      <Typography>
+                        Page {resultsPage + 1} of {getTotalPages()}
+                      </Typography>
+                      <Button
+                        disabled={resultsPage >= getTotalPages() - 1}
+                        onClick={() => setResultsPage(resultsPage + 1)}
+                      >
+                        Next
+                      </Button>
+                    </Box>
                   )}
+
+                  {/* Results Summary */}
+                  <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      {showAllResults 
+                        ? `Showing all ${getFilteredAndSortedResults().length} results` 
+                        : `Showing ${(resultsPage * resultsPerPage) + 1}-${Math.min((resultsPage + 1) * resultsPerPage, getFilteredAndSortedResults().length)} of ${getFilteredAndSortedResults().length} results`
+                      }
+                    </Typography>
+                    {showAllResults && getFilteredAndSortedResults().length > 100 && (
+                      <Alert severity="info" sx={{ ml: 2 }}>
+                        Large dataset - consider using pagination for better performance
+                      </Alert>
+                    )}
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>
