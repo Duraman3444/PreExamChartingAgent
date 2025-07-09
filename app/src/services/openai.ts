@@ -265,11 +265,11 @@ class OpenAIService {
       logGPTOperation.progress(operation, 'Routing through Firebase Functions for secure analysis');
 
       // Route through Firebase Functions
-      const response = await callFirebaseFunction('analyzeTranscript', {
+      const response = await callFirebaseFunction('analyzeWithReasoning', {
         transcript,
         patientContext,
         modelType,
-        analysisType: 'reasoning'
+        analysisPrompt: undefined
       });
 
       const processingTime = Date.now() - startTime;
@@ -338,11 +338,11 @@ class OpenAIService {
       logGPTOperation.progress(operation, 'Routing through Firebase Functions for secure deep analysis');
 
       // Route through Firebase Functions
-      const response = await callFirebaseFunction('analyzeTranscript', {
+      const response = await callFirebaseFunction('analyzeWithReasoning', {
         transcript,
         patientContext,
         modelType,
-        analysisType: 'deep_reasoning'
+        analysisPrompt: undefined
       });
 
       const processingTime = Date.now() - startTime;
