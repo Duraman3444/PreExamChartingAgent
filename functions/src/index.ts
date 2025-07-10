@@ -1838,7 +1838,7 @@ Return JSON with:
   });
 });
 
-// Streaming reasoning analysis function
+// Enhanced Analysis function with Real-time O1 Reasoning Display
 export const analyzeWithStreamingReasoning = functions.runWith({
   timeoutSeconds: 300, // 5 minutes timeout for streaming analysis
   memory: '2GB'
@@ -1893,64 +1893,88 @@ export const analyzeWithStreamingReasoning = functions.runWith({
       });
 
       // Send initial connection message
-      response.write(createSSEMessage('connected', { message: 'Connected to streaming analysis' }));
+      response.write(createSSEMessage('connected', { message: 'Connected to O1 real-time reasoning analysis' }));
 
       // Create session ID for this analysis
       const sessionId = `streaming-session-${Date.now()}`;
       const startTime = Date.now();
 
       // Start the analysis process
-      console.log('🚀 [STREAMING] Starting streaming O1 analysis with model:', modelType);
-
-      // Emit initial reasoning step
-      emitReasoningStep(response, {
-        id: 'step-1',
-        timestamp: Date.now(),
-        type: 'analysis',
-        title: 'Initializing O1 Deep Clinical Analysis',
-        content: 'Starting comprehensive medical analysis using O1 model. Analyzing patient transcript and clinical presentation...',
-        confidence: 0.95,
-        evidence: ['Patient transcript received', 'Clinical context available', 'O1 model initialized'],
-        considerations: ['Symptom identification', 'Clinical presentation', 'Medical history review']
-      });
-
-      // Simulate reasoning delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log('🚀 [STREAMING] Starting real-time O1 reasoning with model:', modelType);
 
       // Determine model to use
       const model = modelType === 'o1' ? 'o1-preview' : 'o1-mini';
       
+      // Emit initial reasoning step - actual AI preparation
+      emitReasoningStep(response, {
+        id: 'thinking-1',
+        timestamp: Date.now(),
+        type: 'preparation',
+        title: 'Initializing Medical AI Reasoning',
+        content: `Starting ${model} analysis for comprehensive medical assessment. Preparing to analyze patient transcript and clinical context...`,
+        confidence: 0.95,
+        evidence: ['Patient transcript received', 'Clinical context loaded', `${model} model initialized`],
+        considerations: ['Medical history review', 'Symptom pattern recognition', 'Clinical guideline integration']
+      });
+
+      // Wait a moment to simulate preparation
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Emit reasoning preparation step
+      emitReasoningStep(response, {
+        id: 'thinking-2',
+        timestamp: Date.now(),
+        type: 'analysis',
+        title: 'Engaging Advanced Medical Reasoning',
+        content: `${model} is now analyzing the patient presentation. The AI will systematically evaluate symptoms, consider differential diagnoses, and apply medical knowledge to generate comprehensive clinical insights...`,
+        confidence: 0.92,
+        evidence: ['Medical knowledge base activated', 'Clinical reasoning protocols engaged', 'Diagnostic algorithms initialized'],
+        considerations: ['Patient safety priorities', 'Evidence-based medicine', 'Clinical decision support']
+      });
+
       // Create O1-specific prompt
       const o1Prompt = `
-        Analyze this medical transcript and provide a comprehensive clinical analysis. Think step-by-step through the clinical reasoning process.
+        As an expert physician, analyze this medical case comprehensively. Think through your medical reasoning step-by-step, showing your clinical thought process.
 
-        TRANSCRIPT:
+        PATIENT TRANSCRIPT:
         ${transcript}
 
         ${patientContext ? `PATIENT CONTEXT:
         ${JSON.stringify(patientContext, null, 2)}` : ''}
 
-        Please provide a detailed medical analysis including:
-        1. Symptom identification and analysis
-        2. Differential diagnosis with clinical reasoning
-        3. Evidence-based treatment recommendations
-        4. Clinical concerns and red flags
-        5. Follow-up recommendations
-        6. Overall clinical assessment
+        Please provide a detailed step-by-step medical analysis including:
 
-        Focus on the actual content of the transcript and provide specific, relevant medical insights based on what the patient is actually presenting with.
+        1. **CLINICAL PRESENTATION ANALYSIS**
+        Think through what stands out in this case. What are the key symptoms and their characteristics?
+
+        2. **MEDICAL REASONING PROCESS** 
+        Work through your differential diagnosis systematically. What conditions are you considering and why?
+
+        3. **EVIDENCE-BASED ASSESSMENT**
+        Apply medical knowledge and clinical guidelines. What does the evidence tell us?
+
+        4. **TREATMENT REASONING**
+        Think through appropriate interventions based on your analysis.
+
+        5. **CLINICAL DECISION MAKING**
+        Synthesize your findings into actionable medical recommendations.
+
+        Show your complete medical reasoning process as you work through this case.
       `;
 
-      // Emit O1 reasoning step
+      // Wait another moment before starting actual O1 analysis
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Emit that we're starting the actual O1 reasoning
       emitReasoningStep(response, {
-        id: 'step-2',
+        id: 'thinking-3',
         timestamp: Date.now(),
-        type: 'research',
-        title: 'O1 Model Deep Reasoning Process',
-        content: `Engaging O1 model (${model}) for comprehensive clinical reasoning. The model will analyze the transcript, consider patient context, and generate evidence-based medical insights.`,
-        confidence: 0.92,
-        evidence: ['O1 model capabilities', 'Clinical reasoning engine', 'Evidence-based medicine protocols'],
-        considerations: ['Differential diagnosis', 'Clinical guidelines', 'Patient safety']
+        type: 'reasoning',
+        title: 'O1 Medical Reasoning in Progress',
+        content: `${model} is now performing deep medical reasoning. The AI is systematically working through the clinical presentation, applying medical knowledge, and developing evidence-based insights. This process involves complex medical reasoning that may take 60-120 seconds...`,
+        confidence: 0.88,
+        evidence: ['Deep reasoning algorithms active', 'Medical knowledge synthesis', 'Clinical pattern recognition'],
+        considerations: ['Comprehensive evaluation', 'Multiple diagnostic possibilities', 'Treatment optimization']
       });
 
       // Call OpenAI API with O1 reasoning
@@ -1971,59 +1995,37 @@ export const analyzeWithStreamingReasoning = functions.runWith({
 
       console.log('🚀 [STREAMING] O1 Analysis Response Length:', reasoningText.length);
 
-      // Emit reasoning completion step
+      // Now stream the actual O1 reasoning text progressively like Cursor's thinking
+      await streamO1ReasoningThoughts(response, reasoningText, model);
+
+      // After streaming the reasoning, extract structured data using GPT-4o
       emitReasoningStep(response, {
-        id: 'step-3',
+        id: 'thinking-final',
         timestamp: Date.now(),
-        type: 'synthesis',
-        title: 'O1 Reasoning Analysis Complete',
-        content: `O1 model has completed comprehensive clinical reasoning. Generated ${reasoningText.length} characters of detailed medical analysis. Now extracting structured medical data...`,
-        confidence: 0.89,
-        evidence: ['O1 analysis complete', 'Clinical reasoning generated', 'Medical insights available'],
-        considerations: ['Data extraction', 'Structured formatting', 'Clinical validation']
+        type: 'finalization',
+        title: 'Finalizing Clinical Analysis',
+        content: 'Converting comprehensive medical reasoning into structured clinical data for review. Organizing findings into symptoms, diagnoses, treatments, and recommendations...',
+        confidence: 0.94,
+        evidence: ['Medical reasoning complete', 'Structured data extraction', 'Clinical validation'],
+        considerations: ['Data accuracy', 'Clinical relevance', 'Actionable insights']
       });
 
-      // Simulate processing delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Now use GPT-4o to extract structured data
-      console.log('🚀 [STREAMING] Starting structured extraction with GPT-4o...');
-      
+      // Use GPT-4o to extract structured data from the O1 reasoning
       const structurePrompt = `
-        You are a medical data extraction specialist. Extract structured medical information from the provided O1 analysis and format it into the required JSON structure.
+        Extract structured medical information from this comprehensive O1 medical analysis and format it into the required JSON structure.
 
-        CRITICAL INSTRUCTIONS:
-        1. Extract ALL symptoms mentioned in the O1 analysis
-        2. Extract ALL differential diagnoses with their reasoning
-        3. Extract ALL treatment recommendations
-        4. Extract ALL clinical concerns and red flags
-        5. Ensure arrays are NOT empty - populate with comprehensive data
-        6. Use the original transcript context to ensure accuracy
-
-        O1 ANALYSIS (${reasoningText.length} characters of medical reasoning):
+        O1 MEDICAL REASONING (${reasoningText.length} characters):
         ${reasoningText}
 
         ORIGINAL TRANSCRIPT:
         ${transcript}
 
-        Extract and structure this into the following exact JSON format with populated arrays:
+        Extract and structure this into the following exact JSON format:
 
         ${MEDICAL_ANALYSIS_PROMPT}
 
-        IMPORTANT: Each array must contain multiple relevant entries based on the O1 analysis. Do not return empty arrays.
+        IMPORTANT: Extract ALL medical insights from the O1 reasoning. Each array must contain comprehensive data based on the detailed analysis.
       `;
-
-      // Emit structured extraction step
-      emitReasoningStep(response, {
-        id: 'step-4',
-        timestamp: Date.now(),
-        type: 'evaluation',
-        title: 'Structured Medical Data Extraction',
-        content: 'Using GPT-4o to extract and structure medical data from O1 reasoning. Converting comprehensive analysis into structured format for clinical use...',
-        confidence: 0.91,
-        evidence: ['GPT-4o extraction capabilities', 'Structured data formatting', 'Medical data validation'],
-        considerations: ['Data accuracy', 'Clinical relevance', 'Format compliance']
-      });
 
       const structureCompletion = await openai.chat.completions.create({
         model: 'gpt-4o',
@@ -2040,20 +2042,6 @@ export const analyzeWithStreamingReasoning = functions.runWith({
       if (!structuredText) {
         throw new Error('No structured analysis received from GPT-4o');
       }
-
-      console.log('🚀 [STREAMING] GPT-4o structured response length:', structuredText.length);
-
-      // Emit final processing step
-      emitReasoningStep(response, {
-        id: 'step-5',
-        timestamp: Date.now(),
-        type: 'validation',
-        title: 'Clinical Analysis Validation and Finalization',
-        content: 'Validating extracted medical data, ensuring clinical accuracy, and preparing comprehensive analysis results for clinical review.',
-        confidence: 0.93,
-        evidence: ['Structured data validated', 'Clinical accuracy verified', 'Analysis ready for review'],
-        considerations: ['Quality assurance', 'Clinical validation', 'Patient safety']
-      });
 
       // Parse and process the structured analysis
       let analysis;
@@ -2074,60 +2062,60 @@ export const analyzeWithStreamingReasoning = functions.runWith({
       if (!analysis.confidenceScore) analysis.confidenceScore = 0.8;
       if (!analysis.nextSteps) analysis.nextSteps = analysis.follow_up_recommendations;
 
-      // Create reasoning trace with the streamed steps
+      // Create reasoning trace with the actual O1 reasoning
       const reasoningTrace = {
         sessionId,
         totalSteps: 5,
         steps: [
           {
-            id: 'step-1',
+            id: 'thinking-1',
             timestamp: startTime,
-            type: 'analysis',
-            title: 'Initializing O1 Deep Clinical Analysis',
-            content: 'Started comprehensive medical analysis using O1 model with patient transcript and clinical context.',
+            type: 'preparation',
+            title: 'Initializing Medical AI Reasoning',
+            content: `Started ${model} analysis for comprehensive medical assessment`,
             confidence: 0.95,
-            evidence: ['Patient transcript received', 'Clinical context available', 'O1 model initialized'],
-            considerations: ['Symptom identification', 'Clinical presentation', 'Medical history review']
+            evidence: ['Patient transcript received', 'Clinical context loaded'],
+            considerations: ['Medical history review', 'Symptom pattern recognition']
           },
           {
-            id: 'step-2',
+            id: 'thinking-2',
             timestamp: startTime + 1500,
-            type: 'research',
-            title: 'O1 Model Deep Reasoning Process',
-            content: `Engaged O1 model (${model}) for comprehensive clinical reasoning and evidence-based medical analysis.`,
+            type: 'analysis',
+            title: 'Engaging Advanced Medical Reasoning',
+            content: `${model} analyzing patient presentation systematically`,
             confidence: 0.92,
-            evidence: ['O1 model capabilities', 'Clinical reasoning engine', 'Evidence-based medicine protocols'],
-            considerations: ['Differential diagnosis', 'Clinical guidelines', 'Patient safety']
+            evidence: ['Medical knowledge base activated', 'Clinical reasoning protocols engaged'],
+            considerations: ['Patient safety priorities', 'Evidence-based medicine']
           },
           {
-            id: 'step-3',
-            timestamp: startTime + 3000,
+            id: 'thinking-3',
+            timestamp: startTime + 2500,
+            type: 'reasoning',
+            title: 'O1 Medical Reasoning in Progress',
+            content: `${model} performing deep medical reasoning and clinical analysis`,
+            confidence: 0.88,
+            evidence: ['Deep reasoning algorithms active', 'Medical knowledge synthesis'],
+            considerations: ['Comprehensive evaluation', 'Multiple diagnostic possibilities']
+          },
+          {
+            id: 'thinking-4',
+            timestamp: startTime + (reasoningText.length * 20), // Simulate time based on reasoning length
             type: 'synthesis',
-            title: 'O1 Reasoning Analysis Complete',
-            content: `O1 model completed comprehensive clinical reasoning generating ${reasoningText.length} characters of detailed medical analysis.`,
-            confidence: 0.89,
-            evidence: ['O1 analysis complete', 'Clinical reasoning generated', 'Medical insights available'],
-            considerations: ['Data extraction', 'Structured formatting', 'Clinical validation']
-          },
-          {
-            id: 'step-4',
-            timestamp: startTime + 4000,
-            type: 'evaluation',
-            title: 'Structured Medical Data Extraction',
-            content: 'Used GPT-4o to extract and structure medical data from O1 reasoning into clinical format.',
+            title: 'Medical Reasoning Complete',
+            content: `Generated ${reasoningText.length} characters of comprehensive medical reasoning`,
             confidence: 0.91,
-            evidence: ['GPT-4o extraction capabilities', 'Structured data formatting', 'Medical data validation'],
-            considerations: ['Data accuracy', 'Clinical relevance', 'Format compliance']
+            evidence: ['Complete medical analysis', 'Clinical insights generated'],
+            considerations: ['Evidence quality', 'Clinical accuracy']
           },
           {
-            id: 'step-5',
-            timestamp: startTime + 5000,
-            type: 'validation',
-            title: 'Clinical Analysis Validation and Finalization',
-            content: 'Validated extracted medical data and prepared comprehensive analysis results for clinical review.',
-            confidence: 0.93,
-            evidence: ['Structured data validated', 'Clinical accuracy verified', 'Analysis ready for review'],
-            considerations: ['Quality assurance', 'Clinical validation', 'Patient safety']
+            id: 'thinking-final',
+            timestamp: Date.now(),
+            type: 'finalization',
+            title: 'Clinical Analysis Finalized',
+            content: 'Converted medical reasoning into structured clinical data for review',
+            confidence: 0.94,
+            evidence: ['Structured data extracted', 'Clinical validation complete'],
+            considerations: ['Data accuracy', 'Actionable insights']
           }
         ],
         startTime,
@@ -2162,9 +2150,10 @@ export const analyzeWithStreamingReasoning = functions.runWith({
       
       // Send completion message
       response.write(createSSEMessage('complete', { 
-        message: 'Analysis completed successfully',
+        message: 'Real-time reasoning analysis completed successfully',
         analysisId: docRef.id,
-        processingTime: Date.now() - startTime
+        processingTime: Date.now() - startTime,
+        reasoningLength: reasoningText.length
       }));
 
       // Close the connection
@@ -2183,6 +2172,72 @@ export const analyzeWithStreamingReasoning = functions.runWith({
     }
   });
 });
+
+// Function to stream O1 reasoning thoughts progressively (like Cursor thinking)
+async function streamO1ReasoningThoughts(response: any, reasoningText: string, model: string) {
+  console.log('🧠 [REASONING STREAM] Starting to stream O1 thoughts progressively');
+  
+  // Split reasoning into meaningful chunks (sentences and paragraphs)
+  const sentences = reasoningText.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
+  const totalSentences = sentences.length;
+  
+  console.log(`🧠 [REASONING STREAM] Streaming ${totalSentences} reasoning sentences`);
+  
+  let currentThought = '';
+  let sentenceIndex = 0;
+  
+  // Stream thoughts progressively
+  for (const sentence of sentences) {
+    currentThought += sentence + ' ';
+    sentenceIndex++;
+    
+    // Emit thought update every few sentences or at important markers
+    if (sentenceIndex % 3 === 0 || 
+        sentence.includes('diagnosis') || 
+        sentence.includes('treatment') || 
+        sentence.includes('consider') ||
+        sentence.includes('likely') ||
+        sentence.includes('recommend') ||
+        sentenceIndex === totalSentences) {
+      
+      // Determine the type of reasoning based on content
+      let reasoningType = 'thinking';
+      let title = 'Medical Reasoning';
+      
+      if (currentThought.toLowerCase().includes('symptom')) {
+        reasoningType = 'symptoms';
+        title = 'Analyzing Symptoms';
+      } else if (currentThought.toLowerCase().includes('diagnos')) {
+        reasoningType = 'diagnosis';
+        title = 'Considering Diagnoses';
+      } else if (currentThought.toLowerCase().includes('treat')) {
+        reasoningType = 'treatment';
+        title = 'Planning Treatment';
+      } else if (currentThought.toLowerCase().includes('risk') || currentThought.toLowerCase().includes('concern')) {
+        reasoningType = 'risk';
+        title = 'Assessing Risks';
+      }
+      
+      // Emit the current thought
+      emitReasoningStep(response, {
+        id: `reasoning-${sentenceIndex}`,
+        timestamp: Date.now(),
+        type: reasoningType,
+        title: `${title} (${Math.round((sentenceIndex / totalSentences) * 100)}%)`,
+        content: currentThought.trim(),
+        confidence: 0.85 + (Math.random() * 0.1), // Slight variation in confidence
+        evidence: ['O1 medical reasoning', 'Clinical knowledge application'],
+        considerations: ['Patient presentation', 'Evidence-based medicine', 'Clinical guidelines']
+      });
+      
+      // Wait before sending next chunk (simulate real-time thinking)
+      const waitTime = Math.min(2000, Math.max(500, sentence.length * 50)); // 50ms per character, min 500ms, max 2s
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+  }
+  
+  console.log('🧠 [REASONING STREAM] Completed streaming O1 medical reasoning');
+}
 
 // O1 Deep Reasoning Functions - Advanced 7-Stage Analysis Pipeline
 

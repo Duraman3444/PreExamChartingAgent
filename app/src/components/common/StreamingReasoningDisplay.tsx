@@ -4,366 +4,390 @@ import {
   Card,
   CardContent,
   Typography,
-  Chip,
-  Stack,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
   LinearProgress,
   Alert,
+  Chip,
   Fade,
-  Slide,
-  Paper,
-  Divider,
   CircularProgress,
-  Collapse
+  Stack,
+  Divider,
+  IconButton,
+  Tooltip
 } from '@mui/material';
 import {
-  CheckCircle,
-  AutoAwesome,
   Psychology,
-  Timeline,
-  Analytics,
-  Search,
-  Assessment,
-  Hub,
-  Gavel,
-  Verified,
-  PlayArrow,
-  Stop
+  Visibility,
+  VisibilityOff,
+  Speed,
+  Timer,
+  AutoAwesome,
+  MedicalServices,
+  Science
 } from '@mui/icons-material';
+import { useTheme } from '@mui/material/styles';
 import { ReasoningStep } from '../../services/openai';
 
 interface StreamingReasoningDisplayProps {
   isStreaming: boolean;
   reasoningSteps: ReasoningStep[];
   currentStep?: ReasoningStep;
-  onStepComplete?: (step: ReasoningStep) => void;
-  showFullReasoning?: boolean;
-  fullReasoningContent?: string;
-  showProgress?: boolean;
-  totalSteps?: number;
-  streamingStatus?: 'connecting' | 'connected' | 'analyzing' | 'complete' | 'error';
+  streamingStatus: 'connecting' | 'connected' | 'analyzing' | 'complete' | 'error';
+  error?: string;
+  modelUsed?: string;
+  totalProcessingTime?: number;
+  onToggleVisibility?: () => void;
 }
 
 const StreamingReasoningDisplay: React.FC<StreamingReasoningDisplayProps> = ({
   isStreaming,
   reasoningSteps,
   currentStep,
-  onStepComplete,
-  showFullReasoning = false,
-  fullReasoningContent = '',
-  showProgress = true,
-  totalSteps = 5,
-  streamingStatus = 'connecting'
+  streamingStatus,
+  error,
+  modelUsed = 'O1',
+  totalProcessingTime = 0,
+  onToggleVisibility,
 }) => {
-  const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
-  const [animatingStep, setAnimatingStep] = useState<string | null>(null);
-  const lastStepRef = useRef<HTMLDivElement>(null);
+  const theme = useTheme();
+  const [isVisible, setIsVisible] = useState(true);
+  const [displayedText, setDisplayedText] = useState('');
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [isTyping, setIsTyping] = useState(false);
+  const [processingTime, setProcessingTime] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const typewriterRef = useRef<NodeJS.Timeout>();
 
-  // Auto-scroll to the latest step
+  // Auto-scroll to bottom when new content appears
   useEffect(() => {
-    if (lastStepRef.current) {
-      lastStepRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [reasoningSteps.length]);
+  }, [displayedText, reasoningSteps]);
 
-  // Animate new steps
+  // Update processing time
   useEffect(() => {
-    if (currentStep) {
-      setAnimatingStep(currentStep.id);
-      const timer = setTimeout(() => {
-        setAnimatingStep(null);
-        if (onStepComplete) {
-          onStepComplete(currentStep);
-        }
+    let interval: NodeJS.Timeout;
+    if (isStreaming) {
+      interval = setInterval(() => {
+        setProcessingTime(prev => prev + 1);
       }, 1000);
-      return () => clearTimeout(timer);
     }
-  }, [currentStep, onStepComplete]);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isStreaming]);
 
-  const toggleStepExpansion = (stepId: string) => {
-    setExpandedSteps(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(stepId)) {
-        newSet.delete(stepId);
-      } else {
-        newSet.add(stepId);
+  // Typewriter effect for streaming thoughts (like Cursor)
+  useEffect(() => {
+    if (currentStep && isStreaming) {
+      setIsTyping(true);
+      const text = currentStep.content;
+      let charIndex = 0;
+      
+      // Clear previous typewriter
+      if (typewriterRef.current) {
+        clearInterval(typewriterRef.current);
       }
-      return newSet;
-    });
-  };
+      
+      // Start typewriter effect
+      typewriterRef.current = setInterval(() => {
+        if (charIndex < text.length) {
+          setDisplayedText(text.substring(0, charIndex + 1));
+          charIndex++;
+        } else {
+          setIsTyping(false);
+          if (typewriterRef.current) {
+            clearInterval(typewriterRef.current);
+          }
+        }
+      }, 30); // Adjust speed: lower = faster typing
+      
+      return () => {
+        if (typewriterRef.current) {
+          clearInterval(typewriterRef.current);
+        }
+      };
+    }
+  }, [currentStep, isStreaming]);
 
-  const getStepIcon = (stepType: string) => {
-    switch (stepType) {
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (typewriterRef.current) {
+        clearInterval(typewriterRef.current);
+      }
+    };
+  }, []);
+
+  const getStepIcon = (type: string) => {
+    switch (type) {
+      case 'preparation':
+        return <AutoAwesome color="primary" />;
       case 'analysis':
-        return <Analytics />;
-      case 'research':
-        return <Search />;
-      case 'evaluation':
-        return <Assessment />;
-      case 'synthesis':
-        return <Hub />;
-      case 'decision':
-        return <Gavel />;
-      case 'validation':
-        return <Verified />;
+        return <Science color="info" />;
+      case 'reasoning':
+      case 'thinking':
+        return <Psychology color="secondary" />;
+      case 'symptoms':
+        return <MedicalServices color="warning" />;
+      case 'diagnosis':
+        return <Psychology color="error" />;
+      case 'treatment':
+        return <MedicalServices color="success" />;
+      case 'risk':
+        return <AutoAwesome color="warning" />;
       default:
-        return <Psychology />;
+        return <Psychology color="primary" />;
     }
   };
 
-  const getStepColor = (stepType: string) => {
-    switch (stepType) {
-      case 'analysis':
+  const getStepColor = (type: string) => {
+    switch (type) {
+      case 'preparation':
         return 'primary';
-      case 'research':
-        return 'secondary';
-      case 'evaluation':
+      case 'analysis':
         return 'info';
-      case 'synthesis':
-        return 'success';
-      case 'decision':
+      case 'reasoning':
+      case 'thinking':
+        return 'secondary';
+      case 'symptoms':
         return 'warning';
-      case 'validation':
+      case 'diagnosis':
         return 'error';
+      case 'treatment':
+        return 'success';
+      case 'risk':
+        return 'warning';
       default:
-        return 'default';
+        return 'primary';
     }
   };
 
-  const getStreamingStatusInfo = () => {
-    switch (streamingStatus) {
-      case 'connecting':
-        return { icon: <CircularProgress size={16} />, message: 'Connecting to AI agent...', color: 'info' };
-      case 'connected':
-        return { icon: <PlayArrow />, message: 'Connected - Starting analysis...', color: 'success' };
-      case 'analyzing':
-        return { icon: <Psychology />, message: 'AI agent is thinking...', color: 'primary' };
-      case 'complete':
-        return { icon: <CheckCircle />, message: 'Analysis complete!', color: 'success' };
-      case 'error':
-        return { icon: <Stop />, message: 'Analysis failed', color: 'error' };
-      default:
-        return { icon: <CircularProgress size={16} />, message: 'Initializing...', color: 'info' };
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+  };
+
+  const toggleVisibility = () => {
+    setIsVisible(!isVisible);
+    if (onToggleVisibility) {
+      onToggleVisibility();
     }
   };
 
-  const progressPercentage = totalSteps > 0 ? Math.min((reasoningSteps.length / totalSteps) * 100, 100) : 0;
-  const statusInfo = getStreamingStatusInfo();
+  if (error) {
+    return (
+      <Alert severity="error" sx={{ mb: 2 }}>
+        <Typography variant="body2">
+          <strong>Streaming Error:</strong> {error}
+        </Typography>
+      </Alert>
+    );
+  }
 
   return (
-    <Stack spacing={3}>
-      {/* Header with streaming status */}
-      <Box>
-        <Typography variant="h6" gutterBottom>
-          <Timeline sx={{ mr: 1, verticalAlign: 'middle' }} />
-          Real-time AI Reasoning Process
-        </Typography>
-        
-        <Alert 
-          severity={statusInfo.color as any} 
-          sx={{ mb: 2 }}
-          icon={statusInfo.icon}
-        >
-          <Typography variant="body2">
-            <strong>Status:</strong> {statusInfo.message}
+    <Card sx={{ mb: 2, bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50' }}>
+      <CardContent>
+        {/* Header */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Psychology color="primary" />
+            <Typography variant="h6">
+              {modelUsed} Real-time Medical Reasoning
+            </Typography>
             {isStreaming && (
-              <> | <strong>Steps:</strong> {reasoningSteps.length} / {totalSteps}</>
+              <Chip 
+                icon={<CircularProgress size={16} />} 
+                label="Thinking..." 
+                color="primary" 
+                size="small" 
+                variant="outlined"
+              />
             )}
-          </Typography>
-        </Alert>
-
-        {/* Progress bar */}
-        {showProgress && (
-          <Box sx={{ mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }}>
-                Analysis Progress
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {Math.round(progressPercentage)}%
-              </Typography>
-            </Box>
-            <LinearProgress 
-              variant="determinate" 
-              value={progressPercentage} 
-              sx={{ height: 8, borderRadius: 4 }}
-            />
           </Box>
-        )}
-      </Box>
-
-      {/* Reasoning Steps */}
-      <Box>
-        <Typography variant="h6" gutterBottom>
-          Step-by-Step Reasoning
-        </Typography>
-        
-        {reasoningSteps.length > 0 ? (
-          <Stack spacing={2}>
-            {reasoningSteps.map((step, index) => (
-              <Fade in={true} timeout={500} key={step.id}>
-                <Card 
-                  variant="outlined"
-                  sx={{
-                    borderColor: animatingStep === step.id ? 'primary.main' : 'inherit',
-                    boxShadow: animatingStep === step.id ? 2 : 0,
-                    transition: 'all 0.3s ease-in-out',
-                    ...(index === reasoningSteps.length - 1 && { mb: 2 })
-                  }}
-                  ref={index === reasoningSteps.length - 1 ? lastStepRef : undefined}
-                >
-                  <CardContent>
-                    <Box 
-                      sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        mb: 1,
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => toggleStepExpansion(step.id)}
-                    >
-                      <Box sx={{ mr: 2 }}>
-                        {getStepIcon(step.type)}
-                      </Box>
-                      <Typography variant="h6" sx={{ flexGrow: 1 }}>
-                        Step {index + 1}: {step.title}
-                      </Typography>
-                      <Chip
-                        label={step.type}
-                        color={getStepColor(step.type) as any}
-                        size="small"
-                        sx={{ mr: 1 }}
-                      />
-                      <Chip
-                        label={`${Math.round(step.confidence * 100)}% confidence`}
-                        variant="outlined"
-                        size="small"
-                      />
-                    </Box>
-                    
-                    <Typography 
-                      variant="body1" 
-                      paragraph 
-                      sx={{ 
-                        color: 'text.secondary',
-                        fontStyle: animatingStep === step.id ? 'italic' : 'normal'
-                      }}
-                    >
-                      {step.content}
-                    </Typography>
-                    
-                    <Collapse in={expandedSteps.has(step.id)}>
-                      <Divider sx={{ my: 2 }} />
-                      
-                      {step.evidence && step.evidence.length > 0 && (
-                        <Box sx={{ mt: 2 }}>
-                          <Typography variant="subtitle2" gutterBottom>
-                            Evidence Considered:
-                          </Typography>
-                          <List dense>
-                            {step.evidence.map((evidence, evidenceIndex) => (
-                              <ListItem key={evidenceIndex}>
-                                <ListItemIcon>
-                                  <CheckCircle color="success" />
-                                </ListItemIcon>
-                                <ListItemText primary={evidence} />
-                              </ListItem>
-                            ))}
-                          </List>
-                        </Box>
-                      )}
-                      
-                      {step.considerations && step.considerations.length > 0 && (
-                        <Box sx={{ mt: 2 }}>
-                          <Typography variant="subtitle2" gutterBottom>
-                            Key Considerations:
-                          </Typography>
-                          <Stack direction="row" spacing={1} flexWrap="wrap">
-                            {step.considerations.map((consideration, considerationIndex) => (
-                              <Chip 
-                                key={considerationIndex} 
-                                label={consideration} 
-                                variant="outlined" 
-                                size="small"
-                              />
-                            ))}
-                          </Stack>
-                        </Box>
-                      )}
-                    </Collapse>
-                  </CardContent>
-                </Card>
-              </Fade>
-            ))}
-          </Stack>
-        ) : (
-          <Alert severity="info">
-            <Typography variant="body2">
-              {isStreaming ? 'Waiting for AI reasoning steps...' : 'No reasoning steps available'}
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="caption" color="text.secondary">
+              {formatTime(totalProcessingTime || processingTime)}
             </Typography>
-          </Alert>
-        )}
-
-        {/* Current step being processed */}
-        {isStreaming && currentStep && (
-          <Slide direction="up" in={true} timeout={500}>
-            <Card 
-              variant="outlined" 
-              sx={{ 
-                mt: 2,
-                bgcolor: 'action.hover',
-                borderColor: 'primary.main',
-                borderStyle: 'dashed'
-              }}
-            >
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <CircularProgress size={20} sx={{ mr: 2 }} />
-                  <Typography variant="h6">
-                    Processing: {currentStep.title}
-                  </Typography>
-                </Box>
-                <Typography variant="body2" color="text.secondary">
-                  {currentStep.content}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Slide>
-        )}
-      </Box>
-
-      {/* Full reasoning content (if available) */}
-      {showFullReasoning && fullReasoningContent && (
-        <Box>
-          <Typography variant="h6" gutterBottom>
-            <AutoAwesome sx={{ mr: 1, verticalAlign: 'middle' }} />
-            Full Reasoning Content
-          </Typography>
-          <Paper sx={{ 
-            p: 2, 
-            bgcolor: (theme) => theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
-            border: (theme) => theme.palette.mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(0, 0, 0, 0.12)'
-          }}>
-            <Typography 
-              variant="body2" 
-              component="pre" 
-              sx={{ 
-                whiteSpace: 'pre-wrap',
-                color: (theme) => theme.palette.mode === 'dark' ? 'grey.100' : 'grey.800',
-                fontFamily: 'monospace',
-                fontSize: '0.875rem',
-                lineHeight: 1.6
-              }}
-            >
-              {fullReasoningContent}
-            </Typography>
-          </Paper>
+            <Tooltip title={isVisible ? "Hide reasoning" : "Show reasoning"}>
+              <IconButton size="small" onClick={toggleVisibility}>
+                {isVisible ? <VisibilityOff /> : <Visibility />}
+              </IconButton>
+            </Tooltip>
+          </Box>
         </Box>
-      )}
-    </Stack>
+
+        {/* Status indicator */}
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="caption" color="text.secondary" gutterBottom>
+            Status: {streamingStatus.charAt(0).toUpperCase() + streamingStatus.slice(1)}
+          </Typography>
+          <LinearProgress 
+            variant={isStreaming ? "indeterminate" : "determinate"} 
+            value={isStreaming ? undefined : 100}
+            sx={{ height: 4, borderRadius: 2 }}
+          />
+        </Box>
+
+        {/* Main reasoning display */}
+        <Fade in={isVisible}>
+          <Box sx={{ display: isVisible ? 'block' : 'none' }}>
+            {/* Current thinking (Cursor-style flowing text) */}
+            {isStreaming && currentStep && (
+              <Box
+                sx={{
+                  p: 2,
+                  bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'white',
+                  borderRadius: 2,
+                  border: 1,
+                  borderColor: 'divider',
+                  mb: 2,
+                  minHeight: 120,
+                  position: 'relative'
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  {getStepIcon(currentStep.type)}
+                  <Typography variant="subtitle2" color={`${getStepColor(currentStep.type)}.main`}>
+                    {currentStep.title}
+                  </Typography>
+                  <Chip
+                    label={`${Math.round(currentStep.confidence * 100)}%`}
+                    size="small"
+                    color={getStepColor(currentStep.type) as any}
+                    variant="outlined"
+                  />
+                </Box>
+                
+                {/* Flowing text like Cursor thinking */}
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontFamily: 'monospace',
+                    lineHeight: 1.6,
+                    color: theme.palette.text.primary,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word'
+                  }}
+                >
+                  {displayedText}
+                  {isTyping && (
+                    <Box
+                      component="span"
+                      sx={{
+                        display: 'inline-block',
+                        width: '2px',
+                        height: '1.2em',
+                        bgcolor: 'primary.main',
+                        animation: 'blink 1s infinite',
+                        ml: 0.5,
+                        '@keyframes blink': {
+                          '0%, 50%': { opacity: 1 },
+                          '51%, 100%': { opacity: 0 }
+                        }
+                      }}
+                    />
+                  )}
+                </Typography>
+              </Box>
+            )}
+
+            {/* Reasoning steps history */}
+            {reasoningSteps.length > 0 && (
+              <Box
+                ref={scrollRef}
+                sx={{
+                  maxHeight: 400,
+                  overflowY: 'auto',
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'white'
+                }}
+              >
+                <Stack spacing={1} sx={{ p: 2 }}>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Reasoning History ({reasoningSteps.length} steps)
+                  </Typography>
+                  
+                  {reasoningSteps.map((step, index) => (
+                    <Box key={step.id}>
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, py: 1 }}>
+                        <Box sx={{ mt: 0.5 }}>
+                          {getStepIcon(step.type)}
+                        </Box>
+                        
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                            <Typography variant="body2" fontWeight="medium">
+                              {step.title}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {new Date(step.timestamp).toLocaleTimeString()}
+                            </Typography>
+                            <Chip
+                              label={`${Math.round(step.confidence * 100)}%`}
+                              size="small"
+                              color={getStepColor(step.type) as any}
+                              variant="filled"
+                              sx={{ height: 20, fontSize: '0.7rem' }}
+                            />
+                          </Box>
+                          
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{
+                              lineHeight: 1.4,
+                              wordBreak: 'break-word',
+                              maxHeight: step === currentStep ? 'none' : 60,
+                              overflow: step === currentStep ? 'visible' : 'hidden',
+                              display: step === currentStep ? 'block' : '-webkit-box',
+                              WebkitLineClamp: step === currentStep ? 'none' : 3,
+                              WebkitBoxOrient: 'vertical'
+                            }}
+                          >
+                            {step.content}
+                          </Typography>
+                          
+                          {step.evidence && step.evidence.length > 0 && (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+                              {step.evidence.slice(0, 3).map((evidence, idx) => (
+                                <Chip
+                                  key={idx}
+                                  label={evidence}
+                                  size="small"
+                                  variant="outlined"
+                                  sx={{ fontSize: '0.65rem', height: 20 }}
+                                />
+                              ))}
+                            </Box>
+                          )}
+                        </Box>
+                      </Box>
+                      
+                      {index < reasoningSteps.length - 1 && <Divider sx={{ my: 1 }} />}
+                    </Box>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+
+            {/* Completion message */}
+            {!isStreaming && streamingStatus === 'complete' && (
+              <Alert severity="success" sx={{ mt: 2 }}>
+                <Typography variant="body2">
+                  <strong>Analysis Complete!</strong> {modelUsed} reasoning finished in {formatTime(totalProcessingTime || processingTime)}.
+                  Generated comprehensive medical analysis with detailed clinical reasoning.
+                </Typography>
+              </Alert>
+            )}
+          </Box>
+        </Fade>
+      </CardContent>
+    </Card>
   );
 };
 

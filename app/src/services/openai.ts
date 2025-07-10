@@ -1,5 +1,7 @@
 // Firebase Functions endpoints for secure server-side OpenAI calls
-const FIREBASE_FUNCTIONS_BASE_URL = 'https://us-central1-medicalchartingapp.cloudfunctions.net';
+const FIREBASE_FUNCTIONS_BASE_URL = (typeof window !== 'undefined' && window.location.hostname === 'localhost') 
+  ? 'http://127.0.0.1:5001/medicalchartingapp/us-central1'
+  : 'https://us-central1-medicalchartingapp.cloudfunctions.net';
 
 // Helper function to get Firebase auth token
 const getAuthToken = async (): Promise<string> => {
@@ -51,10 +53,17 @@ export const callFirebaseFunction = async (functionName: string, data: any, time
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(data),
-        signal: controller.signal
+                signal: controller.signal
       });
-      
+
       clearTimeout(timeoutId);
+      
+      console.log('📡 [STREAMING DEBUG] Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        ok: response.ok
+      });
     
     console.log(`📈 [Firebase Debug] Response status: ${response.status} ${response.statusText}`);
     
@@ -259,7 +268,7 @@ export interface DeepAnalysisResult {
 export interface ReasoningStep {
   id: string;
   timestamp: number;
-  type: 'analysis' | 'research' | 'evaluation' | 'synthesis' | 'decision' | 'validation';
+  type: 'analysis' | 'research' | 'evaluation' | 'synthesis' | 'decision' | 'validation' | 'preparation' | 'reasoning' | 'symptoms' | 'diagnosis' | 'treatment' | 'risk' | 'finalization' | 'thinking';
   title: string;
   content: string;
   confidence: number;
@@ -345,14 +354,19 @@ class OpenAIService {
       logGPTOperation.progress(operation, 'Connecting to streaming Firebase Function');
 
       // Get auth token
+      console.log('🔑 [STREAMING DEBUG] Getting authentication token...');
       const token = await getAuthToken();
+      console.log('🔑 [STREAMING DEBUG] Authentication token obtained successfully');
       
       // Create AbortController with longer timeout for streaming
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes timeout
       
-      // Connect to streaming Firebase Function
-      const response = await fetch(`${import.meta.env.VITE_FIREBASE_FUNCTIONS_URL}/analyzeWithStreamingReasoning`, {
+      // Connect to streaming Firebase Function (use local emulator in development)
+      const functionsUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || 'http://127.0.0.1:5001/medicalchartingapp/us-central1';
+      console.log('🔗 [STREAMING DEBUG] Connecting to Firebase Functions URL:', functionsUrl);
+      
+      const response = await fetch(`${functionsUrl}/analyzeWithStreamingReasoning`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -382,9 +396,11 @@ class OpenAIService {
       logGPTOperation.progress(operation, 'Connected to streaming analysis, processing reasoning steps');
 
       // Set up Server-Sent Events reader
+      console.log('📖 [STREAMING DEBUG] Setting up SSE reader...');
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      console.log('📖 [STREAMING DEBUG] SSE reader initialized successfully');
 
       try {
         let currentEvent = '';
@@ -393,11 +409,14 @@ class OpenAIService {
           const { done, value } = await reader.read();
           
           if (done) {
+            console.log('📖 [STREAMING DEBUG] SSE stream completed');
             clearTimeout(timeoutId);
             break;
           }
           
-          buffer += decoder.decode(value, { stream: true });
+          const chunk = decoder.decode(value, { stream: true });
+          console.log('📖 [STREAMING DEBUG] Received chunk:', chunk.length, 'characters');
+          buffer += chunk;
           
           // Process complete messages
           const lines = buffer.split('\n');
@@ -406,11 +425,13 @@ class OpenAIService {
           for (const line of lines) {
             if (line.startsWith('event: ')) {
               currentEvent = line.substring(7).trim();
+              console.log('📨 [STREAMING DEBUG] Event received:', currentEvent);
               continue;
             }
             
             if (line.startsWith('data: ')) {
               const data = line.substring(6);
+              console.log('📊 [STREAMING DEBUG] Data received for event', currentEvent + ':', data.substring(0, 100) + (data.length > 100 ? '...' : ''));
               
               if (data.trim() === '') continue;
               

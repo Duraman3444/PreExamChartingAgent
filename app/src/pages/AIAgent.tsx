@@ -45,7 +45,7 @@ import {
   FlashOn
 } from '@mui/icons-material';
 import { mockVisits } from '../data/mockData';
-import { O1AnalysisResult } from '../services/openai';
+import { O1AnalysisResult, ReasoningStep, ReasoningTrace } from '../services/openai';
 import { AIValidationResult, validateAIIntegration } from '../utils/aiTestUtils';
 import StreamingReasoningDisplay from '../components/common/StreamingReasoningDisplay';
 import O1DeepReasoningDisplay from '../components/common/O1DeepReasoningDisplay';
@@ -132,26 +132,7 @@ interface ConcernFlag {
   requiresImmediateAction: boolean;
 }
 
-interface ReasoningStep {
-  id: string;
-  timestamp: number;
-  type: 'analysis' | 'research' | 'evaluation' | 'synthesis' | 'decision' | 'validation';
-  title: string;
-  content: string;
-  confidence: number;
-  evidence?: string[];
-  considerations?: string[];
-}
-
-interface ReasoningTrace {
-  sessionId: string;
-  totalSteps: number;
-  steps: ReasoningStep[];
-  startTime: number;
-  endTime?: number;
-  model: string;
-  reasoning: string;
-}
+// ReasoningStep and ReasoningTrace are now imported from openai service
 
 interface AIAgentAnalysis {
   symptoms: Symptom[];
@@ -517,124 +498,99 @@ const AIAgent: React.FC = () => {
           setTabValue(0);
           return;
         }
-      } else if (analysisMode === 'o1_deep_reasoning') {
-        // O1 Deep Reasoning - now with streaming option
-        console.log('🔬 [O1 Analysis] Starting O1 deep reasoning analysis...');
-        console.log('📋 [O1 Analysis] Transcript length:', transcript.length);
-        console.log('👤 [O1 Analysis] Patient context:', patientContext);
-        console.log('🚀 [O1 Analysis] Streaming enabled:', streamingEnabled);
+              } else if (analysisMode === 'o1_deep_reasoning') {
+        // O1 Mini - Real-time Medical Reasoning
+        console.log('🔬 [O1 Mini] Starting O1 Mini real-time reasoning analysis...');
+        console.log('📋 [O1 Mini] Transcript length:', transcript.length);
+        console.log('👤 [O1 Mini] Patient context:', patientContext);
         
         try {
-          if (streamingEnabled) {
-            // Use streaming analysis
-            setStreamingState(prev => ({
-              ...prev,
-              isStreaming: true,
-              streamingStatus: 'connecting',
-              reasoningSteps: []
-            }));
+          console.log('🔬 [O1 Mini DEBUG] Starting streaming setup...');
+          console.log('🔬 [O1 Mini DEBUG] Current streaming enabled:', streamingEnabled);
+          console.log('🔬 [O1 Mini DEBUG] Setting streaming state...');
+          
+          // Always use streaming for O1 Mini (real-time reasoning display)
+          setStreamingState(prev => ({
+            ...prev,
+            isStreaming: true,
+            streamingStatus: 'connecting',
+            reasoningSteps: []
+          }));
+          
+          console.log('🔬 [O1 Mini DEBUG] Streaming state set, switching to reasoning tab...');
 
-            // Switch to reasoning tab immediately for streaming
-            setTabValue(5);
+          // Switch to reasoning tab immediately for streaming
+          setTabValue(5);
+          
+          console.log('🔬 [O1 Mini DEBUG] Tab switched to 5 (reasoning), calling streaming function...');
 
-            await openAIService.analyzeTranscriptWithStreamingReasoning(
-              transcript,
-              patientContext,
-              'o1-mini',
-              // onReasoningStep
-              (step: ReasoningStep) => {
-                console.log('🔄 [Streaming] New reasoning step:', step.title);
-                setStreamingState(prev => ({
-                  ...prev,
-                  currentStep: step,
-                  reasoningSteps: [...prev.reasoningSteps, step],
-                  streamingStatus: 'analyzing'
-                }));
-              },
-              // onAnalysisUpdate
-              (update: any) => {
-                console.log('📊 [Streaming] Analysis update:', update);
-                setStreamingState(prev => ({
-                  ...prev,
-                  streamingStatus: 'analyzing'
-                }));
-              },
-              // onComplete
-              (result: O1AnalysisResult) => {
-                console.log('✅ [Streaming] Analysis completed successfully');
-                console.log('📊 [Streaming] Result keys:', Object.keys(result));
-                
-                aiAnalysis = {
-                  symptoms: result.symptoms,
-                  diagnoses: result.diagnoses,
-                  treatments: result.treatments,
-                  concerns: result.concerns,
-                  confidenceScore: result.confidenceScore,
-                  reasoning: result.reasoning,
-                  nextSteps: result.nextSteps,
-                  reasoningTrace: result.reasoningTrace,
-                  modelUsed: result.modelUsed,
-                  thinkingTime: result.thinkingTime
-                };
+          await openAIService.analyzeTranscriptWithStreamingReasoning(
+            transcript,
+            patientContext,
+            'o1-mini',
+            // onReasoningStep
+            (step: ReasoningStep) => {
+              console.log('🔄 [O1 Mini] New reasoning step:', step.title);
+              setStreamingState(prev => ({
+                ...prev,
+                currentStep: step,
+                reasoningSteps: [...prev.reasoningSteps, step],
+                streamingStatus: 'analyzing'
+              }));
+            },
+            // onAnalysisUpdate
+            (update: any) => {
+              console.log('📊 [O1 Mini] Analysis update:', update);
+              setStreamingState(prev => ({
+                ...prev,
+                streamingStatus: 'analyzing'
+              }));
+            },
+            // onComplete
+            (result: O1AnalysisResult) => {
+              console.log('✅ [O1 Mini] Analysis completed successfully');
+              console.log('📊 [O1 Mini] Result keys:', Object.keys(result));
+              
+              aiAnalysis = {
+                symptoms: result.symptoms,
+                diagnoses: result.diagnoses,
+                treatments: result.treatments,
+                concerns: result.concerns,
+                confidenceScore: result.confidenceScore,
+                reasoning: result.reasoning,
+                nextSteps: result.nextSteps,
+                reasoningTrace: result.reasoningTrace,
+                modelUsed: result.modelUsed,
+                thinkingTime: result.thinkingTime
+              };
 
-                setStreamingState(prev => ({
-                  ...prev,
-                  isStreaming: false,
-                  streamingStatus: 'complete',
-                  currentStep: undefined
-                }));
+              setStreamingState(prev => ({
+                ...prev,
+                isStreaming: false,
+                streamingStatus: 'complete',
+                currentStep: undefined
+              }));
 
-                setAnalysis(aiAnalysis);
-                setAnalysisProgress(100);
-                setTabValue(0); // Switch to summary tab
-              },
-              // onError
-              (error: Error) => {
-                console.error('❌ [Streaming] Analysis failed:', error);
-                setStreamingState(prev => ({
-                  ...prev,
-                  isStreaming: false,
-                  streamingStatus: 'error',
-                  error: error.message,
-                  currentStep: undefined
-                }));
-                throw error;
-              }
-            );
+              setAnalysis(aiAnalysis);
+              setAnalysisProgress(100);
+              setTabValue(0); // Switch to summary tab
+            },
+            // onError
+            (error: Error) => {
+              console.error('❌ [O1 Mini] Analysis failed:', error);
+              setStreamingState(prev => ({
+                ...prev,
+                isStreaming: false,
+                streamingStatus: 'error',
+                error: error.message,
+                currentStep: undefined
+              }));
+              throw error;
+            }
+          );
 
-            // Exit here for streaming mode - the onComplete callback will handle the rest
-            return;
-          } else {
-            // Use regular non-streaming analysis
-            progressInterval = setInterval(() => {
-              setAnalysisProgress(prev => {
-                if (prev >= 90) {
-                  if (progressInterval) clearInterval(progressInterval);
-                  return 90;
-                }
-                return prev + 10;
-              });
-            }, 300);
-
-            const o1Result = await openAIService.analyzeTranscriptWithReasoning(transcript, patientContext, 'o1-mini');
-            
-            console.log('✅ [O1 Analysis] O1 analysis completed successfully');
-            console.log('📊 [O1 Analysis] Result keys:', Object.keys(o1Result));
-            
-            // Use the O1 result directly since it now has the same structure as 4o
-            aiAnalysis = {
-              symptoms: o1Result.symptoms,
-              diagnoses: o1Result.diagnoses,
-              treatments: o1Result.treatments,
-              concerns: o1Result.concerns,
-              confidenceScore: o1Result.confidenceScore,
-              reasoning: o1Result.reasoning,
-              nextSteps: o1Result.nextSteps,
-              reasoningTrace: o1Result.reasoningTrace,
-              modelUsed: o1Result.modelUsed,
-              thinkingTime: o1Result.thinkingTime
-            };
-          }
+          // Exit here for streaming mode - the onComplete callback will handle the rest
+          return;
         } catch (o1Error) {
           console.error('❌ [O1 Analysis] O1 analysis failed:', o1Error);
           
@@ -708,61 +664,98 @@ const AIAgent: React.FC = () => {
           setTabValue(0);
           return;
         }
-      } else if (analysisMode === 'o1_comprehensive_reasoning') {
-        // O1 Deep Reasoning - Maximum accuracy 7-stage analysis
-        console.log('⚡ [O1 Analysis] Starting O1 deep reasoning analysis...');
-        console.log('📋 [O1 Analysis] Transcript length:', transcript.length);
-        console.log('👤 [O1 Analysis] Patient context:', patientContext);
+              } else if (analysisMode === 'o1_comprehensive_reasoning') {
+        // O1 Preview - Real-time Medical Reasoning
+        console.log('⚡ [O1 Preview] Starting O1 Preview real-time reasoning analysis...');
+        console.log('📋 [O1 Preview] Transcript length:', transcript.length);
+        console.log('👤 [O1 Preview] Patient context:', patientContext);
         
         try {
-          // Progress tracking for O1 (7 stages)
-          progressInterval = setInterval(() => {
-            setAnalysisProgress(prev => {
-              if (prev >= 95) {
-                if (progressInterval) clearInterval(progressInterval);
-                return 95;
-              }
-              return prev + 2; // Slower progress for long analysis
-            });
-          }, 3000); // Update every 3 seconds for longer analysis
+          console.log('⚡ [O1 Preview DEBUG] Starting streaming setup...');
+          console.log('⚡ [O1 Preview DEBUG] Setting streaming state...');
+          
+          // Always use streaming for O1 Preview (real-time reasoning display)
+          setStreamingState(prev => ({
+            ...prev,
+            isStreaming: true,
+            streamingStatus: 'connecting',
+            reasoningSteps: []
+          }));
+          
+          console.log('⚡ [O1 Preview DEBUG] Streaming state set, switching to reasoning tab...');
 
-                  // Import O1 service
-        const { o1DeepReasoningService } = await import('../services/o1DeepReasoning');
+          // Switch to reasoning tab immediately for streaming
+          setTabValue(5);
+          
+          console.log('⚡ [O1 Preview DEBUG] Tab switched to 5 (reasoning), calling streaming function...');
 
-        // Start O1 analysis
-        const o1Result = await o1DeepReasoningService.performO1Analysis(
+          await openAIService.analyzeTranscriptWithStreamingReasoning(
             transcript,
             patientContext,
-            {
-              analysisDepth: 'comprehensive',
-              timeoutMinutes: 15 // Extended timeout for comprehensive analysis
+            'o1', // Use o1-preview model
+            // onReasoningStep
+            (step: ReasoningStep) => {
+              console.log('🔄 [O1 Preview] New reasoning step:', step.title);
+              setStreamingState(prev => ({
+                ...prev,
+                currentStep: step,
+                reasoningSteps: [...prev.reasoningSteps, step],
+                streamingStatus: 'analyzing'
+              }));
+            },
+            // onAnalysisUpdate
+            (update: any) => {
+              console.log('📊 [O1 Preview] Analysis update:', update);
+              setStreamingState(prev => ({
+                ...prev,
+                streamingStatus: 'analyzing'
+              }));
+            },
+            // onComplete
+            (result: O1AnalysisResult) => {
+              console.log('✅ [O1 Preview] Analysis completed successfully');
+              console.log('📊 [O1 Preview] Result keys:', Object.keys(result));
+              
+              aiAnalysis = {
+                symptoms: result.symptoms,
+                diagnoses: result.diagnoses,
+                treatments: result.treatments,
+                concerns: result.concerns,
+                confidenceScore: result.confidenceScore,
+                reasoning: result.reasoning,
+                nextSteps: result.nextSteps,
+                reasoningTrace: result.reasoningTrace,
+                modelUsed: result.modelUsed,
+                thinkingTime: result.thinkingTime
+              };
+
+              setStreamingState(prev => ({
+                ...prev,
+                isStreaming: false,
+                streamingStatus: 'complete',
+                currentStep: undefined
+              }));
+
+              setAnalysis(aiAnalysis);
+              setAnalysisProgress(100);
+              setTabValue(0); // Switch to summary tab
+            },
+            // onError
+            (error: Error) => {
+              console.error('❌ [O1 Preview] Analysis failed:', error);
+              setStreamingState(prev => ({
+                ...prev,
+                isStreaming: false,
+                streamingStatus: 'error',
+                error: error.message,
+                currentStep: undefined
+              }));
+              throw error;
             }
           );
 
-          console.log('✅ [O1 Analysis] O1 analysis completed successfully');
-          console.log('📊 [O1 Analysis] Result keys:', Object.keys(o1Result));
-          
-          // Convert O1 result to AIAgentAnalysis format for compatibility
-          aiAnalysis = {
-            symptoms: o1Result.symptoms, // Legacy compatibility field
-            diagnoses: o1Result.diagnoses, // Legacy compatibility field
-            treatments: o1Result.treatments, // Legacy compatibility field
-            concerns: o1Result.concerns, // Legacy compatibility field
-            confidenceScore: o1Result.qualityAssurance.overallConfidence,
-            reasoning: `O1 Deep Reasoning Analysis (${o1Result.processingTime}ms):\n\n${o1Result.reasoning}`,
-            nextSteps: o1Result.nextSteps,
-            modelUsed: 'gpt-4o', // O1 uses GPT-4o in the backend
-            thinkingTime: o1Result.processingTime
-          };
-          
-          console.log('✅ [O1 Analysis] Analysis object created:', {
-            symptomsCount: aiAnalysis.symptoms.length,
-            diagnosesCount: aiAnalysis.diagnoses.length,
-            treatmentsCount: aiAnalysis.treatments.length,
-            concernsCount: aiAnalysis.concerns.length,
-            overallConfidence: o1Result.qualityAssurance.overallConfidence,
-            stages: o1Result.stages.length
-          });
+          // Exit here for streaming mode - the onComplete callback will handle the rest
+          return;
           
         } catch (o4Error) {
           console.error('❌ [O1 Analysis] O1 analysis failed:', o4Error);
@@ -1446,7 +1439,7 @@ const AIAgent: React.FC = () => {
         </Grid>
 
         <Grid item xs={12} md={6}>
-          {analysis ? (
+          {analysis || streamingState.isStreaming || streamingState.reasoningSteps.length > 0 ? (
             <Card>
               <CardContent>
                 <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -1456,7 +1449,8 @@ const AIAgent: React.FC = () => {
                     <Tab label="Diagnoses" />
                     <Tab label="Treatments" />
                     <Tab label="Concerns" />
-                    {analysis.reasoningTrace && (
+                    {(analysis?.reasoningTrace || streamingState.isStreaming || streamingState.reasoningSteps.length > 0 || 
+                      analysisMode === 'o1_deep_reasoning' || analysisMode === 'o1_comprehensive_reasoning') && (
                       <Tab 
                         label={
                           <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -1483,96 +1477,110 @@ const AIAgent: React.FC = () => {
                         <AutoAwesome sx={{ mr: 1, verticalAlign: 'middle' }} />
                         AI Analysis Summary
                       </Typography>
-                      <Alert severity="info" sx={{ mb: 2 }}>
-                        <Typography variant="body2">
-                          <strong>Analysis Confidence:</strong> {Math.round(analysis.confidenceScore * 100)}%
-                          {analysis.modelUsed && (
-                            <> | <strong>Model:</strong> {analysis.modelUsed.toUpperCase()}</>
-                          )}
-                          {analysis.thinkingTime && (
-                            <> | <strong>Processing Time:</strong> {(analysis.thinkingTime / 1000).toFixed(1)}s</>
-                          )}
-                          {analysis.reasoningTrace && (
-                            <> | <strong>Reasoning Steps:</strong> {analysis.reasoningTrace.totalSteps}</>
-                          )}
-                        </Typography>
-                      </Alert>
-                      <Typography variant="body1" paragraph>
-                        {analysis.reasoning}
-                      </Typography>
-                    </Box>
-
-
-
-                    <Box>
-                      <Typography variant="h6" gutterBottom>
-                        <Assessment sx={{ mr: 1, verticalAlign: 'middle' }} />
-                        Clinical Summary
-                      </Typography>
-                      <Grid container spacing={2}>
-                        <Grid item xs={12} md={4}>
-                          <Card variant="outlined">
-                            <CardContent>
-                              <Typography variant="h6" color="primary">
-                                {analysis.diagnoses.length}
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                Differential Diagnoses
-                              </Typography>
-                            </CardContent>
-                          </Card>
-                        </Grid>
-                        <Grid item xs={12} md={4}>
-                          <Card variant="outlined">
-                            <CardContent>
-                              <Typography variant="h6" color="secondary">
-                                {analysis.treatments.length}
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                Treatment Recommendations
-                              </Typography>
-                            </CardContent>
-                          </Card>
-                        </Grid>
-                        <Grid item xs={12} md={4}>
-                          <Card variant="outlined">
-                            <CardContent>
-                              <Typography variant="h6" color="warning.main">
-                                {analysis.concerns.length}
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                Clinical Concerns
-                              </Typography>
-                            </CardContent>
-                          </Card>
-                        </Grid>
-                      </Grid>
-                    </Box>
-
-                    <Box>
-                      <Typography variant="h6" gutterBottom>
-                        <CheckCircle sx={{ mr: 1, verticalAlign: 'middle' }} />
-                        Next Steps
-                      </Typography>
-                      {analysis.nextSteps && analysis.nextSteps.length > 0 ? (
-                        <List>
-                          {analysis.nextSteps.map((step, index) => (
-                            <ListItem key={index}>
-                              <ListItemIcon>
-                                <CheckCircle color="success" />
-                              </ListItemIcon>
-                              <ListItemText primary={step} />
-                            </ListItem>
-                          ))}
-                        </List>
+                      {analysis ? (
+                        <>
+                          <Alert severity="info" sx={{ mb: 2 }}>
+                            <Typography variant="body2">
+                              <strong>Analysis Confidence:</strong> {Math.round(analysis.confidenceScore * 100)}%
+                              {analysis.modelUsed && (
+                                <> | <strong>Model:</strong> {analysis.modelUsed.toUpperCase()}</>
+                              )}
+                              {analysis.thinkingTime && (
+                                <> | <strong>Processing Time:</strong> {(analysis.thinkingTime / 1000).toFixed(1)}s</>
+                              )}
+                              {analysis.reasoningTrace && (
+                                <> | <strong>Reasoning Steps:</strong> {analysis.reasoningTrace.totalSteps}</>
+                              )}
+                            </Typography>
+                          </Alert>
+                          <Typography variant="body1" paragraph>
+                            {analysis.reasoning}
+                          </Typography>
+                        </>
                       ) : (
-                        <Alert severity="info">
+                        <Alert severity="info" sx={{ mb: 2 }}>
                           <Typography variant="body2">
-                            No specific next steps provided. Refer to treatment recommendations and clinical concerns for guidance.
+                            Analysis in progress... Switch to the Reasoning tab to see real-time thinking process.
                           </Typography>
                         </Alert>
                       )}
                     </Box>
+
+
+
+                    {analysis && (
+                      <>
+                        <Box>
+                          <Typography variant="h6" gutterBottom>
+                            <Assessment sx={{ mr: 1, verticalAlign: 'middle' }} />
+                            Clinical Summary
+                          </Typography>
+                          <Grid container spacing={2}>
+                            <Grid item xs={12} md={4}>
+                              <Card variant="outlined">
+                                <CardContent>
+                                  <Typography variant="h6" color="primary">
+                                    {analysis.diagnoses.length}
+                                  </Typography>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Differential Diagnoses
+                                  </Typography>
+                                </CardContent>
+                              </Card>
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                              <Card variant="outlined">
+                                <CardContent>
+                                  <Typography variant="h6" color="secondary">
+                                    {analysis.treatments.length}
+                                  </Typography>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Treatment Recommendations
+                                  </Typography>
+                                </CardContent>
+                              </Card>
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                              <Card variant="outlined">
+                                <CardContent>
+                                  <Typography variant="h6" color="warning.main">
+                                    {analysis.concerns.length}
+                                  </Typography>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Clinical Concerns
+                                  </Typography>
+                                </CardContent>
+                              </Card>
+                            </Grid>
+                          </Grid>
+                        </Box>
+
+                        <Box>
+                          <Typography variant="h6" gutterBottom>
+                            <CheckCircle sx={{ mr: 1, verticalAlign: 'middle' }} />
+                            Next Steps
+                          </Typography>
+                          {analysis.nextSteps && analysis.nextSteps.length > 0 ? (
+                            <List>
+                              {analysis.nextSteps.map((step, index) => (
+                                <ListItem key={index}>
+                                  <ListItemIcon>
+                                    <CheckCircle color="success" />
+                                  </ListItemIcon>
+                                  <ListItemText primary={step} />
+                                </ListItem>
+                              ))}
+                            </List>
+                          ) : (
+                            <Alert severity="info">
+                              <Typography variant="body2">
+                                No specific next steps provided. Refer to treatment recommendations and clinical concerns for guidance.
+                              </Typography>
+                            </Alert>
+                          )}
+                        </Box>
+                      </>
+                    )}
                   </Stack>
                 </TabPanel>
 
@@ -1582,7 +1590,7 @@ const AIAgent: React.FC = () => {
                       <Timeline sx={{ mr: 1, verticalAlign: 'middle' }} />
                       Extracted Symptoms
                     </Typography>
-                    {analysis.symptoms.length > 0 ? (
+                    {analysis?.symptoms && analysis.symptoms.length > 0 ? (
                       <Grid container spacing={2}>
                         {analysis.symptoms.map((symptom) => (
                           <Grid item xs={12} sm={6} key={symptom.id}>
@@ -1644,7 +1652,7 @@ const AIAgent: React.FC = () => {
                       <Assessment sx={{ mr: 1, verticalAlign: 'middle' }} />
                       Differential Diagnoses
                     </Typography>
-                    {analysis.diagnoses && analysis.diagnoses.length > 0 ? (
+                    {analysis?.diagnoses && analysis.diagnoses.length > 0 ? (
                       <Stack spacing={1}>
                         {analysis.diagnoses.map((diagnosis) => (
                           <Card key={diagnosis.id} variant="outlined" sx={{ mb: 2 }}>
@@ -1764,7 +1772,7 @@ const AIAgent: React.FC = () => {
                       <LocalHospital sx={{ mr: 1, verticalAlign: 'middle' }} />
                       Treatment Recommendations
                     </Typography>
-                    {analysis.treatments && analysis.treatments.length > 0 ? (
+                    {analysis?.treatments && analysis.treatments.length > 0 ? (
                       analysis.treatments.map((treatment: Treatment) => (
                         <Card key={treatment.id} variant="outlined">
                           <CardContent>
@@ -1855,7 +1863,7 @@ const AIAgent: React.FC = () => {
                       <Security sx={{ mr: 1, verticalAlign: 'middle' }} />
                       Clinical Concerns & Alerts
                     </Typography>
-                    {analysis.concerns && analysis.concerns.length > 0 ? (
+                    {analysis?.concerns && analysis.concerns.length > 0 ? (
                       analysis.concerns.map((concern) => (
                         <Alert
                           key={concern.id}
@@ -1890,22 +1898,21 @@ const AIAgent: React.FC = () => {
                 </TabPanel>
 
                 {/* Reasoning Process Tab Panel */}
-                {analysis.reasoningTrace && (
+                {(analysis?.reasoningTrace || streamingState.isStreaming || streamingState.reasoningSteps.length > 0) && (
                   <TabPanel value={tabValue} index={5}>
-                    {streamingEnabled && (streamingState.isStreaming || streamingState.reasoningSteps.length > 0) ? (
+                    {((analysisMode === 'o1_deep_reasoning' || analysisMode === 'o1_comprehensive_reasoning') && 
+                      (streamingState.isStreaming || streamingState.reasoningSteps.length > 0)) || 
+                     (streamingEnabled && (streamingState.isStreaming || streamingState.reasoningSteps.length > 0)) ? (
                       <StreamingReasoningDisplay
                         isStreaming={streamingState.isStreaming}
                         reasoningSteps={streamingState.reasoningSteps}
                         currentStep={streamingState.currentStep}
                         streamingStatus={streamingState.streamingStatus}
-                        showFullReasoning={!streamingState.isStreaming && !!analysis.reasoningTrace?.reasoning}
-                        fullReasoningContent={analysis.reasoningTrace?.reasoning}
-                        totalSteps={5}
-                        onStepComplete={(step) => {
-                          console.log('Step completed:', step.title);
-                        }}
+                        error={streamingState.error}
+                        modelUsed={analysisMode === 'o1_deep_reasoning' ? 'O1 Mini' : 'O1 Preview'}
+                        totalProcessingTime={0}
                       />
-                    ) : (
+                    ) : analysis ? (
                       <Stack spacing={3}>
                         <Box>
                           <Typography variant="h6" gutterBottom>
@@ -1915,8 +1922,8 @@ const AIAgent: React.FC = () => {
                           <Alert severity="info" sx={{ mb: 2 }}>
                             <Typography variant="body2">
                               <strong>Model:</strong> {analysis.modelUsed?.toUpperCase()} | 
-                              <strong> Thinking Time:</strong> {analysis.thinkingTime ? `${(analysis.thinkingTime / 1000).toFixed(1)}s` : 'N/A'} |
-                              <strong> Steps:</strong> {analysis.reasoningTrace.totalSteps}
+                                                          <strong> Thinking Time:</strong> {analysis.thinkingTime ? `${(analysis.thinkingTime / 1000).toFixed(1)}s` : 'N/A'} |
+                            <strong> Steps:</strong> {analysis.reasoningTrace?.totalSteps || 0}
                             </Typography>
                           </Alert>
                         </Box>
@@ -1927,9 +1934,9 @@ const AIAgent: React.FC = () => {
                             Step-by-Step Reasoning
                           </Typography>
                           
-                          {analysis.reasoningTrace.steps.length > 0 ? (
+                          {(analysis.reasoningTrace?.steps?.length || 0) > 0 ? (
                             <Stack spacing={2}>
-                              {analysis.reasoningTrace.steps.map((step, index) => (
+                              {analysis.reasoningTrace?.steps?.map((step, index) => (
                                 <Card key={step.id} variant="outlined">
                                   <CardContent>
                                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
@@ -2008,7 +2015,7 @@ const AIAgent: React.FC = () => {
                           )}
                         </Box>
 
-                        {analysis.reasoningTrace.reasoning && (
+                        {analysis.reasoningTrace?.reasoning && (
                           <Box>
                             <Typography variant="h6" gutterBottom>
                               <AutoAwesome sx={{ mr: 1, verticalAlign: 'middle' }} />
@@ -2030,12 +2037,18 @@ const AIAgent: React.FC = () => {
                                   lineHeight: 1.6
                                 }}
                               >
-                                {analysis.reasoningTrace.reasoning}
+                                {analysis.reasoningTrace?.reasoning}
                               </Typography>
                             </Paper>
                           </Box>
                         )}
                       </Stack>
+                    ) : (
+                      <Alert severity="info">
+                        <Typography variant="body2">
+                          Analysis in progress... Real-time reasoning steps will appear above when available.
+                        </Typography>
+                      </Alert>
                     )}
                   </TabPanel>
                 )}
