@@ -1,4 +1,3 @@
-import { openAIService } from './openai';
 import { firebaseFunctionsService } from './firebase';
 import { AnalysisResult } from './openai';
 
@@ -216,7 +215,7 @@ class AIEvaluationService {
           this.addLog('success', `✅ AI analysis completed in ${analysisTime}ms`);
           
           // Simple scoring based on content analysis
-          const evaluation = this.evaluateResponse(record.question, record.answer, aiAnalysis);
+          const evaluation = this.evaluateResponse(record.answer, aiAnalysis);
           
           results.push({
             id: `eval-${i}`,
@@ -295,7 +294,7 @@ class AIEvaluationService {
   }
 
   // Simple content-based evaluation
-  private evaluateResponse(question: string, expectedAnswer: string, aiAnalysis: AnalysisResult): {
+  private evaluateResponse(expectedAnswer: string, aiAnalysis: AnalysisResult): {
     symptomExtraction: number;
     diagnosisAccuracy: number;
     treatmentRecommendations: number;
@@ -462,15 +461,41 @@ class AIEvaluationService {
     return this.evaluateAgainstDatasets({
       sampleSize,
       modelType: 'o1_deep_reasoning',
-      datasets: ['merged_medical_qa.jsonl'],
+      datasets: ['merged_medical_qa'],
       evaluationCriteria: {
-        symptomAccuracy: 0.2,
-        diagnosisRelevance: 0.4,
+        symptomAccuracy: 0.3,
+        diagnosisRelevance: 0.3,
         treatmentAppropriate: 0.25,
         coherence: 0.15
       },
       focusCategories
     });
+  }
+
+  async loadMergedDataset(): Promise<DatasetRecord[]> {
+    try {
+      const response = await fetch('/evaluation/datasets/merged_medical_qa.jsonl');
+      const text = await response.text();
+      const lines = text.trim().split('\n');
+      
+      return lines.map(line => JSON.parse(line));
+    } catch (error) {
+      console.error('Error loading merged dataset:', error);
+      return [];
+    }
+  }
+
+  async loadDataset(datasetPath: string): Promise<DatasetRecord[]> {
+    try {
+      const response = await fetch(datasetPath);
+      const text = await response.text();
+      const lines = text.trim().split('\n');
+      
+      return lines.map(line => JSON.parse(line));
+    } catch (error) {
+      console.error(`Error loading dataset from ${datasetPath}:`, error);
+      return [];
+    }
   }
 }
 

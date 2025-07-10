@@ -31,7 +31,6 @@ import {
   Gavel,
   Verified,
   PlayArrow,
-  Pause,
   Stop
 } from '@mui/icons-material';
 import { ReasoningStep } from '../../services/openai';
@@ -41,8 +40,6 @@ interface StreamingReasoningDisplayProps {
   reasoningSteps: ReasoningStep[];
   currentStep?: ReasoningStep;
   onStepComplete?: (step: ReasoningStep) => void;
-  onStreamComplete?: () => void;
-  onStreamError?: (error: Error) => void;
   showFullReasoning?: boolean;
   fullReasoningContent?: string;
   showProgress?: boolean;
@@ -55,8 +52,6 @@ const StreamingReasoningDisplay: React.FC<StreamingReasoningDisplayProps> = ({
   reasoningSteps,
   currentStep,
   onStepComplete,
-  onStreamComplete,
-  onStreamError,
   showFullReasoning = false,
   fullReasoningContent = '',
   showProgress = true,

@@ -9,4 +9,13 @@ export declare const analyzeWithReasoning: functions.HttpsFunction;
 export declare const generateText: functions.HttpsFunction;
 export declare const generateTreatmentProtocol: functions.HttpsFunction;
 export declare const analyzeWithStreamingReasoning: functions.HttpsFunction;
+export declare const analyzeWithO1Intake: functions.HttpsFunction;
+export declare const analyzeWithO1Symptoms: functions.HttpsFunction;
+export declare const analyzeWithO1Differential: functions.HttpsFunction;
+export declare const analyzeWithO1Evidence: functions.HttpsFunction;
+export declare const analyzeWithO1Treatment: functions.HttpsFunction;
+export declare const analyzeWithO1Risk: functions.HttpsFunction;
+export declare const analyzeWithO1QA: functions.HttpsFunction;
+export declare const getO1AnalysisStatus: functions.HttpsFunction;
+export declare const saveO1AnalysisResults: functions.HttpsFunction;
 //# sourceMappingURL=index.d.ts.map

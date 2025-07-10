@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Grid,
@@ -18,19 +18,12 @@ import {
   ListItemText,
   ListItemIcon,
   Alert,
-  AlertTitle,
   LinearProgress,
   CircularProgress,
   Tabs,
   Tab,
   Paper,
-  IconButton,
-  Tooltip,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   Badge,
-  Divider,
   Switch,
   FormControlLabel,
   ToggleButton,
@@ -39,36 +32,23 @@ import {
 import {
   SmartToy,
   Psychology,
-  Biotech,
-  MedicalInformation,
   LocalHospital,
   Security,
-  ExpandMore,
   Assessment,
   Person,
-  PersonAdd,
   PlayArrow,
-  Stop,
-  Refresh,
-  BugReport,
   Timeline,
   AutoAwesome,
   CheckCircle,
-  Analytics,
-  Hub,
-  Gavel,
-  Verified,
-  Search,
-  Pause,
-  FlashOn,
-  FlashOff,
   Error,
-  Warning
+  Warning,
+  FlashOn
 } from '@mui/icons-material';
 import { mockVisits } from '../data/mockData';
-import { ReasoningStep as OpenAIReasoningStep, ReasoningTrace as OpenAIReasoningTrace, O1AnalysisResult } from '../services/openai';
+import { O1AnalysisResult } from '../services/openai';
 import { AIValidationResult, validateAIIntegration } from '../utils/aiTestUtils';
 import StreamingReasoningDisplay from '../components/common/StreamingReasoningDisplay';
+import O1DeepReasoningDisplay from '../components/common/O1DeepReasoningDisplay';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -225,10 +205,7 @@ const AIAgent: React.FC = () => {
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [testResult, setTestResult] = useState<AIValidationResult | null>(null);
   const [isTesting, setIsTesting] = useState(false);
-  const [analysisMode, setAnalysisMode] = useState<'quick' | 'o1_deep_reasoning'>('quick');
-  const [isAgentMode, setIsAgentMode] = useState(false);
-
-  // New state for streaming reasoning
+  const [analysisMode, setAnalysisMode] = useState<'quick' | 'o1_deep_reasoning' | 'o1_comprehensive_reasoning'>('quick');
   const [streamingEnabled, setStreamingEnabled] = useState(false);
   const [streamingState, setStreamingState] = useState<StreamingState>({
     isStreaming: false,
@@ -251,34 +228,6 @@ const AIAgent: React.FC = () => {
 
   const handleEnterAgentMode = () => {
     setAgentMode(true);
-  };
-
-  const handleExitAgentMode = () => {
-    setAgentMode(false);
-    setPatientType('existing');
-    setSelectedPatient('');
-    setNewPatientData({
-      firstName: '',
-      lastName: '',
-      age: 0,
-      gender: 'male',
-      chiefComplaint: '',
-      symptoms: '',
-      medicalHistory: '',
-      medications: '',
-      allergies: '',
-      additionalInfo: '',
-    });
-    setExistingPatientAddition({
-      currentSymptoms: '',
-      newMedicalHistory: '',
-      currentMedications: '',
-      newAllergies: '',
-      chiefComplaint: '',
-      additionalInfo: '',
-    });
-    setAnalysis(null);
-    setTabValue(0);
   };
 
   const handlePatientSelect = (patientId: string) => {
@@ -568,7 +517,7 @@ const AIAgent: React.FC = () => {
           setTabValue(0);
           return;
         }
-      } else {
+      } else if (analysisMode === 'o1_deep_reasoning') {
         // O1 Deep Reasoning - now with streaming option
         console.log('🔬 [O1 Analysis] Starting O1 deep reasoning analysis...');
         console.log('📋 [O1 Analysis] Transcript length:', transcript.length);
@@ -759,13 +708,141 @@ const AIAgent: React.FC = () => {
           setTabValue(0);
           return;
         }
+      } else if (analysisMode === 'o1_comprehensive_reasoning') {
+        // O1 Deep Reasoning - Maximum accuracy 7-stage analysis
+        console.log('⚡ [O1 Analysis] Starting O1 deep reasoning analysis...');
+        console.log('📋 [O1 Analysis] Transcript length:', transcript.length);
+        console.log('👤 [O1 Analysis] Patient context:', patientContext);
+        
+        try {
+          // Progress tracking for O1 (7 stages)
+          progressInterval = setInterval(() => {
+            setAnalysisProgress(prev => {
+              if (prev >= 95) {
+                if (progressInterval) clearInterval(progressInterval);
+                return 95;
+              }
+              return prev + 2; // Slower progress for long analysis
+            });
+          }, 3000); // Update every 3 seconds for longer analysis
+
+                  // Import O1 service
+        const { o1DeepReasoningService } = await import('../services/o1DeepReasoning');
+
+        // Start O1 analysis
+        const o1Result = await o1DeepReasoningService.performO1Analysis(
+            transcript,
+            patientContext,
+            {
+              analysisDepth: 'comprehensive',
+              timeoutMinutes: 15 // Extended timeout for comprehensive analysis
+            }
+          );
+
+          console.log('✅ [O1 Analysis] O1 analysis completed successfully');
+          console.log('📊 [O1 Analysis] Result keys:', Object.keys(o1Result));
+          
+          // Convert O1 result to AIAgentAnalysis format for compatibility
+          aiAnalysis = {
+            symptoms: o1Result.symptoms, // Legacy compatibility field
+            diagnoses: o1Result.diagnoses, // Legacy compatibility field
+            treatments: o1Result.treatments, // Legacy compatibility field
+            concerns: o1Result.concerns, // Legacy compatibility field
+            confidenceScore: o1Result.qualityAssurance.overallConfidence,
+            reasoning: `O1 Deep Reasoning Analysis (${o1Result.processingTime}ms):\n\n${o1Result.reasoning}`,
+            nextSteps: o1Result.nextSteps,
+            modelUsed: 'gpt-4o', // O1 uses GPT-4o in the backend
+            thinkingTime: o1Result.processingTime
+          };
+          
+          console.log('✅ [O1 Analysis] Analysis object created:', {
+            symptomsCount: aiAnalysis.symptoms.length,
+            diagnosesCount: aiAnalysis.diagnoses.length,
+            treatmentsCount: aiAnalysis.treatments.length,
+            concernsCount: aiAnalysis.concerns.length,
+            overallConfidence: o1Result.qualityAssurance.overallConfidence,
+            stages: o1Result.stages.length
+          });
+          
+        } catch (o4Error) {
+          console.error('❌ [O1 Analysis] O1 analysis failed:', o4Error);
+          
+          // Fallback analysis for O1 failure
+          const fallbackAnalysis: AIAgentAnalysis = {
+            symptoms: [{
+              id: 'sym-o4-fallback',
+              name: 'O1 Analysis Error',
+              severity: 'moderate',
+              confidence: 0.5,
+              duration: 'System error',
+              location: 'O1 Analysis Service',
+              quality: 'Error condition',
+              associatedFactors: ['O1 service failure'],
+              sourceText: `O1 analysis failed: ${(o4Error as Error).message}`
+            }],
+            diagnoses: [{
+              id: 'dx-o4-fallback',
+              condition: 'O1 Deep Reasoning Service Error',
+              icd10Code: 'Z99.9',
+              probability: 0.5,
+              severity: 'medium',
+              supportingEvidence: ['O1 system error logs'],
+              againstEvidence: ['Normal O1 operation'],
+              additionalTestsNeeded: ['Check O1 service configuration', 'Verify O1 connectivity'],
+              reasoning: `O1 Deep Reasoning failed with error: ${(o4Error as Error).message}. The O1 Deep Reasoning or Quick Analysis modes are available as alternatives.`,
+              urgency: 'routine'
+            }],
+            treatments: [{
+              id: 'tx-o4-fallback',
+              category: 'monitoring',
+              recommendation: 'Switch to O1 Deep Reasoning or Quick Analysis mode for comprehensive analysis',
+              priority: 'medium',
+              timeframe: 'As needed',
+              contraindications: ['O1 system errors'],
+              alternatives: ['Use O1 Deep Reasoning', 'Use Quick Analysis', 'Check O1 configuration'],
+              expectedOutcome: 'Successful analysis with alternative mode',
+              evidenceLevel: 'C'
+            }],
+            concerns: [{
+              id: 'flag-o4-fallback',
+              type: 'urgent_referral',
+              severity: 'medium',
+              message: 'O1 Deep Reasoning temporarily unavailable - O1 and Quick Analysis available',
+              recommendation: 'Switch to O1 Deep Reasoning or Quick Analysis mode',
+              requiresImmediateAction: false
+            }],
+            confidenceScore: 0.5,
+            reasoning: `O1 Deep Reasoning encountered an error: ${(o4Error as Error).message}. The O1 Deep Reasoning and Quick Analysis modes are available and provide reliable medical analysis. Please switch to one of those modes for comprehensive analysis.`,
+            nextSteps: [
+              'Switch to O1 Deep Reasoning mode',
+              'Switch to Quick Analysis mode',
+              'Check O1 system configuration if issue persists',
+              'Contact support if problems continue'
+            ],
+            modelUsed: 'gpt-4o'
+          };
+          
+          if (progressInterval) clearInterval(progressInterval);
+          setAnalysis(fallbackAnalysis);
+          setAnalysisProgress(100);
+          setTabValue(0);
+          return;
+        }
+      } else {
+        // Fallback for unknown analysis mode
+        console.error('❌ [Analysis] Unknown analysis mode:', analysisMode);
+        throw new Error(`Unknown analysis mode: ${analysisMode}`);
       }
 
       // Complete analysis (for non-streaming mode)
       if (progressInterval) clearInterval(progressInterval);
-      setAnalysis(aiAnalysis);
-      setAnalysisProgress(100);
-      setTabValue(0);
+      if (aiAnalysis) {
+        setAnalysis(aiAnalysis);
+        setAnalysisProgress(100);
+        setTabValue(0);
+      } else {
+        throw new Error('Analysis failed: No analysis result generated');
+      }
 
     } catch (error) {
       console.error('Error in analysis:', error);
@@ -945,7 +1022,7 @@ const AIAgent: React.FC = () => {
                 <ToggleButtonGroup
                   value={analysisMode}
                   exclusive
-                  onChange={(e, value) => value && setAnalysisMode(value)}
+                  onChange={(_, value) => value && setAnalysisMode(value)}
                   aria-label="analysis mode"
                   size="small"
                 >
@@ -953,9 +1030,13 @@ const AIAgent: React.FC = () => {
                     <FlashOn sx={{ mr: 1 }} />
                     Quick Analysis
                   </ToggleButton>
-                  <ToggleButton value="o1_deep_reasoning" aria-label="o1 deep reasoning">
+                  <ToggleButton value="o1_deep_reasoning" aria-label="o1 mini comprehensive">
                     <Psychology sx={{ mr: 1 }} />
-                    O1 Deep Reasoning
+                    O1 Mini
+                  </ToggleButton>
+                  <ToggleButton value="o1_comprehensive_reasoning" aria-label="o1 preview selective">
+                    <AutoAwesome sx={{ mr: 1 }} />
+                    O1 Preview
                   </ToggleButton>
                 </ToggleButtonGroup>
               </Box>
@@ -1203,7 +1284,7 @@ const AIAgent: React.FC = () => {
                   <Select
                     value={analysisMode}
                     label="Analysis Mode"
-                    onChange={(e) => setAnalysisMode(e.target.value as 'quick' | 'o1_deep_reasoning')}
+                    onChange={(e) => setAnalysisMode(e.target.value as 'quick' | 'o1_deep_reasoning' | 'o1_comprehensive_reasoning')}
                     disabled={isAnalyzing}
                   >
                     <MenuItem value="quick">
@@ -1219,15 +1300,73 @@ const AIAgent: React.FC = () => {
                     <MenuItem value="o1_deep_reasoning">
                       <Box>
                         <Typography variant="body2" fontWeight="bold">
-                          🧠🔬 O1 Deep Research + Reasoning (60-120 seconds)
+                          🧠🔬 O1 Mini - Comprehensive Coverage (60-120 seconds)
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          Advanced reasoning + research integration with full thinking process - O1
+                          ✅ Best for systematic medical protocols & thorough analysis
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                          • Complete differential diagnoses • Comprehensive treatment plans • Detailed symptom analysis
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                    <MenuItem value="o1_comprehensive_reasoning">
+                      <Box>
+                        <Typography variant="body2" fontWeight="bold">
+                          ⚡🔬 O1 Preview - Selective Reasoning (5-15 minutes)
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          ✅ Best for complex diagnostic challenges & focused analysis
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                          • Deep diagnostic reasoning • Quality over quantity • Complex case analysis
                         </Typography>
                       </Box>
                     </MenuItem>
                   </Select>
                 </FormControl>
+
+                {/* Model Advantages Information */}
+                <Box sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1, border: 1, borderColor: 'divider' }}>
+                  <Typography variant="subtitle2" gutterBottom color="primary">
+                    💡 Model Selection Guide
+                  </Typography>
+                  {analysisMode === 'o1_deep_reasoning' && (
+                    <Alert severity="info" sx={{ mb: 1 }}>
+                      <Typography variant="body2">
+                        <strong>O1 Mini Advantage:</strong> Optimized for comprehensive medical coverage while maintaining speed. 
+                        Excellent for systematic medical protocols and complete diagnostic workups.
+                      </Typography>
+                    </Alert>
+                  )}
+                  {analysisMode === 'o1_comprehensive_reasoning' && (
+                    <Alert severity="info" sx={{ mb: 1 }}>
+                      <Typography variant="body2">
+                        <strong>O1 Preview Advantage:</strong> Designed for selective, focused reasoning with maximum accuracy. 
+                        Excels at complex diagnostic challenges where quality matters more than quantity.
+                      </Typography>
+                    </Alert>
+                  )}
+                  {analysisMode === 'quick' && (
+                    <Alert severity="info" sx={{ mb: 1 }}>
+                      <Typography variant="body2">
+                        <strong>Quick Analysis:</strong> Fast GPT-4o analysis for rapid clinical assessments. 
+                        Perfect for initial evaluations and time-sensitive situations.
+                      </Typography>
+                    </Alert>
+                  )}
+                  <Typography variant="caption" color="text.secondary">
+                    {analysisMode === 'o1_deep_reasoning' && 
+                      'Choose O1 Mini when you need comprehensive coverage of all medical possibilities with systematic analysis.'
+                    }
+                    {analysisMode === 'o1_comprehensive_reasoning' && 
+                      'Choose O1 Preview when you have complex cases requiring deep diagnostic reasoning and selective focus.'
+                    }
+                    {analysisMode === 'quick' && 
+                      'Choose Quick Analysis for rapid assessment when time is critical or for initial screening.'
+                    }
+                  </Typography>
+                </Box>
 
                 <Button
                   fullWidth
@@ -1239,7 +1378,9 @@ const AIAgent: React.FC = () => {
                   sx={{ mt: 2 }}
                 >
                   {isAnalyzing ? 'Analyzing...' : `Run ${
-                    analysisMode === 'quick' ? 'Quick' : 'O1 Deep Research'
+                    analysisMode === 'quick' ? 'Quick' : 
+                    analysisMode === 'o1_deep_reasoning' ? 'O1 Deep Research' :
+                    'O1 Preview'
                   } AI Analysis`}
                 </Button>
                 
@@ -1309,7 +1450,7 @@ const AIAgent: React.FC = () => {
             <Card>
               <CardContent>
                 <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                  <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)}>
+                  <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
                     <Tab label="Summary" />
                     <Tab label="Symptoms" />
                     <Tab label="Diagnoses" />
@@ -1505,8 +1646,8 @@ const AIAgent: React.FC = () => {
                     </Typography>
                     {analysis.diagnoses && analysis.diagnoses.length > 0 ? (
                       <Stack spacing={1}>
-                        {analysis.diagnoses.map((diagnosis, index) => (
-                          <Card key={diagnosis.id} variant="outlined">
+                        {analysis.diagnoses.map((diagnosis) => (
+                          <Card key={diagnosis.id} variant="outlined" sx={{ mb: 2 }}>
                             <CardContent>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                                 <Box sx={{ flex: 1 }}>
@@ -1762,12 +1903,6 @@ const AIAgent: React.FC = () => {
                         totalSteps={5}
                         onStepComplete={(step) => {
                           console.log('Step completed:', step.title);
-                        }}
-                        onStreamComplete={() => {
-                          console.log('Stream completed');
-                        }}
-                        onStreamError={(error) => {
-                          console.error('Stream error:', error);
                         }}
                       />
                     ) : (

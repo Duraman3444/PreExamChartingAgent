@@ -15,7 +15,7 @@ const getAuthToken = async (): Promise<string> => {
 };
 
 // Helper function to call Firebase Functions with enhanced error handling and retry logic
-const callFirebaseFunction = async (functionName: string, data: any, timeoutMs: number = 30000, maxRetries: number = 2): Promise<any> => {
+export const callFirebaseFunction = async (functionName: string, data: any, timeoutMs: number = 30000, maxRetries: number = 2): Promise<any> => {
   console.log(`🔍 [Firebase Debug] Calling function: ${functionName}`);
   console.log(`📊 [Firebase Debug] Function data:`, data);
   console.log(`⏰ [Firebase Debug] Timeout set to: ${timeoutMs}ms`);
@@ -302,10 +302,8 @@ export interface ModelConfig {
 }
 
 class OpenAIService {
-  private apiKey: string;
-  
   constructor() {
-    this.apiKey = import.meta.env.VITE_OPENAI_API_KEY || '';
+    // Firebase Functions handle API key management
   }
 
   private validateApiKey(): void {
@@ -1296,21 +1294,22 @@ class OpenAIService {
       recommendations.push('Ensure Firebase is properly installed and configured');
     }
 
-    // Test 2: Firebase Authentication
+    // Test 2: Authentication
     try {
+      console.log('🔐 [O1 Diagnostic] Testing authentication...');
+      
       const { getAuth } = await import('firebase/auth');
       const auth = getAuth();
       const user = auth.currentUser;
       
       if (!user) {
-        issues.push('User not authenticated');
-        recommendations.push('Please log in to use O1 analysis features');
+        issues.push('No authenticated user found');
+        recommendations.push('Please log in to use AI features');
       } else {
         testResults.firebaseAuth = true;
-        console.log('✅ [O1 Diagnostic] Firebase authentication OK');
         
         // Test token generation
-        const token = await user.getIdToken();
+        await user.getIdToken();
         console.log('✅ [O1 Diagnostic] Auth token generated successfully');
       }
     } catch (error) {
