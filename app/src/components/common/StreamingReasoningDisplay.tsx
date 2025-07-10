@@ -50,19 +50,15 @@ const StreamingReasoningDisplay: React.FC<StreamingReasoningDisplayProps> = ({
 }) => {
   const theme = useTheme();
   const [isVisible, setIsVisible] = useState(true);
-  const [displayedText, setDisplayedText] = useState('');
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [isTyping, setIsTyping] = useState(false);
   const [processingTime, setProcessingTime] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const typewriterRef = useRef<NodeJS.Timeout>();
 
   // Auto-scroll to bottom when new content appears
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [displayedText, reasoningSteps]);
+  }, [reasoningSteps]);
 
   // Update processing time
   useEffect(() => {
@@ -76,48 +72,6 @@ const StreamingReasoningDisplay: React.FC<StreamingReasoningDisplayProps> = ({
       if (interval) clearInterval(interval);
     };
   }, [isStreaming]);
-
-  // Typewriter effect for streaming thoughts (like Cursor)
-  useEffect(() => {
-    if (currentStep && isStreaming) {
-      setIsTyping(true);
-      const text = currentStep.content;
-      let charIndex = 0;
-      
-      // Clear previous typewriter
-      if (typewriterRef.current) {
-        clearInterval(typewriterRef.current);
-      }
-      
-      // Start typewriter effect
-      typewriterRef.current = setInterval(() => {
-        if (charIndex < text.length) {
-          setDisplayedText(text.substring(0, charIndex + 1));
-          charIndex++;
-        } else {
-          setIsTyping(false);
-          if (typewriterRef.current) {
-            clearInterval(typewriterRef.current);
-          }
-        }
-      }, 30); // Adjust speed: lower = faster typing
-      
-      return () => {
-        if (typewriterRef.current) {
-          clearInterval(typewriterRef.current);
-        }
-      };
-    }
-  }, [currentStep, isStreaming]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (typewriterRef.current) {
-        clearInterval(typewriterRef.current);
-      }
-    };
-  }, []);
 
   const getStepIcon = (type: string) => {
     switch (type) {
@@ -272,24 +226,7 @@ const StreamingReasoningDisplay: React.FC<StreamingReasoningDisplayProps> = ({
                     wordBreak: 'break-word'
                   }}
                 >
-                  {displayedText}
-                  {isTyping && (
-                    <Box
-                      component="span"
-                      sx={{
-                        display: 'inline-block',
-                        width: '2px',
-                        height: '1.2em',
-                        bgcolor: 'primary.main',
-                        animation: 'blink 1s infinite',
-                        ml: 0.5,
-                        '@keyframes blink': {
-                          '0%, 50%': { opacity: 1 },
-                          '51%, 100%': { opacity: 0 }
-                        }
-                      }}
-                    />
-                  )}
+                  {currentStep.content}
                 </Typography>
               </Box>
             )}

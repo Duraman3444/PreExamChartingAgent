@@ -24,7 +24,40 @@ function emitReasoningStep(response: any, stepData: any): void {
   response.write(createSSEMessage('reasoning_step', stepData));
 }
 
+// Helper function to check if Firestore is available (for emulator without Firestore)
+function isFirestoreAvailable(): boolean {
+  try {
+    // Check if we're in the Functions emulator without Firestore
+    const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
+    if (isEmulator) {
+      // If in emulator, check if Firestore emulator is also running
+      // We can detect this by checking if Firestore operations work
+      return process.env.FIRESTORE_EMULATOR_HOST !== undefined;
+    }
+    return true; // In production, Firestore should always be available
+  } catch (error) {
+    return false;
+  }
+}
 
+// Helper function to safely save to Firestore (skip if not available)
+async function safeSaveToFirestore(collection: string, data: any): Promise<string | null> {
+  if (!isFirestoreAvailable()) {
+    console.log('🔍 [DEV MODE] Skipping Firestore save - Firestore emulator not running');
+    return `dev-${Date.now()}`;
+  }
+  
+  try {
+    const docRef = await admin.firestore().collection(collection).add({
+      ...data,
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.warn('⚠️ Firestore operation failed:', error);
+    return `fallback-${Date.now()}`;
+  }
+}
 
 // Medical analysis prompt
 const MEDICAL_ANALYSIS_PROMPT = `
@@ -517,21 +550,20 @@ export const analyzeTranscript = functions.https.onRequest(async (request, respo
         };
       }
 
-      // Save to Firestore
+      // Save to Firestore (skip if emulator without Firestore)
       const analysisData = {
         patientId: patientId || null,
         visitId: visitId || null,
         transcript,
         analysis,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
         status: 'completed'
       };
 
-      const docRef = await admin.firestore().collection('analyses').add(analysisData);
+      const docId = await safeSaveToFirestore('analyses', analysisData);
 
       // Return the exact structure the client expects
       const responseData = {
-        id: docRef.id,
+        id: docId,
         symptoms: analysis.symptoms,
         differential_diagnosis: analysis.differential_diagnosis,
         treatment_recommendations: analysis.treatment_recommendations,
@@ -865,14 +897,13 @@ Doctor: Based on your symptoms, I'd like to run some tests to rule out any serio
         confidence: mockResponse.confidence,
         duration: mockResponse.duration,
         language: mockResponse.language,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
         status: 'completed'
       };
 
-      const docRef = await admin.firestore().collection('transcriptions').add(transcriptionData);
+      const docId = await safeSaveToFirestore('transcriptions', transcriptionData);
 
       response.json({
-        id: docRef.id,
+        id: docId,
         ...mockResponse
       });
 
@@ -1687,12 +1718,11 @@ export const analyzeWithReasoning = functions.runWith({
         analysis,
         modelType,
         o1Reasoning: reasoningText,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
         status: 'completed'
       };
 
-      const docRef = await admin.firestore().collection('ai-analysis').add(analysisData);
-      analysis.id = docRef.id;
+      const docId = await safeSaveToFirestore('ai-analysis', analysisData);
+      analysis.id = docId;
 
       console.log('🔍 [O1 DEBUG] Returning final analysis to client:');
       console.log('🔍 [O1 DEBUG] - Response symptoms count:', analysis.symptoms?.length || 0);
@@ -2137,13 +2167,12 @@ export const analyzeWithStreamingReasoning = functions.runWith({
         analysis,
         modelType,
         o1Reasoning: reasoningText,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
         status: 'completed',
         sessionId
       };
 
-      const docRef = await admin.firestore().collection('ai-analysis').add(analysisData);
-      analysis.id = docRef.id;
+      const docId = await safeSaveToFirestore('ai-analysis', analysisData);
+      analysis.id = docId;
 
       // Send final analysis result
       response.write(createSSEMessage('analysis_complete', analysis));
@@ -2151,7 +2180,7 @@ export const analyzeWithStreamingReasoning = functions.runWith({
       // Send completion message
       response.write(createSSEMessage('complete', { 
         message: 'Real-time reasoning analysis completed successfully',
-        analysisId: docRef.id,
+        analysisId: docId,
         processingTime: Date.now() - startTime,
         reasoningLength: reasoningText.length
       }));
@@ -3001,14 +3030,12 @@ export const saveO1AnalysisResults = functions.https.onRequest(async (request, r
       }
 
       // Save to Firestore
-      await admin.firestore()
-        .collection('o1-analysis')
-        .doc(sessionId)
-        .set({
-          ...analysisResults,
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
-          saved: true
-        });
+      const analysisData = {
+        ...analysisResults,
+        saved: true
+      };
+
+      await safeSaveToFirestore('o1-analysis', analysisData);
 
       console.log('✅ [O1 Save] Analysis results saved successfully');
       

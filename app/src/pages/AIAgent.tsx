@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Grid,
@@ -210,6 +210,19 @@ const AIAgent: React.FC = () => {
   const handleEnterAgentMode = () => {
     setAgentMode(true);
   };
+
+  // Debug logging for real-time reasoning display troubleshooting
+  useEffect(() => {
+    console.log('🎯 [Reasoning Tab Debug]', {
+      analysisMode,
+      isStreaming: streamingState.isStreaming,
+      stepsCount: streamingState.reasoningSteps.length,
+      streamingStatus: streamingState.streamingStatus,
+      hasAnalysis: !!analysis,
+      currentStep: streamingState.currentStep?.title,
+      tabValue
+    });
+  }, [streamingState, analysisMode, analysis, tabValue]);
 
   const handlePatientSelect = (patientId: string) => {
     setSelectedPatient(patientId);
@@ -531,6 +544,9 @@ const AIAgent: React.FC = () => {
             // onReasoningStep
             (step: ReasoningStep) => {
               console.log('🔄 [O1 Mini] New reasoning step:', step.title);
+              console.log('📝 [O1 Mini] Step content length:', step.content?.length || 0);
+              console.log('📝 [O1 Mini] Step content preview:', step.content?.substring(0, 100) + '...');
+              console.log('📝 [O1 Mini] Full step object:', step);
               setStreamingState(prev => ({
                 ...prev,
                 currentStep: step,
@@ -696,6 +712,9 @@ const AIAgent: React.FC = () => {
             // onReasoningStep
             (step: ReasoningStep) => {
               console.log('🔄 [O1 Preview] New reasoning step:', step.title);
+              console.log('📝 [O1 Preview] Step content length:', step.content?.length || 0);
+              console.log('📝 [O1 Preview] Step content preview:', step.content?.substring(0, 100) + '...');
+              console.log('📝 [O1 Preview] Full step object:', step);
               setStreamingState(prev => ({
                 ...prev,
                 currentStep: step,
@@ -1900,9 +1919,8 @@ const AIAgent: React.FC = () => {
                 {/* Reasoning Process Tab Panel */}
                 {(analysis?.reasoningTrace || streamingState.isStreaming || streamingState.reasoningSteps.length > 0) && (
                   <TabPanel value={tabValue} index={5}>
-                    {((analysisMode === 'o1_deep_reasoning' || analysisMode === 'o1_comprehensive_reasoning') && 
-                      (streamingState.isStreaming || streamingState.reasoningSteps.length > 0)) || 
-                     (streamingEnabled && (streamingState.isStreaming || streamingState.reasoningSteps.length > 0)) ? (
+                    {(analysisMode === 'o1_deep_reasoning' || analysisMode === 'o1_comprehensive_reasoning') && 
+                     (streamingState.isStreaming || streamingState.reasoningSteps.length > 0) ? (
                       <StreamingReasoningDisplay
                         isStreaming={streamingState.isStreaming}
                         reasoningSteps={streamingState.reasoningSteps}
