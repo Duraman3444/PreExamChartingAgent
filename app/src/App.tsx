@@ -31,6 +31,9 @@ import { useAppStore } from '@/stores/appStore';
 import { ROUTES } from '@/constants';
 import { createAppTheme } from '@/theme/theme';
 import { mockVisits } from '@/data/mockData';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { KeyboardShortcutsModal } from '@/components/common/KeyboardShortcutsModal';
+import { GlobalSearchModal } from '@/components/common/GlobalSearchModal';
 
 // Proper page components with visible content
 
@@ -800,9 +803,194 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   return isAuthenticated ? <>{children}</> : <Navigate to={ROUTES.LOGIN} replace />;
 };
 
+// Component to handle keyboard shortcuts inside Router context
+const AppContent: React.FC = () => {
+  const { showHelpModal, setShowHelpModal, showGlobalSearch, setShowGlobalSearch } = useKeyboardShortcuts();
+  const { isAuthenticated } = useAuthStore();
+
+  return (
+    <>
+      <Routes>
+        <Route path={ROUTES.LOGIN} element={<Login />} />
+        <Route
+          path={ROUTES.HOME}
+          element={
+            isAuthenticated ? (
+              <Navigate to={ROUTES.DASHBOARD} />
+            ) : (
+              <Navigate to={ROUTES.LOGIN} />
+            )
+          }
+        />
+        <Route
+          path={ROUTES.DASHBOARD}
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Dashboard />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.PATIENTS}
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <PatientManagement />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.VISITS}
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <VisitManagement />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.VISIT_DETAIL}
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <VisitDetail />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.TRANSCRIPT_UPLOAD}
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <TranscriptUpload />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.TRANSCRIPT_EDITOR}
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <TranscriptEditor />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.AI_ANALYSIS}
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <AIAnalysisEntry />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.AI_ANALYSIS_DETAIL}
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <AIAnalysis />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.AI_AGENT}
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <AIAgent />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.VISIT_NOTES}
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <VisitNotes />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.PROFILE}
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Profile />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.TRANSCRIPTS}
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Transcripts />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.NOTES}
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Notes />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.SETTINGS}
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Settings />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/evaluation"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <EvaluationDashboard />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+      
+      {/* Keyboard Shortcuts Help Modal */}
+      <KeyboardShortcutsModal
+        open={showHelpModal}
+        onClose={() => setShowHelpModal(false)}
+      />
+      
+      {/* Global Search Modal */}
+      <GlobalSearchModal
+        open={showGlobalSearch}
+        onClose={() => setShowGlobalSearch(false)}
+      />
+    </>
+  );
+};
+
 function App() {
   const { initialize, isAuthenticated, isLoading, isInitialized } = useAuthStore();
-  const { theme: themeMode } = useAppStore();
   
   console.log('🚀 [App Debug] App component initializing...');
   console.log('🚀 [App Debug] Auth state:', {
@@ -811,7 +999,7 @@ function App() {
     isInitialized
   });
   
-  const theme = createAppTheme(themeMode);
+  const theme = createAppTheme(); // No parameters needed - fixed to light mode
 
   useEffect(() => {
     console.log('🚀 [App Debug] Calling auth initialize...');
@@ -846,169 +1034,7 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
-        <Routes>
-          <Route path={ROUTES.LOGIN} element={<Login />} />
-          <Route
-            path={ROUTES.HOME}
-            element={
-              isAuthenticated ? (
-                <Navigate to={ROUTES.DASHBOARD} />
-              ) : (
-                <Navigate to={ROUTES.LOGIN} />
-              )
-            }
-          />
-          <Route
-            path={ROUTES.DASHBOARD}
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Dashboard />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.PATIENTS}
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <PatientManagement />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.VISITS}
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <VisitManagement />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.VISIT_DETAIL}
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <VisitDetail />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.TRANSCRIPT_UPLOAD}
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <TranscriptUpload />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.TRANSCRIPT_EDITOR}
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <TranscriptEditor />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.AI_ANALYSIS}
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <AIAnalysisEntry />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.AI_ANALYSIS_DETAIL}
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <AIAnalysis />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.AI_AGENT}
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <AIAgent />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.VISIT_NOTES}
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <VisitNotes />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.PROFILE}
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Profile />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.TRANSCRIPTS}
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Transcripts />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.NOTES}
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Notes />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.SETTINGS}
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Settings />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/evaluation"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <EvaluationDashboard />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
+        <AppContent />
       </Router>
     </ThemeProvider>
   );

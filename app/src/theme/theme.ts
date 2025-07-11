@@ -1,9 +1,9 @@
 import { createTheme } from '@mui/material/styles';
 
-// Brand colors from Figma
+// Brand colors from Figma - Updated to use blue instead of orange
 const brandColors = {
   purple: '#6C5BD4',
-  orange: '#FF6000',
+  blue: '#1976D2',
   dark: '#242424',
   light: '#F8F9FA',
   white: '#FFFFFF',
@@ -11,13 +11,14 @@ const brandColors = {
   lightGray: '#E9ECEF',
 };
 
-export const createAppTheme = (mode: 'light' | 'dark') => createTheme({
+// Fixed to light mode only
+export const createAppTheme = () => createTheme({
   palette: {
-    mode,
+    mode: 'light',
     primary: {
-      main: brandColors.orange,
-      light: '#FF8533',
-      dark: '#CC4D00',
+      main: brandColors.blue,
+      light: '#42A5F5',
+      dark: '#1565C0',
       contrastText: '#FFFFFF',
     },
     secondary: {
@@ -27,14 +28,14 @@ export const createAppTheme = (mode: 'light' | 'dark') => createTheme({
       contrastText: '#FFFFFF',
     },
     background: {
-      default: mode === 'light' ? '#F8F9FA' : '#121212',
-      paper: mode === 'light' ? '#FFFFFF' : '#1E1E1E',
+      default: '#F8F9FA',
+      paper: '#FFFFFF',
     },
     text: {
-      primary: mode === 'light' ? '#212529' : '#FFFFFF',
-      secondary: mode === 'light' ? '#6C757D' : '#AAAAAA',
+      primary: '#212529',
+      secondary: '#6C757D',
     },
-    divider: mode === 'light' ? '#DEE2E6' : '#333333',
+    divider: '#DEE2E6',
     success: {
       main: '#28A745',
       light: '#71DD8A',
@@ -120,9 +121,9 @@ export const createAppTheme = (mode: 'light' | 'dark') => createTheme({
           backgroundColor: theme.palette.background.paper,
           border: `1px solid ${theme.palette.divider}`,
           borderRadius: 16,
-          boxShadow: mode === 'light' ? '0 2px 4px rgba(0,0,0,0.1)' : '0 2px 4px rgba(255,255,255,0.1)',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
           '&:hover': {
-            boxShadow: mode === 'light' ? '0 4px 8px rgba(0,0,0,0.15)' : '0 4px 8px rgba(255,255,255,0.15)',
+            boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
           },
         }),
       },
@@ -136,9 +137,9 @@ export const createAppTheme = (mode: 'light' | 'dark') => createTheme({
           textTransform: 'none',
         },
         contained: {
-          boxShadow: mode === 'light' ? '0 2px 4px rgba(0,0,0,0.1)' : '0 2px 4px rgba(255,255,255,0.1)',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
           '&:hover': {
-            boxShadow: mode === 'light' ? '0 4px 8px rgba(0,0,0,0.15)' : '0 4px 8px rgba(255,255,255,0.15)',
+            boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
           },
         },
       },
@@ -157,7 +158,7 @@ export const createAppTheme = (mode: 'light' | 'dark') => createTheme({
           backgroundColor: theme.palette.background.paper,
           color: theme.palette.text.primary,
           border: 'none',
-          boxShadow: mode === 'light' ? '0 2px 4px rgba(0,0,0,0.1)' : '0 2px 4px rgba(255,255,255,0.1)',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
           borderBottom: `1px solid ${theme.palette.divider}`,
         }),
       },
@@ -167,7 +168,7 @@ export const createAppTheme = (mode: 'light' | 'dark') => createTheme({
         paper: ({ theme }) => ({
           backgroundColor: theme.palette.background.paper,
           borderRight: `1px solid ${theme.palette.divider}`,
-          boxShadow: mode === 'light' ? '2px 0 4px rgba(0,0,0,0.1)' : '2px 0 4px rgba(255,255,255,0.1)',
+          boxShadow: '2px 0 4px rgba(0,0,0,0.1)',
         }),
       },
     },
@@ -188,17 +189,17 @@ export const createAppTheme = (mode: 'light' | 'dark') => createTheme({
           borderRadius: 8,
           margin: '4px 8px',
           '&.Mui-selected': {
-            backgroundColor: mode === 'light' ? '#FFF3E0' : '#2D1B0D',
-            color: brandColors.orange,
+            backgroundColor: '#E3F2FD',
+            color: brandColors.blue,
             '& .MuiListItemIcon-root': {
-              color: brandColors.orange,
+              color: brandColors.blue,
             },
             '&:hover': {
-              backgroundColor: mode === 'light' ? '#FFE0B2' : '#3D2B1D',
+              backgroundColor: '#BBDEFB',
             },
           },
           '&:hover': {
-            backgroundColor: mode === 'light' ? '#F8F9FA' : '#2A2A2A',
+            backgroundColor: '#F8F9FA',
           },
         }),
       },
@@ -214,5 +215,5 @@ export const createAppTheme = (mode: 'light' | 'dark') => createTheme({
   },
 });
 
-// Default light theme for initial load
-export const theme = createAppTheme('light'); 
+// Default light theme (now the only theme)
+export const theme = createAppTheme(); 

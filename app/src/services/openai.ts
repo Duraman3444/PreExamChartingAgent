@@ -18,7 +18,7 @@ const getAuthToken = async (): Promise<string> => {
 };
 
 // Helper function to call Firebase Functions with enhanced error handling and retry logic
-export const callFirebaseFunction = async (functionName: string, data: any, timeoutMs: number = 30000, maxRetries: number = 2): Promise<any> => {
+export const callFirebaseFunction = async (functionName: string, data: any, timeoutMs: number = 30000, maxRetries: number = 2, customApiKey?: string): Promise<any> => {
   console.log(`🔍 [Firebase Debug] Calling function: ${functionName}`);
   console.log(`📊 [Firebase Debug] Function data:`, data);
   console.log(`⏰ [Firebase Debug] Timeout set to: ${timeoutMs}ms`);
@@ -47,13 +47,16 @@ export const callFirebaseFunction = async (functionName: string, data: any, time
         console.log(`⏰ [Firebase Debug] Function ${functionName} timed out after ${timeoutMs}ms (attempt ${attempt + 1})`);
       }, timeoutMs);
       
+      // Add custom API key to the request data if provided
+      const requestData = customApiKey ? { ...data, customApiKey } : data;
+      
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(requestData),
                 signal: controller.signal
       });
 
@@ -319,6 +322,25 @@ class OpenAIService {
   private validateApiKey(): void {
     // Always use Firebase Functions - no API key validation needed
     console.log('✅ [OpenAI Debug] Using secure Firebase Functions proxy');
+  }
+
+  private async getUserApiKey(): Promise<string | undefined> {
+    try {
+      const { useAuthStore } = await import('@/stores/authStore');
+      const user = useAuthStore.getState().user;
+      const customApiKey = user?.preferences?.openaiApiKey;
+      
+      if (customApiKey && customApiKey.trim() !== '') {
+        console.log('🔑 [OpenAI Debug] Using custom user API key');
+        return customApiKey.trim();
+      }
+      
+      console.log('🔑 [OpenAI Debug] Using default shared API key');
+      return undefined;
+    } catch (error) {
+      console.error('❌ [OpenAI Debug] Error getting user API key:', error);
+      return undefined;
+    }
   }
 
   /**
@@ -614,6 +636,8 @@ class OpenAIService {
 
       logGPTOperation.progress(operation, 'Routing through Firebase Functions for secure analysis');
 
+      const customApiKey = await this.getUserApiKey();
+
       // Route through Firebase Functions (same as 4o but with reasoning)
       const analysisData = await callFirebaseFunction('analyzeWithReasoning', {
         transcript,
@@ -621,7 +645,7 @@ class OpenAIService {
         modelType,
         patientId: null,
         visitId: null
-      }, 90000); // 90 second timeout for O1 analysis
+      }, 90000, 2, customApiKey); // 90 second timeout for O1 analysis
 
       // Process the result from Firebase Functions
       const differentialData = analysisData.differential_diagnosis || analysisData.differentialDiagnoses || analysisData.diagnoses || [];
@@ -728,6 +752,8 @@ class OpenAIService {
 
       logGPTOperation.progress(operation, 'Routing through Firebase Functions for secure deep analysis');
 
+      const customApiKey = await this.getUserApiKey();
+
       // Route through Firebase Functions (same as 4o but with reasoning)
       const response = await callFirebaseFunction('analyzeWithReasoning', {
         transcript,
@@ -735,7 +761,7 @@ class OpenAIService {
         modelType,
         patientId: null,
         visitId: null
-      }, 90000); // 90 second timeout for O1 deep analysis
+      }, 90000, 2, customApiKey); // 90 second timeout for O1 deep analysis
 
       const processingTime = Date.now() - startTime;
       logGPTOperation.success(operation, modelType, processingTime, response);
@@ -880,12 +906,14 @@ class OpenAIService {
         reader.readAsDataURL(audioFile);
       });
 
+      const customApiKey = await this.getUserApiKey();
+
       // Route through Firebase Functions
       const response = await callFirebaseFunction('transcribeAudio', {
         audioData: fileData,
         fileName: audioFile.name,
         fileType: audioFile.type
-      });
+      }, 30000, 2, customApiKey);
 
       logGPTOperation.progress(operation, 'Processing transcription segments');
 
@@ -982,12 +1010,14 @@ class OpenAIService {
       
       logGPTOperation.progress(operation, 'Calling secure Firebase Function');
 
+      const customApiKey = await this.getUserApiKey();
+
       // Call Firebase Function for secure server-side OpenAI analysis
       const response = await callFirebaseFunction('analyzeTranscript', {
         transcript,
         patientContext,
         useDeepResearch
-      });
+      }, 30000, 2, customApiKey);
 
       const processingTime = Date.now() - startTime;
       logGPTOperation.progress(operation, 'Firebase Function call completed, processing response');
@@ -1081,12 +1111,14 @@ class OpenAIService {
       
       logGPTOperation.progress(operation, 'Routing through Firebase Functions for secure quick analysis');
 
+      const customApiKey = await this.getUserApiKey();
+
       // Route through Firebase Functions - use correct parameter format
       const response = await callFirebaseFunction('analyzeTranscript', {
         transcript,
         patientId: null,
         visitId: null
-      });
+      }, 30000, 2, customApiKey);
 
       const processingTime = Date.now() - startTime;
       logGPTOperation.progress(operation, 'Firebase Function call completed, processing response');
@@ -1138,11 +1170,13 @@ class OpenAIService {
 
       logGPTOperation.progress(operation, 'Routing through Firebase Functions for secure summary generation');
 
+      const customApiKey = await this.getUserApiKey();
+
       // Route through Firebase Functions
       const response = await callFirebaseFunction('generateSummary', {
         transcript,
         type
-      });
+      }, 30000, 2, customApiKey);
 
       const processingTime = Date.now() - startTime;
       logGPTOperation.success(operation, 'gpt-4o', processingTime, {
@@ -1176,11 +1210,13 @@ class OpenAIService {
 
       logGPTOperation.progress(operation, 'Routing through Firebase Functions for secure text generation');
 
+      const customApiKey = await this.getUserApiKey();
+
       // Route through Firebase Functions
       const response = await callFirebaseFunction('generateText', {
         prompt,
         model: actualModel
-      });
+      }, 30000, 2, customApiKey);
 
       const processingTime = Date.now() - startTime;
       logGPTOperation.success(operation, actualModel, processingTime, {
@@ -1488,12 +1524,14 @@ class OpenAIService {
 
       logGPTOperation.progress(operation, 'Routing through Firebase Functions for secure deep analysis');
 
+      const customApiKey = await this.getUserApiKey();
+
       // Route through Firebase Functions
       const response = await callFirebaseFunction('analyzeTranscript', {
         transcript,
         patientContext,
         analysisType: 'deep'
-      });
+      }, 30000, 2, customApiKey);
 
       const processingTime = Date.now() - startTime;
       logGPTOperation.success(operation, 'gpt-4o', processingTime, response);
@@ -1561,11 +1599,13 @@ class OpenAIService {
 
       logGPTOperation.progress(operation, 'Routing through Firebase Functions for secure treatment protocol generation');
 
+      const customApiKey = await this.getUserApiKey();
+
       // Route through Firebase Functions
       const response = await callFirebaseFunction('generateTreatmentProtocol', {
         diagnosis,
         patientContext
-      });
+      }, 30000, 2, customApiKey);
 
       const processingTime = Date.now() - startTime;
       logGPTOperation.success(operation, 'gpt-4o', processingTime, response);

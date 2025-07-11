@@ -14,11 +14,12 @@ export interface User {
 }
 
 export interface UserPreferences {
-  theme: 'light' | 'dark';
+  theme: 'light'; // Fixed to light mode only
   language: string;
   autoSave: boolean;
   notificationsEnabled: boolean;
   aiAssistanceLevel: 'basic' | 'detailed' | 'comprehensive';
+  openaiApiKey?: string; // Optional custom OpenAI API key
 }
 
 // Patient Types (Basic Info Only)

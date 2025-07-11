@@ -1,47 +1,52 @@
 import React, { useState } from 'react';
 import {
   Box,
-  Typography,
   Card,
   CardContent,
+  Typography,
   Grid,
-  Switch,
-  FormControlLabel,
-  Select,
-  MenuItem,
   FormControl,
   InputLabel,
+  Select,
+  MenuItem,
+  Switch,
+  FormControlLabel,
   Button,
-  Divider,
   Alert,
+  CircularProgress,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   List,
   ListItem,
   ListItemText,
   ListItemSecondaryAction,
+  Divider,
   Chip,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
-  CircularProgress,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   RadioGroup,
   Radio,
+  FormGroup,
+  IconButton,
 } from '@mui/material';
 import {
   ExpandMore,
   Palette,
+  Psychology,
   Notifications,
   Security,
-  Psychology,
   Save as SaveIcon,
   Restore as RestoreIcon,
   Download as DownloadIcon,
   Upload as UploadIcon,
   Delete as DeleteIcon,
+  Key as KeyIcon,
+  Visibility,
+  VisibilityOff,
 } from '@mui/icons-material';
 import { useAuthStore } from '@/stores/authStore';
 import { useAppStore } from '@/stores/appStore';
@@ -49,20 +54,22 @@ import { UserPreferences } from '@/types';
 
 export const Settings: React.FC = () => {
   const { user, setUser } = useAuthStore();
-  const { theme: currentTheme, setTheme } = useAppStore();
+  // Removed theme-related functionality since theme is now fixed to light mode
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
   
   const [preferences, setPreferences] = useState<UserPreferences>(
     user?.preferences || {
-      theme: currentTheme,
+      theme: 'light', // Fixed to light mode
       language: 'en',
       autoSave: true,
       notificationsEnabled: true,
       aiAssistanceLevel: 'detailed',
+      openaiApiKey: '',
     }
   );
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -70,10 +77,7 @@ export const Settings: React.FC = () => {
   const handlePreferenceChange = (key: keyof UserPreferences, value: any) => {
     setPreferences(prev => ({ ...prev, [key]: value }));
     
-    // Update theme immediately in app store
-    if (key === 'theme') {
-      setTheme(value);
-    }
+    // Removed theme updating logic since theme is now fixed
   };
 
   const handleSave = async () => {
@@ -103,11 +107,12 @@ export const Settings: React.FC = () => {
 
   const handleResetToDefaults = () => {
     const defaultPreferences: UserPreferences = {
-      theme: 'light',
+      theme: 'light', // Fixed to light mode
       language: 'en',
       autoSave: true,
       notificationsEnabled: true,
       aiAssistanceLevel: 'detailed',
+      openaiApiKey: '',
     };
     setPreferences(defaultPreferences);
     setShowResetDialog(false);
@@ -141,7 +146,9 @@ export const Settings: React.FC = () => {
       try {
         const importedSettings = JSON.parse(e.target?.result as string);
         if (importedSettings.preferences) {
-          setPreferences(importedSettings.preferences);
+          // Force theme to light mode when importing
+          const updatedPreferences = { ...importedSettings.preferences, theme: 'light' };
+          setPreferences(updatedPreferences);
           setSuccess('Settings imported successfully!');
         }
       } catch (err) {
@@ -213,17 +220,10 @@ export const Settings: React.FC = () => {
                 <Typography variant="h6">Appearance</Typography>
               </Box>
               
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <InputLabel>Theme</InputLabel>
-                <Select
-                  value={preferences.theme}
-                  label="Theme"
-                  onChange={(e) => handlePreferenceChange('theme', e.target.value)}
-                >
-                  <MenuItem value="light">Light</MenuItem>
-                  <MenuItem value="dark">Dark</MenuItem>
-                </Select>
-              </FormControl>
+              {/* Removed theme selector - theme is now fixed to light mode */}
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Theme: Light Mode (Fixed)
+              </Typography>
 
               <FormControl fullWidth>
                 <InputLabel>Language</InputLabel>
@@ -330,6 +330,59 @@ export const Settings: React.FC = () => {
                   />
                 </RadioGroup>
               </FormControl>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* OpenAI API Key Settings */}
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <KeyIcon sx={{ mr: 1, color: 'primary.main' }} />
+                <Typography variant="h6">OpenAI API Key</Typography>
+              </Box>
+              
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Use your own OpenAI API key for AI analysis. Leave blank to use the default shared key.
+              </Typography>
+
+              <TextField
+                fullWidth
+                label="OpenAI API Key"
+                type={showApiKey ? 'text' : 'password'}
+                value={preferences.openaiApiKey || ''}
+                onChange={(e) => handlePreferenceChange('openaiApiKey', e.target.value)}
+                placeholder="sk-..."
+                InputProps={{
+                  endAdornment: (
+                    <IconButton
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      edge="end"
+                    >
+                      {showApiKey ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  ),
+                }}
+                helperText={
+                  <Box component="span">
+                    Your API key is stored securely and encrypted. Get your key from{' '}
+                    <Typography 
+                      component="a" 
+                      href="https://platform.openai.com/account/api-keys" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      sx={{ 
+                        color: 'primary.main',
+                        textDecoration: 'underline',
+                        '&:hover': { textDecoration: 'none' }
+                      }}
+                    >
+                      OpenAI Platform
+                    </Typography>
+                  </Box>
+                }
+              />
             </CardContent>
           </Card>
         </Grid>
@@ -546,8 +599,8 @@ export const Settings: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowResetDialog(false)}>Cancel</Button>
-          <Button onClick={handleResetToDefaults} color="primary">
-            Reset
+          <Button onClick={handleResetToDefaults} variant="contained" color="warning">
+            Reset to Defaults
           </Button>
         </DialogActions>
       </Dialog>
@@ -555,43 +608,37 @@ export const Settings: React.FC = () => {
       {/* Delete Account Dialog */}
       <Dialog 
         open={showDeleteDialog} 
-        onClose={() => {
-          setShowDeleteDialog(false);
-          setDeleteConfirmText('');
-        }}
+        onClose={() => setShowDeleteDialog(false)}
+        maxWidth="sm"
+        fullWidth
       >
-        <DialogTitle>Delete Account</DialogTitle>
+        <DialogTitle color="error">Delete Account</DialogTitle>
         <DialogContent>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            Are you sure you want to delete your account? This action cannot be undone.
+          <Typography sx={{ mb: 2 }}>
+            This action will permanently delete your account and all associated data.
+            This cannot be undone.
           </Typography>
-          <Typography variant="body2" color="error" sx={{ mb: 2 }}>
-            All your data, including visits, notes, and preferences will be permanently deleted.
+          
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Type "DELETE" to confirm account deletion:
           </Typography>
+          
           <TextField
             fullWidth
-            label="Type 'DELETE' to confirm"
-            placeholder="DELETE"
-            size="small"
             value={deleteConfirmText}
             onChange={(e) => setDeleteConfirmText(e.target.value)}
+            placeholder="Type DELETE to confirm"
+            error={deleteConfirmText !== '' && deleteConfirmText !== 'DELETE'}
+            helperText={deleteConfirmText !== '' && deleteConfirmText !== 'DELETE' ? 'Please type DELETE exactly' : ''}
           />
         </DialogContent>
         <DialogActions>
+          <Button onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
           <Button 
-            onClick={() => {
-              setShowDeleteDialog(false);
-              setDeleteConfirmText('');
-            }} 
-            disabled={isLoading}
-          >
-            Cancel
-          </Button>
-          <Button 
-            color="error" 
-            variant="contained"
             onClick={handleDeleteAccount}
-            disabled={isLoading || deleteConfirmText !== 'DELETE'}
+            variant="contained" 
+            color="error"
+            disabled={deleteConfirmText !== 'DELETE' || isLoading}
             startIcon={isLoading ? <CircularProgress size={16} /> : <DeleteIcon />}
           >
             {isLoading ? 'Deleting...' : 'Delete Account'}

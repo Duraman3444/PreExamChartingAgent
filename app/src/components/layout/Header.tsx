@@ -18,6 +18,7 @@ import {
   ListItemSecondaryAction,
   Chip,
   Button,
+  Tooltip,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -32,18 +33,26 @@ import {
   Warning,
   Error,
   CheckCircle,
+  Search as SearchIcon,
+  Upload as UploadIcon,
+  Psychology as PsychologyIcon,
+  Keyboard as KeyboardIcon,
 } from '@mui/icons-material';
 import { useAuthStore } from '@/stores/authStore';
 import { useAppStore } from '@/stores/appStore';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { ROUTES } from '@/constants';
 
 interface HeaderProps {
   onMenuClick: () => void;
 }
 
+const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+
 export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { user, signOut } = useAuthStore();
   const { notifications, markNotificationAsRead, removeNotification, clearNotifications } = useAppStore();
+  const { setShowHelpModal } = useKeyboardShortcuts();
   const navigate = useNavigate();
   const theme = useTheme();
   const [profileAnchorEl, setProfileAnchorEl] = React.useState<null | HTMLElement>(null);
@@ -93,6 +102,20 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const handleClearAllNotifications = () => {
     clearNotifications();
     handleNotificationMenuClose();
+  };
+
+  const handleSearchClick = () => {
+    navigate(ROUTES.PATIENTS);
+    // TODO: Focus search input
+  };
+
+  const handleUploadClick = () => {
+    navigate(ROUTES.VISITS);
+    // TODO: Trigger upload modal
+  };
+
+  const handleAIAnalysisClick = () => {
+    navigate(ROUTES.AI_AGENT);
   };
 
   const getNotificationIcon = (type: string) => {
@@ -150,6 +173,43 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         </Typography>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {/* Quick Action Buttons with Shortcuts */}
+          <Tooltip title={`Search Patients (${isMac ? '⌘' : 'Ctrl'} + F)`} arrow>
+            <IconButton 
+              onClick={handleSearchClick}
+              sx={{ color: theme.palette.text.primary }}
+            >
+              <SearchIcon />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title={`Upload Transcript (${isMac ? '⌘' : 'Ctrl'} + U)`} arrow>
+            <IconButton 
+              onClick={handleUploadClick}
+              sx={{ color: theme.palette.text.primary }}
+            >
+              <UploadIcon />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title={`AI Analysis (${isMac ? '⌘' : 'Ctrl'} + Shift + I)`} arrow>
+            <IconButton 
+              onClick={handleAIAnalysisClick}
+              sx={{ color: theme.palette.text.primary }}
+            >
+              <PsychologyIcon />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Keyboard Shortcuts (?)" arrow>
+            <IconButton 
+              onClick={() => setShowHelpModal(true)}
+              sx={{ color: theme.palette.text.primary }}
+            >
+              <KeyboardIcon />
+            </IconButton>
+          </Tooltip>
+
           <IconButton 
             onClick={handleNotificationMenuOpen}
             sx={{ color: theme.palette.text.primary }}

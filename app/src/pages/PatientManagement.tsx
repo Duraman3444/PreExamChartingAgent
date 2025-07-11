@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -37,6 +37,7 @@ import {
   Select,
   FormControl,
   InputLabel,
+  Badge,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -55,6 +56,7 @@ import {
 import { format } from 'date-fns';
 import { exportTranscript } from '@/services/fileUpload';
 import { mockVisits, Visit } from '@/data/mockData';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 // Extended patient interface for the management view
 interface PatientRecord {
@@ -2710,6 +2712,9 @@ export const PatientManagement: React.FC = () => {
   const [orderBy, setOrderBy] = useState<keyof PatientRecord>('lastVisitDate');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
 
+  // Keyboard shortcuts integration
+  const { addPatientShortcuts, registerShortcut, unregisterShortcut } = useKeyboardShortcuts();
+
   // Filter and search logic
   const filteredPatients = useMemo(() => {
     return patients.filter(patient => {
@@ -2758,6 +2763,43 @@ export const PatientManagement: React.FC = () => {
     return sortedPatients.slice(start, start + rowsPerPage);
   }, [sortedPatients, page, rowsPerPage]);
 
+  // Set up patient switching shortcuts
+  useEffect(() => {
+    // Register shortcuts for first 9 patients in the current view
+    const visiblePatients = paginatedPatients.slice(0, 9);
+    const patientShortcuts = visiblePatients.map(patient => ({
+      id: patient.id,
+      name: `${patient.firstName} ${patient.lastName}`,
+    }));
+    
+    addPatientShortcuts(patientShortcuts);
+
+    // Register focus search shortcut
+    registerShortcut({
+      key: 'f',
+      ctrlKey: true,
+      description: 'Focus search input',
+      action: () => {
+        const searchInput = document.querySelector('input[placeholder="Search patients..."]') as HTMLInputElement;
+        if (searchInput) {
+          searchInput.focus();
+        }
+      },
+      category: 'patient',
+      context: 'patient-list',
+      preventDefault: true,
+    });
+
+    // Cleanup function
+    return () => {
+      // Unregister patient shortcuts
+      for (let i = 1; i <= 9; i++) {
+        unregisterShortcut(i.toString(), { altKey: true });
+      }
+      unregisterShortcut('f', { ctrlKey: true });
+    };
+  }, [paginatedPatients, addPatientShortcuts, registerShortcut, unregisterShortcut]);
+
   const handleSort = (property: keyof PatientRecord) => {
     const isAsc = orderBy === property && order === 'asc';
     setOrder(isAsc ? 'desc' : 'asc');
@@ -2765,6 +2807,11 @@ export const PatientManagement: React.FC = () => {
   };
 
   const handleViewDocuments = (patient: PatientRecord) => {
+    setSelectedPatient(patient);
+    setDocumentViewerOpen(true);
+  };
+
+  const handlePatientSelect = (patient: PatientRecord) => {
     setSelectedPatient(patient);
     setDocumentViewerOpen(true);
   };
@@ -2837,6 +2884,14 @@ export const PatientManagement: React.FC = () => {
         Patient Management
       </Typography>
       
+      {/* Keyboard shortcuts info */}
+      <Alert severity="info" sx={{ mb: 2 }}>
+        <Typography variant="body2">
+          💡 <strong>Keyboard Shortcuts:</strong> Use <strong>Alt + 1-9</strong> to quickly switch to patients 1-9 in the list below. 
+          Use <strong>Ctrl + F</strong> to focus the search input.
+        </Typography>
+      </Alert>
+      
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
@@ -2904,6 +2959,7 @@ export const PatientManagement: React.FC = () => {
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell>Shortcut</TableCell>
                 <TableCell>
                   <TableSortLabel
                     active={orderBy === 'firstName'}
@@ -2964,8 +3020,35 @@ export const PatientManagement: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {paginatedPatients.map((patient) => (
-                <TableRow key={patient.id} hover>
+              {paginatedPatients.map((patient, index) => (
+                <TableRow 
+                  key={patient.id} 
+                  hover 
+                  onClick={() => handlePatientSelect(patient)}
+                  sx={{ 
+                    cursor: 'pointer',
+                    backgroundColor: selectedPatient?.id === patient.id ? 'action.selected' : 'inherit',
+                  }}
+                >
+                  <TableCell>
+                    {index < 9 && (
+                      <Tooltip title={`Alt + ${index + 1}`}>
+                        <Badge
+                          badgeContent={index + 1}
+                          color="primary"
+                          sx={{
+                            '& .MuiBadge-badge': {
+                              fontSize: '0.7rem',
+                              minWidth: '18px',
+                              height: '18px',
+                            },
+                          }}
+                        >
+                          <Box sx={{ width: 20, height: 20 }} />
+                        </Badge>
+                      </Tooltip>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
@@ -3022,7 +3105,10 @@ export const PatientManagement: React.FC = () => {
                   <TableCell>
                     <Tooltip title="View patient documents">
                       <IconButton
-                        onClick={() => handleViewDocuments(patient)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewDocuments(patient);
+                        }}
                         color="primary"
                         size="small"
                       >

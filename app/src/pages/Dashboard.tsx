@@ -48,7 +48,7 @@ const quickActions: QuickAction[] = [
     title: 'Manage Transcripts',
     description: 'Upload and manage visit transcripts for analysis',
     icon: <RecordVoiceOver />,
-    color: '#FF6000',
+    color: '#1976D2',
     route: ROUTES.VISITS,
   },
   {
@@ -62,7 +62,7 @@ const quickActions: QuickAction[] = [
     title: 'AI Analysis',
     description: 'Review AI-generated diagnosis and recommendations',
     icon: <Psychology />,
-    color: '#FF6000',
+    color: '#1976D2',
     route: ROUTES.AI_ANALYSIS,
   },
   {
@@ -86,7 +86,7 @@ export const Dashboard: React.FC = () => {
       case 'completed':
         return '#6C5BD4';
       case 'in_progress':
-        return '#FF6000';
+        return '#1976D2';
       case 'scheduled':
         return '#2E7D32';
       case 'cancelled':
@@ -101,7 +101,7 @@ export const Dashboard: React.FC = () => {
           case 'follow_up':
             return '#795548';
           default:
-            return '#FF6000';
+            return '#1976D2';
         }
     }
   };
@@ -216,7 +216,7 @@ export const Dashboard: React.FC = () => {
       title: 'Active Patients',
       value: totalPatients.toString(),
       icon: <People />,
-      color: '#FF6000',
+      color: '#1976D2',
       change: '+12%',
       trend: 'up',
     },
@@ -232,7 +232,7 @@ export const Dashboard: React.FC = () => {
       title: 'AI Analysis Complete',
       value: completedAnalyses.toString(),
       icon: <Psychology />,
-      color: '#FF6000',
+      color: '#1976D2',
       change: '+8%',
       trend: 'up',
     },

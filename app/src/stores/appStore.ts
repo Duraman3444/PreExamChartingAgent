@@ -4,7 +4,7 @@ import { Patient } from '@/types';
 interface AppState {
   currentPatient: Patient | null;
   sidebarOpen: boolean;
-  theme: 'light' | 'dark';
+  theme: 'light'; // Fixed to light mode only
   notifications: Notification[];
 }
 
@@ -21,7 +21,7 @@ interface AppActions {
   setCurrentPatient: (patient: Patient | null) => void;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
-  setTheme: (theme: 'light' | 'dark') => void;
+  // Removed setTheme - theme is now fixed to light mode
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
   markNotificationAsRead: (id: string) => void;
   removeNotification: (id: string) => void;
@@ -34,7 +34,7 @@ export const useAppStore = create<AppStore>((set) => ({
   // State
   currentPatient: null,
   sidebarOpen: true,
-  theme: 'dark',
+  theme: 'light', // Fixed to light mode only
   notifications: [
     {
       id: '1',
@@ -69,7 +69,7 @@ export const useAppStore = create<AppStore>((set) => ({
   
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   
-  setTheme: (theme) => set({ theme }),
+  // Removed setTheme - theme is now fixed to light mode
   
   addNotification: (notification) =>
     set((state) => ({

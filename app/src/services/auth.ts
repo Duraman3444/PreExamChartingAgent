@@ -85,7 +85,7 @@ export class AuthService {
         isActive: true,
         lastLogin: new Date(),
         preferences: {
-          theme: 'dark',
+          theme: 'light',
           language: 'en',
           autoSave: true,
           notificationsEnabled: true,
@@ -203,7 +203,7 @@ export class AuthService {
       isActive: true,
       lastLogin: new Date(),
       preferences: {
-        theme: 'dark',
+        theme: 'light',
         language: 'en',
         autoSave: true,
         notificationsEnabled: true,
