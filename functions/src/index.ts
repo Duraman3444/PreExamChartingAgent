@@ -9,9 +9,9 @@ admin.initializeApp();
 // Initialize CORS
 const corsHandler = cors({ origin: true });
 
-// Initialize OpenAI with config
+// Initialize OpenAI with Firebase secret
 const openai = new OpenAI({
-  apiKey: functions.config().openai.api_key,
+  apiKey: process.env.OPENAI_API_KEY || '',
 });
 
 // Helper function to create Server-Sent Event formatted message
@@ -270,7 +270,9 @@ REQUIREMENTS:
 `;
 
 // Analyze transcript function
-export const analyzeTranscript = functions.https.onRequest(async (request, response) => {
+export const analyzeTranscript = functions.runWith({
+  secrets: ['OPENAI_API_KEY']
+}).https.onRequest(async (request, response) => {
   return corsHandler(request, response, async () => {
     try {
       // Check authentication
@@ -588,7 +590,9 @@ export const analyzeTranscript = functions.https.onRequest(async (request, respo
 });
 
 // Generate summary function
-export const generateSummary = functions.https.onRequest(async (request, response) => {
+export const generateSummary = functions.runWith({
+  secrets: ['OPENAI_API_KEY']
+}).https.onRequest(async (request, response) => {
   return corsHandler(request, response, async () => {
     try {
       // Check authentication
@@ -699,7 +703,9 @@ export const getAnalysisHistory = functions.https.onRequest(async (request, resp
 });
 
 // Transcribe audio function
-export const transcribeAudio = functions.https.onRequest(async (request, response) => {
+export const transcribeAudio = functions.runWith({
+  secrets: ['OPENAI_API_KEY']
+}).https.onRequest(async (request, response) => {
   return corsHandler(request, response, async () => {
     try {
       // Check authentication
@@ -918,7 +924,9 @@ Doctor: Based on your symptoms, I'd like to run some tests to rule out any serio
 }); 
 
 // AI Evaluation function
-export const evaluateQuestion = functions.https.onRequest(async (request, response) => {
+export const evaluateQuestion = functions.runWith({
+  secrets: ['OPENAI_API_KEY']
+}).https.onRequest(async (request, response) => {
   return corsHandler(request, response, async () => {
     try {
       // Check authentication
@@ -988,7 +996,8 @@ export const evaluateQuestion = functions.https.onRequest(async (request, respon
 // Batch Analysis function for evaluation
 export const batchAnalyzeQuestions = functions.runWith({
   timeoutSeconds: 300, // 5 minutes
-  memory: '1GB'
+  memory: '1GB',
+  secrets: ['OPENAI_API_KEY']
 }).https.onRequest(async (request, response) => {
   return corsHandler(request, response, async () => {
     try {
@@ -1098,7 +1107,8 @@ export const batchAnalyzeQuestions = functions.runWith({
 // Enhanced Analysis function with O1 reasoning support
 export const analyzeWithReasoning = functions.runWith({
   timeoutSeconds: 120, // 2 minutes timeout for O1 analysis
-  memory: '1GB'
+  memory: '1GB',
+  secrets: ['OPENAI_API_KEY']
 }).https.onRequest(async (request, response) => {
   return corsHandler(request, response, async () => {
     console.log('🚀 [O1 DEBUG] analyzeWithReasoning function started at', new Date().toISOString());
@@ -1744,7 +1754,9 @@ export const analyzeWithReasoning = functions.runWith({
 
 
 // Generate text function
-export const generateText = functions.https.onRequest(async (request, response) => {
+export const generateText = functions.runWith({
+  secrets: ['OPENAI_API_KEY']
+}).https.onRequest(async (request, response) => {
   return corsHandler(request, response, async () => {
     try {
       // Check authentication
@@ -1793,7 +1805,9 @@ export const generateText = functions.https.onRequest(async (request, response) 
 });
 
 // Generate treatment protocol function
-export const generateTreatmentProtocol = functions.https.onRequest(async (request, response) => {
+export const generateTreatmentProtocol = functions.runWith({
+  secrets: ['OPENAI_API_KEY']
+}).https.onRequest(async (request, response) => {
   return corsHandler(request, response, async () => {
     try {
       // Check authentication
@@ -1871,7 +1885,8 @@ Return JSON with:
 // Enhanced Analysis function with Real-time O1 Reasoning Display
 export const analyzeWithStreamingReasoning = functions.runWith({
   timeoutSeconds: 300, // 5 minutes timeout for streaming analysis
-  memory: '2GB'
+  memory: '2GB',
+  secrets: ['OPENAI_API_KEY']
 }).https.onRequest(async (request, response) => {
   return corsHandler(request, response, async () => {
     console.log('🚀 [STREAMING] analyzeWithStreamingReasoning function started at', new Date().toISOString());
@@ -2273,7 +2288,8 @@ async function streamO1ReasoningThoughts(response: any, reasoningText: string, m
 // Stage 1: Comprehensive Intake Analysis
 export const analyzeWithO1Intake = functions.runWith({
   timeoutSeconds: 300,
-  memory: '2GB'
+  memory: '2GB',
+  secrets: ['OPENAI_API_KEY']
 }).https.onRequest(async (request, response) => {
   return corsHandler(request, response, async () => {
     try {
@@ -2354,7 +2370,8 @@ export const analyzeWithO1Intake = functions.runWith({
 // Stage 2: Advanced Symptom Characterization
 export const analyzeWithO1Symptoms = functions.runWith({
   timeoutSeconds: 360,
-  memory: '2GB'
+  memory: '2GB',
+  secrets: ['OPENAI_API_KEY']
 }).https.onRequest(async (request, response) => {
   return corsHandler(request, response, async () => {
     try {
@@ -2446,7 +2463,8 @@ export const analyzeWithO1Symptoms = functions.runWith({
 // Stage 3: Comprehensive Differential Diagnosis
 export const analyzeWithO1Differential = functions.runWith({
   timeoutSeconds: 420,
-  memory: '2GB'
+  memory: '2GB',
+  secrets: ['OPENAI_API_KEY']
 }).https.onRequest(async (request, response) => {
   return corsHandler(request, response, async () => {
     try {
@@ -2545,7 +2563,8 @@ export const analyzeWithO1Differential = functions.runWith({
 // Stage 4: Medical Literature Research and Evidence Analysis
 export const analyzeWithO1Evidence = functions.runWith({
   timeoutSeconds: 480,
-  memory: '2GB'
+  memory: '2GB',
+  secrets: ['OPENAI_API_KEY']
 }).https.onRequest(async (request, response) => {
   return corsHandler(request, response, async () => {
     try {
@@ -2642,7 +2661,8 @@ export const analyzeWithO1Evidence = functions.runWith({
 // Stage 5: Advanced Treatment Protocol Development
 export const analyzeWithO1Treatment = functions.runWith({
   timeoutSeconds: 420,
-  memory: '2GB'
+  memory: '2GB',
+  secrets: ['OPENAI_API_KEY']
 }).https.onRequest(async (request, response) => {
   return corsHandler(request, response, async () => {
     try {
@@ -2745,7 +2765,8 @@ export const analyzeWithO1Treatment = functions.runWith({
 // Stage 6: Comprehensive Risk Assessment
 export const analyzeWithO1Risk = functions.runWith({
   timeoutSeconds: 540,
-  memory: '2GB'
+  memory: '2GB',
+  secrets: ['OPENAI_API_KEY']
 }).https.onRequest(async (request, response) => {
   return corsHandler(request, response, async () => {
     try {
@@ -2854,7 +2875,8 @@ export const analyzeWithO1Risk = functions.runWith({
 // Stage 7: Quality Assurance and Validation
 export const analyzeWithO1QA = functions.runWith({
   timeoutSeconds: 300,
-  memory: '2GB'
+  memory: '2GB',
+  secrets: ['OPENAI_API_KEY']
 }).https.onRequest(async (request, response) => {
   return corsHandler(request, response, async () => {
     try {

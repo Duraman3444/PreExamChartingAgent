@@ -1,7 +1,8 @@
 // Firebase Functions endpoints for secure server-side OpenAI calls
-const FIREBASE_FUNCTIONS_BASE_URL = (typeof window !== 'undefined' && window.location.hostname === 'localhost') 
-  ? 'http://127.0.0.1:5001/medicalchartingapp/us-central1'
-  : 'https://us-central1-medicalchartingapp.cloudfunctions.net';
+const FIREBASE_FUNCTIONS_BASE_URL = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || 'https://us-central1-medicalchartingapp.cloudfunctions.net';
+
+// Debug log to confirm the correct URL is being used
+console.log('🔧 [OpenAI Debug] Firebase Functions URL:', FIREBASE_FUNCTIONS_BASE_URL);
 
 // Helper function to get Firebase auth token
 const getAuthToken = async (): Promise<string> => {

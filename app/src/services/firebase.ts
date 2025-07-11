@@ -78,6 +78,9 @@ if (isFirebaseConfigured()) {
     storage = getStorage(app);
     console.log('✅ [Firebase Debug] Firebase Storage initialized');
 
+    // Production mode - no emulator connections
+    console.log('🚀 [Firebase Debug] Using production Firebase services');
+
     // Set auth persistence explicitly to ensure session survives refresh
     setPersistence(auth, browserLocalPersistence)
       .then(() => {
