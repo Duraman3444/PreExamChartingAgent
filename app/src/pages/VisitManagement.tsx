@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -36,6 +36,7 @@ import {
   Select,
   CircularProgress,
 } from '@mui/material';
+import { globalEventStore } from '@/stores/globalEventStore';
 import {
   Search as SearchIcon,
   FilterList as FilterIcon,
@@ -491,6 +492,61 @@ export const VisitManagement: React.FC = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [orderBy, setOrderBy] = useState<keyof VisitRecord>('scheduledDateTime');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+
+  // **NEW: Real-time transcript update listener using global store**
+  useEffect(() => {
+    const handleTranscriptUpdate = (data: { visitId: string; status: string; timestamp: Date }) => {
+      console.log('📢 [Visit Management] Received transcript update:', data);
+      
+      // Update the visit record to show transcript is available
+      setVisits(prevVisits => 
+        prevVisits.map(visit => 
+          visit.id === data.visitId 
+            ? { 
+                ...visit, 
+                hasTranscript: true,
+                transcriptProcessingStatus: data.status as 'completed' | 'pending' | 'processing' | 'error',
+                updatedAt: data.timestamp
+              }
+            : visit
+        )
+      );
+      
+      console.log(`✅ [Visit Management] Transcript updated for visit ${data.visitId} - Status: ${data.status}`);
+    };
+
+    const handleVisitCreated = (visit: any) => {
+      console.log('🔥 [Visit Management] handleVisitCreated called with visit:', visit);
+      
+      // Add the new visit to the list
+      setVisits(prevVisits => {
+        console.log('🔥 [Visit Management] Adding visit to list. Previous count:', prevVisits.length);
+        const newVisits = [visit, ...prevVisits];
+        console.log('🔥 [Visit Management] New visits count:', newVisits.length);
+        return newVisits;
+      });
+      
+      console.log(`✅ [Visit Management] New visit created for ${visit.patientName} - ID: ${visit.id}`);
+    };
+    
+    // Register with global store
+    console.log('🔥 [Visit Management] Registering with global store...');
+    globalEventStore.onTranscriptUpdated(handleTranscriptUpdate);
+    globalEventStore.onVisitCreated(handleVisitCreated);
+    console.log('🔥 [Visit Management] Global store callbacks registered successfully');
+    
+    // Add debug info to window
+    (window as any).visitManagementListeners = {
+      globalStoreRegistered: true,
+      visitsCount: visits.length,
+      debugInfo: globalEventStore.getDebugInfo()
+    };
+    
+    return () => {
+      console.log('🔥 [Visit Management] Component unmounting...');
+      // Note: In a real app, you'd want to properly clean up callbacks
+    };
+  }, []);
 
   // Filter and search logic
   const filteredVisits = useMemo(() => {

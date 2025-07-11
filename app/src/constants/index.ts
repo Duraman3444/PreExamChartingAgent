@@ -157,7 +157,7 @@ export const APP_SETTINGS = {
   DEFAULT_PAGE_SIZE: 10,
   MAX_AUDIO_FILE_SIZE: 50 * 1024 * 1024, // 50MB for audio files
   MAX_TRANSCRIPT_SIZE: 5 * 1024 * 1024, // 5MB for text transcripts
-  ALLOWED_AUDIO_TYPES: ['.mp3', '.wav', '.m4a', '.mp4', '.aac'],
+  ALLOWED_AUDIO_TYPES: ['.mp3', '.wav', '.m4a', '.mp4', '.aac', '.webm'],
   ALLOWED_TEXT_TYPES: ['.txt', '.docx', '.pdf'],
   SESSION_TIMEOUT: 30 * 60 * 1000, // 30 minutes
   AI_CONFIDENCE_THRESHOLD: 0.7, // Minimum confidence score for AI recommendations

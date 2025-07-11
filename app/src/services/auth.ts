@@ -16,7 +16,9 @@ export class AuthService {
 
   // Check if Firebase is configured
   private isFirebaseConfigured(): boolean {
-    return auth !== null && db !== null;
+    const isConfigured = auth !== null && db !== null;
+    console.log('🔐 [Auth Debug] Firebase configured:', isConfigured);
+    return isConfigured;
   }
 
   // Wait for Firebase Auth to initialize and restore state

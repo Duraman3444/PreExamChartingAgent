@@ -19,6 +19,7 @@ export const ACCEPTED_AUDIO_TYPES = [
   'audio/m4a',
   'audio/mp4',
   'audio/aac',
+  'audio/webm',
   'audio/mpeg',
   'audio/x-wav',
   'audio/x-m4a',
@@ -94,14 +95,35 @@ export const uploadFileToStorage = async (
   userId: string,
   onProgress?: UploadProgressCallback
 ): Promise<string> => {
+  console.log('🔧 [Storage Debug] Starting upload...', {
+    fileName: file.name,
+    fileSize: file.size,
+    userId,
+    visitId,
+    storageConfigured: !!storage
+  });
+
   const validation = validateFile(file);
   if (!validation.isValid) {
     throw new Error(validation.error);
   }
 
+  if (!storage) {
+    console.error('❌ [Storage Debug] Firebase Storage not initialized');
+    console.error('❌ [Storage Debug] This usually means Firebase environment variables are not configured properly');
+    throw new Error('Firebase Storage not configured. Please check your environment variables.');
+  }
+
   const timestamp = new Date().getTime();
   const fileName = `${timestamp}-${file.name}`;
-  const storageRef = ref(storage, `transcripts/${userId}/${visitId}/${fileName}`);
+  const storagePath = `transcripts/${userId}/${visitId}/${fileName}`;
+  
+  console.log('🔧 [Storage Debug] Creating storage reference:', {
+    path: storagePath,
+    bucket: storage.app.options.storageBucket
+  });
+  
+  const storageRef = ref(storage, storagePath);
   
   return new Promise((resolve, reject) => {
     const uploadTask = uploadBytesResumable(storageRef, file);
@@ -110,17 +132,25 @@ export const uploadFileToStorage = async (
       'state_changed',
       (snapshot) => {
         const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        console.log('📈 [Storage Debug] Upload progress:', progress);
         onProgress?.(progress);
       },
       (error) => {
-        console.error('Upload error:', error);
+        console.error('❌ [Storage Debug] Upload error:', {
+          code: error.code,
+          message: error.message,
+          serverResponse: error.serverResponse
+        });
         reject(new Error(`Upload failed: ${error.message}`));
       },
       async () => {
         try {
+          console.log('✅ [Storage Debug] Upload completed, getting download URL...');
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          console.log('✅ [Storage Debug] Download URL obtained:', downloadURL);
           resolve(downloadURL);
         } catch (error) {
+          console.error('❌ [Storage Debug] Failed to get download URL:', error);
           reject(new Error(`Failed to get download URL: ${error}`));
         }
       }
@@ -191,33 +221,56 @@ export const transcribeAudio = async (file: File): Promise<{
   segments: TranscriptSegment[];
   confidence: number;
 }> => {
+  console.log('🎙️ [Transcription Debug] Starting audio transcription process...', {
+    fileName: file.name,
+    fileSize: file.size,
+    fileType: file.type,
+    timestamp: new Date().toISOString()
+  });
+
   const validation = validateFile(file);
   if (!validation.isValid) {
+    console.error('❌ [Transcription Debug] File validation failed:', validation.error);
     throw new Error(validation.error);
   }
 
   if (validation.fileType !== 'audio') {
+    console.error('❌ [Transcription Debug] File is not an audio file:', validation.fileType);
     throw new Error('File is not an audio file');
   }
 
+  console.log('✅ [Transcription Debug] File validation passed, proceeding with transcription...');
+
   try {
+    console.log('🔧 [Transcription Debug] Importing OpenAI service...');
     // Import the OpenAI service
     const { openAIService } = await import('./openai');
     
+    console.log('🔧 [Transcription Debug] Checking OpenAI configuration...');
     // Check if OpenAI is configured
     if (!openAIService.isConfigured()) {
+      console.error('❌ [Transcription Debug] OpenAI API key not configured');
       throw new Error('OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your .env file.');
     }
 
+    console.log('✅ [Transcription Debug] OpenAI configured, starting transcription with Whisper...');
+    console.log('⏳ [Transcription Debug] This may take 10-60 seconds depending on audio length...');
+    
     // Use real OpenAI Whisper transcription
     const result = await openAIService.transcribeAudio(file);
     
+    console.log('✅ [Transcription Debug] OpenAI transcription completed successfully!', {
+      textLength: result.text.length,
+      segmentCount: result.segments.length,
+      confidence: result.confidence
+    });
+    
     // Convert to the expected format
-    return {
+    const formattedResult = {
       text: result.text,
       segments: result.segments.map(segment => ({
         id: segment.id,
-        speaker: segment.speaker === 'unknown' ? 'other' : segment.speaker,
+        speaker: (segment.speaker === 'unknown' ? 'other' : segment.speaker) as 'patient' | 'provider' | 'other',
         timestamp: segment.timestamp,
         text: segment.text,
         confidence: segment.confidence,
@@ -225,15 +278,21 @@ export const transcribeAudio = async (file: File): Promise<{
       })),
       confidence: result.confidence
     };
+    
+    console.log('✅ [Transcription Debug] Transcription processing complete!');
+    return formattedResult;
   } catch (error) {
-    console.error('Real audio transcription failed:', error);
+    console.error('❌ [Transcription Debug] Real audio transcription failed:', error);
     
     // Fallback to mock data if OpenAI fails (for development)
-    console.warn('Falling back to mock transcription data due to error:', error);
+    console.warn('⚠️ [Transcription Debug] Falling back to mock transcription data due to error:', error);
+    console.log('🔧 [Transcription Debug] Using mock data for development/testing...');
     
     // Simulate processing time
+    console.log('⏳ [Transcription Debug] Simulating processing time (2 seconds)...');
     await new Promise(resolve => setTimeout(resolve, 2000));
     
+    console.log('✅ [Transcription Debug] Mock transcription completed!');
     return {
       text: `[Fallback Mock Transcription for ${file.name} - OpenAI transcription failed]
       

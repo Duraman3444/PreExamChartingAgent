@@ -896,45 +896,84 @@ class OpenAIService {
         fileType: audioFile.type
       });
 
-      logGPTOperation.progress(operation, 'Uploading audio file to Firebase Function');
+      console.log('🎙️ [Transcription Debug] Starting direct OpenAI Whisper call...');
+      
+      // Get OpenAI API key
+      const customApiKey = await this.getUserApiKey();
+      const apiKey = customApiKey || import.meta.env.VITE_OPENAI_API_KEY;
+      
+      if (!apiKey) {
+        throw new Error('OpenAI API key not found. Please set VITE_OPENAI_API_KEY in your .env file or configure it in Settings.');
+      }
 
-      // Convert file to base64 for Firebase Function
-      const reader = new FileReader();
-      const fileData = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(audioFile);
+      console.log('🔑 [Transcription Debug] OpenAI API key found, preparing audio file...');
+      logGPTOperation.progress(operation, 'Preparing audio file for OpenAI Whisper');
+
+      // Create FormData for direct OpenAI API call
+      const formData = new FormData();
+      formData.append('file', audioFile);
+      formData.append('model', 'whisper-1');
+      formData.append('language', 'en');
+      formData.append('response_format', 'verbose_json');
+      formData.append('timestamp_granularities[]', 'segment');
+
+      console.log('📡 [Transcription Debug] Calling OpenAI Whisper API directly...');
+      logGPTOperation.progress(operation, 'Calling OpenAI Whisper API directly (this may take 10-60 seconds)');
+
+      // Direct call to OpenAI Whisper API
+      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: formData
       });
 
-      const customApiKey = await this.getUserApiKey();
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [Transcription Debug] OpenAI API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
 
-      // Route through Firebase Functions
-      const response = await callFirebaseFunction('transcribeAudio', {
-        audioData: fileData,
-        fileName: audioFile.name,
-        fileType: audioFile.type
-      }, 30000, 2, customApiKey);
+      const data = await response.json();
+      console.log('✅ [Transcription Debug] OpenAI Whisper API response received successfully!', {
+        textLength: data.text?.length || 0,
+        segmentsCount: data.segments?.length || 0,
+        duration: data.duration || 0
+      });
 
       logGPTOperation.progress(operation, 'Processing transcription segments');
 
       // Process the transcription into our format
-      const segments = response.segments?.map((segment: any, index: number) => ({
+      const segments = data.segments?.map((segment: any, index: number) => ({
         id: `segment-${index + 1}`,
         speaker: this.identifySpeaker(segment.text, index),
         timestamp: segment.start,
         text: segment.text,
-        confidence: this.normalizeConfidenceScore(segment.avg_logprob ? Math.exp(segment.avg_logprob) : 0.85),
+        confidence: this.normalizeConfidenceScore(segment.avg_logprob ? Math.exp(segment.avg_logprob) : 0.95),
         tags: this.extractTags(segment.text)
       })) || [];
 
       const result = {
-        text: response.text || '',
+        text: data.text || '',
         segments,
-        confidence: this.normalizeConfidenceScore(segments.reduce((acc: number, seg: any) => acc + seg.confidence, 0) / segments.length || 0.85),
-        duration: response.duration || 0
+        confidence: this.normalizeConfidenceScore(segments.reduce((acc: number, seg: any) => acc + seg.confidence, 0) / segments.length || 0.95),
+        duration: data.duration || 0
       };
 
       const finalProcessingTime = Date.now() - startTime;
+      console.log('✅ [Transcription Debug] Transcription processing completed successfully!', {
+        textLength: result.text.length,
+        segmentsCount: result.segments.length,
+        duration: result.duration,
+        averageConfidence: result.confidence,
+        processingTime: finalProcessingTime
+      });
+
       logGPTOperation.success(operation, 'whisper-1', finalProcessingTime, {
         textLength: result.text.length,
         segmentsCount: result.segments.length,
@@ -945,8 +984,9 @@ class OpenAIService {
       return result;
     } catch (error) {
       const processingTime = Date.now() - startTime;
+      console.error('❌ [Transcription Debug] Direct OpenAI transcription failed:', error);
       logGPTOperation.error(operation, 'whisper-1', error, processingTime);
-      throw new Error('Failed to transcribe audio. Please check your connection and try again.');
+      throw error; // Re-throw the original error so the fallback can handle it
     }
   }
 

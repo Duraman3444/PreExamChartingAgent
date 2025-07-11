@@ -57,6 +57,7 @@ import { format } from 'date-fns';
 import { exportTranscript } from '@/services/fileUpload';
 import { mockVisits, Visit } from '@/data/mockData';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { globalEventStore } from '@/stores/globalEventStore';
 
 // Extended patient interface for the management view
 interface PatientRecord {
@@ -2700,7 +2701,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ open, onClose, patient 
 };
 
 export const PatientManagement: React.FC = () => {
-  const [patients] = useState<PatientRecord[]>(mockPatientData);
+  const [patients, setPatients] = useState<PatientRecord[]>(mockPatientData);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterAnchorEl, setFilterAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
@@ -2714,6 +2715,85 @@ export const PatientManagement: React.FC = () => {
 
   // Keyboard shortcuts integration
   const { addPatientShortcuts, registerShortcut, unregisterShortcut } = useKeyboardShortcuts();
+  
+  // **NEW: Real-time transcript update listener using global store**
+  useEffect(() => {
+    const handleTranscriptUpdate = (data: { visitId: string; status: string; timestamp: Date }) => {
+      console.log('📢 [Patient Management] Received transcript update:', data);
+      
+      // Update patient records to show transcript is available
+      setPatients(prevPatients => 
+        prevPatients.map(patient => {
+          return {
+            ...patient,
+            documents: {
+              ...patient.documents,
+              visitTranscripts: true
+            }
+          };
+        })
+      );
+      
+      console.log(`✅ [Patient Management] Transcript documents updated for visit ${data.visitId}`);
+    };
+
+    const handlePatientCreated = (patient: any) => {
+      console.log('🔥 [Patient Management] handlePatientCreated called with patient:', patient);
+      
+      // Create a full patient record from the basic patient data
+      const newPatientRecord: PatientRecord = {
+        id: patient.id,
+        firstName: patient.firstName,
+        lastName: patient.lastName,
+        patientId: patient.id,
+        caseNumber: `C${Date.now().toString().slice(-4)}`,
+        dateIncharged: new Date(),
+        dateDischarged: null,
+        status: 'active',
+        department: patient.department || 'General Medicine',
+        attendingProvider: patient.attendingProvider || 'Unknown',
+        documents: {
+          symptoms: false,
+          diagnosis: false,
+          visitTranscripts: true, // This patient has a transcript
+          aiAnalysis: false,
+          visitNotes: false
+        },
+        lastVisitDate: new Date(),
+        age: patient.patientAge || 0,
+        gender: patient.patientGender || 'prefer-not-to-say',
+        phoneNumber: undefined
+      };
+      
+      // Add the new patient to the list
+      setPatients(prevPatients => {
+        console.log('🔥 [Patient Management] Adding patient to list. Previous count:', prevPatients.length);
+        const newPatients = [newPatientRecord, ...prevPatients];
+        console.log('🔥 [Patient Management] New patients count:', newPatients.length);
+        return newPatients;
+      });
+      
+      console.log(`✅ [Patient Management] New patient created: ${patient.firstName} ${patient.lastName} - ID: ${patient.id}`);
+    };
+    
+    // Register with global store
+    console.log('🔥 [Patient Management] Registering with global store...');
+    globalEventStore.onTranscriptUpdated(handleTranscriptUpdate);
+    globalEventStore.onPatientCreated(handlePatientCreated);
+    console.log('🔥 [Patient Management] Global store callbacks registered successfully');
+    
+    // Add debug info to window
+    (window as any).patientManagementListeners = {
+      globalStoreRegistered: true,
+      patientsCount: patients.length,
+      debugInfo: globalEventStore.getDebugInfo()
+    };
+    
+    return () => {
+      console.log('🔥 [Patient Management] Component unmounting...');
+      // Note: In a real app, you'd want to properly clean up callbacks
+    };
+  }, []);
 
   // Filter and search logic
   const filteredPatients = useMemo(() => {

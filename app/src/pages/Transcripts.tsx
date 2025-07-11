@@ -42,6 +42,7 @@ import { format } from 'date-fns';
 import { ROUTES } from '@/constants';
 import { mockVisits, Visit } from '@/data/mockData';
 import { exportTranscript } from '@/services/fileUpload';
+import { globalEventStore } from '@/stores/globalEventStore';
 
 // Mock transcript content for each visit
 const mockTranscriptContent: Record<string, string> = {
@@ -256,6 +257,90 @@ export const Transcripts: React.FC = () => {
     setVisits(mockVisits);
     setFilteredVisits(mockVisits);
     setLoading(false);
+  }, []);
+
+  // **NEW: Real-time transcript and visit update listeners using global store**
+  useEffect(() => {
+    const handleVisitCreated = (visit: any) => {
+      console.log('🔥 [Transcripts] handleVisitCreated called with visit:', visit);
+      
+      // Convert visitRecord to Visit format for this page
+      const visitForTranscripts = {
+        id: visit.id,
+        patientId: visit.patientId,
+        patientName: visit.patientName,
+        patientAge: visit.patientAge,
+        patientGender: visit.patientGender,
+        type: visit.type,
+        status: visit.status,
+        scheduledDateTime: visit.scheduledDateTime,
+        startTime: visit.startTime,
+        endTime: visit.endTime,
+        duration: visit.duration,
+        attendingProvider: visit.attendingProvider,
+        department: visit.department,
+        chiefComplaint: visit.chiefComplaint,
+        visitSummary: visit.visitSummary,
+        priority: visit.priority,
+        hasTranscript: visit.hasTranscript,
+        hasAiAnalysis: visit.hasAiAnalysis || false,
+        hasVisitNotes: visit.hasVisitNotes || false,
+        notesCount: visit.notesCount || 0,
+        notesStatus: visit.notesStatus || 'none',
+        analysisStatus: visit.analysisStatus || 'none',
+        transcriptStatus: visit.transcriptStatus || 'completed',
+        createdAt: visit.createdAt,
+        updatedAt: visit.updatedAt,
+      };
+      
+      // Add the new visit to the list
+      setVisits(prevVisits => {
+        console.log('🔥 [Transcripts] Adding visit to list. Previous count:', prevVisits.length);
+        const newVisits = [visitForTranscripts, ...prevVisits];
+        console.log('🔥 [Transcripts] New visits count:', newVisits.length);
+        return newVisits;
+      });
+      
+      console.log(`✅ [Transcripts] New visit created for ${visit.patientName} - ID: ${visit.id}`);
+    };
+
+    const handleTranscriptUpdate = (data: { visitId: string; status: string; timestamp: Date }) => {
+      console.log('📢 [Transcripts] Received transcript update:', data);
+      
+      // Update the visit record to show transcript is available
+      setVisits(prevVisits => 
+        prevVisits.map(visit => 
+          visit.id === data.visitId 
+            ? { 
+                ...visit, 
+                hasTranscript: true,
+                transcriptStatus: data.status as any,
+                updatedAt: data.timestamp
+              }
+            : visit
+        )
+      );
+      
+      console.log(`✅ [Transcripts] Transcript updated for visit ${data.visitId} - Status: ${data.status}`);
+    };
+    
+    // Register with global store
+    console.log('🔥 [Transcripts] Registering with global store...');
+    globalEventStore.onVisitCreated(handleVisitCreated);
+    globalEventStore.onTranscriptUpdated(handleTranscriptUpdate);
+    console.log('🔥 [Transcripts] Global store callbacks registered successfully');
+    
+    // Add debug info to window
+    (window as any).transcriptsListeners = {
+      globalStoreRegistered: true,
+      visitsCount: visits.length,
+      debugInfo: globalEventStore.getDebugInfo()
+    };
+    
+    return () => {
+      console.log('🔥 [Transcripts] Component unmounting...');
+      // Note: In a real app, you'd want to properly clean up callbacks
+    };
   }, []);
 
   useEffect(() => {

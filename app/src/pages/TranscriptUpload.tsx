@@ -55,6 +55,7 @@ import {
 import { useDropzone } from 'react-dropzone';
 import { format } from 'date-fns';
 import { useAuthStore } from '@/stores/authStore';
+import { globalEventStore } from '@/stores/globalEventStore';
 import { APP_SETTINGS, ROUTES } from '@/constants';
 import { FileUpload, TranscriptSegment } from '@/types';
 import {
@@ -77,6 +78,7 @@ const ACCEPTED_AUDIO_TYPES_DROPZONE = {
   'audio/m4a': ['.m4a'],
   'audio/mp4': ['.mp4'],
   'audio/aac': ['.aac'],
+  'audio/webm': ['.webm'],
   'audio/mpeg': ['.mp3'],
   'audio/x-wav': ['.wav'],
   'audio/x-m4a': ['.m4a'],
@@ -141,19 +143,53 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
     show: boolean;
   }>({ message: '', type: 'info', show: false });
 
+  // **NEW: Patient and Doctor Input Dialog State**
+  const [showPatientDialog, setShowPatientDialog] = useState(false);
+  const [pendingTranscriptData, setPendingTranscriptData] = useState<{
+    transcriptionResult: any;
+    fileData: UploadedFile;
+  } | null>(null);
+  const [patientDoctorInfo, setPatientDoctorInfo] = useState({
+    patientFirstName: '',
+    patientLastName: '',
+    patientAge: '',
+    patientGender: 'prefer-not-to-say' as 'male' | 'female' | 'other' | 'prefer-not-to-say',
+    doctorName: '',
+    department: '',
+    visitType: 'consultation' as 'consultation' | 'follow_up' | 'urgent_care' | 'telemedicine',
+    chiefComplaint: ''
+  });
+
   // File upload handling
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    const newFiles: UploadedFile[] = acceptedFiles.map(file => ({
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      file,
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      isAudio: Object.keys(ACCEPTED_AUDIO_TYPES).includes(file.type),
-      progress: 0,
-      status: 'pending',
-      processing: false,
-    }));
+    console.log('📁 [File Debug] Files dropped:', acceptedFiles.map(f => ({
+      name: f.name,
+      type: f.type,
+      size: f.size
+    })));
+
+    const newFiles: UploadedFile[] = acceptedFiles.map(file => {
+      // Fix: ACCEPTED_AUDIO_TYPES is an array, not an object - use .includes() directly
+      const isAudio = ACCEPTED_AUDIO_TYPES.includes(file.type);
+      console.log('🔍 [File Debug] File analysis:', {
+        name: file.name,
+        detectedType: file.type,
+        isAudio: isAudio,
+        acceptedAudioTypes: ACCEPTED_AUDIO_TYPES
+      });
+
+      return {
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        file,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        isAudio: isAudio,
+        progress: 0,
+        status: 'pending',
+        processing: false,
+      };
+    });
     
     setFiles(prev => [...prev, ...newFiles]);
     
@@ -167,6 +203,258 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
     maxSize: APP_SETTINGS.MAX_AUDIO_FILE_SIZE,
     multiple: true,
   });
+
+  // **NEW: Save transcript to patient record and update visit status**
+  const saveTranscriptToPatientRecord = async (transcriptionResult: any, fileData: UploadedFile, patientInfo: any, visitInfo: any) => {
+    if (!user) {
+      console.log('⚠️ [Save Debug] Missing user information');
+      return;
+    }
+
+    try {
+      console.log('💾 [Save Debug] Creating patient and visit records...');
+      
+      // Create patient ID and visit ID
+      const patientId = `P${Date.now().toString().slice(-4)}`;
+      const visitId = `V${Date.now()}`;
+      
+      // Create patient record
+      const patientRecord = {
+        id: patientId,
+        firstName: patientInfo.patientFirstName,
+        lastName: patientInfo.patientLastName,
+        patientName: `${patientInfo.patientFirstName} ${patientInfo.patientLastName}`,
+        patientAge: parseInt(patientInfo.patientAge) || 0,
+        patientGender: patientInfo.patientGender,
+        department: patientInfo.department,
+        attendingProvider: patientInfo.doctorName,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      
+      // Create visit record
+      const visitRecord = {
+        id: visitId,
+        patientId: patientId,
+        patientName: `${patientInfo.patientFirstName} ${patientInfo.patientLastName}`,
+        patientAge: parseInt(patientInfo.patientAge) || 0,
+        patientGender: patientInfo.patientGender,
+        type: visitInfo.visitType,
+        status: 'completed' as const,
+        scheduledDateTime: new Date(),
+        startTime: new Date(),
+        endTime: new Date(),
+        duration: transcriptionResult.duration || 30,
+        attendingProvider: patientInfo.doctorName,
+        department: patientInfo.department,
+        chiefComplaint: visitInfo.chiefComplaint,
+        visitSummary: transcriptionResult.text.slice(0, 200) + '...',
+        priority: 'medium' as const,
+        hasTranscript: true,
+        hasAiAnalysis: false,
+        hasVisitNotes: false,
+        transcriptStatus: 'completed',
+        notesCount: 0,
+        notesStatus: 'none',
+        analysisStatus: 'none',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      
+      // Save transcript to database
+      const transcriptData = {
+        rawTranscript: transcriptionResult.text,
+        structured: transcriptionResult.segments || [],
+        transcriptionMethod: 'ai' as const,
+        confidenceScore: transcriptionResult.confidence,
+        language: 'en',
+        duration: transcriptionResult.duration || 0,
+        speakers: transcriptionResult.segments?.map((seg: any, index: number) => ({
+          id: `speaker-${index}`,
+          role: seg.speaker || 'unknown',
+          name: seg.speaker === 'patient' ? patientInfo.patientFirstName : seg.speaker === 'provider' ? patientInfo.doctorName : 'Unknown'
+        })) || [],
+        audioFile: fileData.name,
+      };
+
+      await saveTranscript(visitId, transcriptData, user.id);
+      
+      // Update visit status in real-time by triggering a global state update
+      updateVisitTranscriptStatus(visitId, 'completed');
+      
+      // Add a small delay to ensure all components are ready to receive events
+      setTimeout(() => {
+        updatePatientCreated(patientRecord);
+        updateVisitCreated(visitRecord);
+        
+        // **NEW: Use global store for more reliable event handling**
+        globalEventStore.triggerPatientCreated(patientRecord);
+        globalEventStore.triggerVisitCreated(visitRecord);
+        globalEventStore.triggerTranscriptUpdated({
+          visitId: visitRecord.id,
+          status: 'completed',
+          timestamp: new Date()
+        });
+      }, 100);
+      
+      console.log('✅ [Save Debug] Patient, visit, and transcript created successfully!');
+      
+    } catch (error) {
+      console.error('❌ [Save Debug] Failed to save transcript to patient record:', error);
+      showNotification('Failed to save patient and transcript data', 'error');
+    }
+  };
+
+  // **NEW: Update visit status to show transcript is available**
+  const updateVisitTranscriptStatus = (visitId: string, status: string) => {
+    // This would typically update a global state or trigger a refetch
+    // For now, we'll dispatch a custom event that other components can listen to
+    const event = new CustomEvent('visitTranscriptUpdated', {
+      detail: { visitId, status, timestamp: new Date() }
+    });
+    window.dispatchEvent(event);
+    
+    console.log('📢 [Update Debug] Visit transcript status updated:', { visitId, status });
+  };
+
+  // **NEW: Update when patient is created**
+  const updatePatientCreated = (patientRecord: any) => {
+    console.log('🔥 [Debug] About to dispatch patientCreated event:', patientRecord);
+    const event = new CustomEvent('patientCreated', {
+      detail: { patient: patientRecord, timestamp: new Date() }
+    });
+    window.dispatchEvent(event);
+    
+    console.log('📢 [Update Debug] Patient created event dispatched:', patientRecord.id);
+  };
+
+  // **NEW: Update when visit is created**
+  const updateVisitCreated = (visitRecord: any) => {
+    console.log('🔥 [Debug] About to dispatch visitCreated event:', visitRecord);
+    const event = new CustomEvent('visitCreated', {
+      detail: { visit: visitRecord, timestamp: new Date() }
+    });
+    const dispatched = window.dispatchEvent(event);
+    
+    console.log('📢 [Update Debug] Visit created event dispatched:', visitRecord.id, 'Success:', dispatched);
+    console.log('📢 [Update Debug] Event detail:', event.detail);
+  };
+
+  // **DEBUG: Test function to manually trigger events**
+  const testEventSystem = () => {
+    console.log('🧪 [Test] Testing event system...');
+    
+    const testPatient = {
+      id: 'TEST123',
+      firstName: 'Test',
+      lastName: 'Patient',
+      patientAge: 30,
+      patientGender: 'male',
+      department: 'Test Department',
+      attendingProvider: 'Dr. Test'
+    };
+    
+    const testVisit = {
+      id: 'TESTVISIT123',
+      patientId: 'TEST123',
+      patientName: 'Test Patient',
+      patientAge: 30,
+      patientGender: 'male',
+      type: 'consultation',
+      status: 'completed',
+      scheduledDateTime: new Date(),
+      startTime: new Date(),
+      endTime: new Date(),
+      duration: 30,
+      attendingProvider: 'Dr. Test',
+      department: 'Test Department',
+      chiefComplaint: 'Test complaint',
+      visitSummary: 'Test summary',
+      priority: 'medium',
+      hasTranscript: true,
+      hasAiAnalysis: false,
+      hasVisitNotes: false,
+      transcriptStatus: 'completed',
+      notesCount: 0,
+      notesStatus: 'none',
+      analysisStatus: 'none',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    setTimeout(() => {
+      updatePatientCreated(testPatient);
+      updateVisitCreated(testVisit);
+    }, 500);
+  };
+
+  // Add test function to window for easy debugging
+  React.useEffect(() => {
+    (window as any).testEventSystem = testEventSystem;
+    console.log('🧪 [Test] Added testEventSystem to window. Run window.testEventSystem() in console to test.');
+  }, []);
+
+  // **NEW: Handle patient dialog submission**
+  const handlePatientDialogSubmit = async () => {
+    if (!pendingTranscriptData) return;
+    
+    // Validate required fields
+    if (!patientDoctorInfo.patientFirstName || !patientDoctorInfo.patientLastName || !patientDoctorInfo.doctorName) {
+      showNotification('Please fill in all required fields (Patient Name and Doctor)', 'error');
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      
+      // Save transcript with patient and visit information
+      await saveTranscriptToPatientRecord(
+        pendingTranscriptData.transcriptionResult, 
+        pendingTranscriptData.fileData,
+        patientDoctorInfo,
+        patientDoctorInfo
+      );
+      
+      // Reset states
+      setShowPatientDialog(false);
+      setPendingTranscriptData(null);
+      setPatientDoctorInfo({
+        patientFirstName: '',
+        patientLastName: '',
+        patientAge: '',
+        patientGender: 'prefer-not-to-say',
+        doctorName: '',
+        department: '',
+        visitType: 'consultation',
+        chiefComplaint: ''
+      });
+      
+      showNotification('Patient, visit, and transcript created successfully!', 'success');
+      
+    } catch (error) {
+      console.error('Error saving patient data:', error);
+      showNotification('Failed to save patient data. Please try again.', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // **NEW: Handle patient dialog cancel**
+  const handlePatientDialogCancel = () => {
+    setShowPatientDialog(false);
+    setPendingTranscriptData(null);
+    setPatientDoctorInfo({
+      patientFirstName: '',
+      patientLastName: '',
+      patientAge: '',
+      patientGender: 'prefer-not-to-say',
+      doctorName: '',
+      department: '',
+      visitType: 'consultation',
+      chiefComplaint: ''
+    });
+    showNotification('Transcript processing cancelled', 'info');
+  };
 
   // File upload function
   const uploadFile = async (fileData: UploadedFile) => {
@@ -194,6 +482,8 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
           : f
       ));
 
+      console.log('📤 [UI Debug] Starting file upload to Firebase Storage...');
+      
       // Upload to Firebase Storage
       await uploadFileToStorage(
         fileData.file,
@@ -208,6 +498,8 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
         }
       );
       
+      console.log('✅ [UI Debug] File uploaded to Firebase Storage successfully!');
+      
       setFiles(prev => prev.map(f => 
         f.id === fileData.id 
           ? { ...f, status: 'completed', progress: 100 }
@@ -218,8 +510,10 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
 
       // If audio file, start transcription
       if (fileData.isAudio) {
+        console.log('🎙️ [UI Debug] File is audio, starting transcription process...');
         await processAudioTranscription(fileData);
       } else {
+        console.log('📄 [UI Debug] File is text, processing text content...');
         await processTextFileUpload(fileData);
       }
 
@@ -235,15 +529,25 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
 
   // Audio transcription processing
   const processAudioTranscription = async (fileData: UploadedFile) => {
+    console.log('🎙️ [UI Debug] Starting audio transcription process for:', fileData.name);
+    
     try {
+      console.log('🔧 [UI Debug] Setting file processing state to true...');
       setFiles(prev => prev.map(f => 
         f.id === fileData.id 
           ? { ...f, processing: true }
           : f
       ));
 
+      console.log('🔧 [UI Debug] Calling transcribeAudio service...');
       // Use the transcription service
       const transcriptionResult = await transcribeAudio(fileData.file);
+
+      console.log('✅ [UI Debug] Transcription service completed successfully!', {
+        textLength: transcriptionResult.text.length,
+        segmentCount: transcriptionResult.segments.length,
+        confidence: transcriptionResult.confidence
+      });
 
       setFiles(prev => prev.map(f => 
         f.id === fileData.id 
@@ -258,9 +562,16 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
       ));
 
       setTranscription(transcriptionResult.text);
-      showNotification('Audio transcription completed successfully!', 'success');
+      
+      // **NEW: Show patient dialog instead of auto-saving**
+      setPendingTranscriptData({ transcriptionResult, fileData });
+      setShowPatientDialog(true);
+      
+      console.log('✅ [UI Debug] Transcription completed, showing patient dialog...');
+      showNotification('Audio transcription completed! Please enter patient and doctor information.', 'info');
 
     } catch (error) {
+      console.error('❌ [UI Debug] Transcription process failed:', error);
       setFiles(prev => prev.map(f => 
         f.id === fileData.id 
           ? { ...f, processing: false, error: 'Transcription failed' }
@@ -272,16 +583,43 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
 
   // Text file processing
   const processTextFileUpload = async (fileData: UploadedFile) => {
+    console.log('📄 [UI Debug] Starting text file processing for:', fileData.name);
+    
     try {
+      console.log('🔧 [UI Debug] Calling processTextFile service...');
       const text = await processTextFile(fileData.file);
+      
+      console.log('✅ [UI Debug] Text file processed successfully!', {
+        textLength: text.length
+      });
+      
       setFiles(prev => prev.map(f => 
         f.id === fileData.id 
           ? { ...f, transcription: text, confidence: 1.0 }
           : f
       ));
       setTranscription(text);
-      showNotification('Text file processed successfully!', 'success');
+      
+      // **NEW: Show patient dialog for text files too**
+      const textTranscriptResult = {
+        text: text,
+        confidence: 1.0,
+        segments: [{
+          id: 'text-segment-1',
+          speaker: 'unknown',
+          timestamp: 0,
+          text: text,
+          confidence: 1.0
+        }],
+        duration: 0
+      };
+      
+      setPendingTranscriptData({ transcriptionResult: textTranscriptResult, fileData });
+      setShowPatientDialog(true);
+      
+      showNotification('Text file processed! Please enter patient and doctor information.', 'info');
     } catch (error) {
+      console.error('❌ [UI Debug] Text file processing failed:', error);
       showNotification('Failed to process text file.', 'error');
     }
   };
@@ -447,7 +785,7 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
                   or click to select files
                 </Typography>
                 <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                  Support: Audio (MP3, WAV, M4A, MP4, AAC) up to 50MB
+                  Support: Audio (MP3, WAV, M4A, MP4, AAC, WEBM) up to 50MB
                   <br />
                   Text (TXT, DOCX, PDF) up to 5MB
                 </Typography>
@@ -468,7 +806,7 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
                         <ListItemText
                           primary={file.name}
                           secondary={
-                            <Box>
+                            <React.Fragment>
                               <Typography variant="caption" display="block">
                                 {formatFileSize(file.size)}
                               </Typography>
@@ -480,12 +818,12 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
                                 />
                               )}
                               {file.processing && (
-                                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                                <Box component="span" sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
                                   <LinearProgress sx={{ flexGrow: 1, mr: 1 }} />
                                   <Typography variant="caption">Processing...</Typography>
                                 </Box>
                               )}
-                            </Box>
+                            </React.Fragment>
                           }
                         />
                         <ListItemSecondaryAction>
@@ -738,6 +1076,153 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowVersionHistory(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* **NEW: Patient and Doctor Information Dialog** */}
+      <Dialog open={showPatientDialog} onClose={handlePatientDialogCancel} maxWidth="md" fullWidth>
+        <DialogTitle>
+          <Typography variant="h6">Patient and Doctor Information</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Please enter the patient and doctor information for this transcript
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Grid container spacing={3} sx={{ mt: 1 }}>
+            {/* Patient Information */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>Patient Information</Typography>
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="First Name *"
+                value={patientDoctorInfo.patientFirstName}
+                onChange={(e) => setPatientDoctorInfo(prev => ({
+                  ...prev,
+                  patientFirstName: e.target.value
+                }))}
+                required
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="Last Name *"
+                value={patientDoctorInfo.patientLastName}
+                onChange={(e) => setPatientDoctorInfo(prev => ({
+                  ...prev,
+                  patientLastName: e.target.value
+                }))}
+                required
+              />
+            </Grid>
+            <Grid item xs={4}>
+              <TextField
+                fullWidth
+                label="Age"
+                type="number"
+                value={patientDoctorInfo.patientAge}
+                onChange={(e) => setPatientDoctorInfo(prev => ({
+                  ...prev,
+                  patientAge: e.target.value
+                }))}
+              />
+            </Grid>
+            <Grid item xs={4}>
+              <FormControl fullWidth>
+                <InputLabel>Gender</InputLabel>
+                <Select
+                  value={patientDoctorInfo.patientGender}
+                  onChange={(e) => setPatientDoctorInfo(prev => ({
+                    ...prev,
+                    patientGender: e.target.value as any
+                  }))}
+                  label="Gender"
+                >
+                  <MenuItem value="male">Male</MenuItem>
+                  <MenuItem value="female">Female</MenuItem>
+                  <MenuItem value="other">Other</MenuItem>
+                  <MenuItem value="prefer-not-to-say">Prefer not to say</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={4}>
+              <FormControl fullWidth>
+                <InputLabel>Visit Type</InputLabel>
+                <Select
+                  value={patientDoctorInfo.visitType}
+                  onChange={(e) => setPatientDoctorInfo(prev => ({
+                    ...prev,
+                    visitType: e.target.value as any
+                  }))}
+                  label="Visit Type"
+                >
+                  <MenuItem value="consultation">Consultation</MenuItem>
+                  <MenuItem value="follow_up">Follow-up</MenuItem>
+                  <MenuItem value="urgent_care">Urgent Care</MenuItem>
+                  <MenuItem value="telemedicine">Telemedicine</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Doctor Information */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Doctor Information</Typography>
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="Doctor Name *"
+                value={patientDoctorInfo.doctorName}
+                onChange={(e) => setPatientDoctorInfo(prev => ({
+                  ...prev,
+                  doctorName: e.target.value
+                }))}
+                required
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="Department"
+                value={patientDoctorInfo.department}
+                onChange={(e) => setPatientDoctorInfo(prev => ({
+                  ...prev,
+                  department: e.target.value
+                }))}
+                placeholder="e.g., Internal Medicine, Cardiology"
+              />
+            </Grid>
+
+            {/* Visit Information */}
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Chief Complaint"
+                multiline
+                rows={3}
+                value={patientDoctorInfo.chiefComplaint}
+                onChange={(e) => setPatientDoctorInfo(prev => ({
+                  ...prev,
+                  chiefComplaint: e.target.value
+                }))}
+                placeholder="Describe the main reason for this visit..."
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handlePatientDialogCancel} disabled={isProcessing}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handlePatientDialogSubmit} 
+            variant="contained"
+            disabled={isProcessing || !patientDoctorInfo.patientFirstName || !patientDoctorInfo.patientLastName || !patientDoctorInfo.doctorName}
+          >
+            {isProcessing ? 'Creating Patient Record...' : 'Create Patient & Save Transcript'}
+          </Button>
         </DialogActions>
       </Dialog>
 

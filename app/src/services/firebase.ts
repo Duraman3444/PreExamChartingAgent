@@ -4,6 +4,11 @@ import { getAuth, setPersistence, browserLocalPersistence, Auth } from 'firebase
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
+// IMMEDIATE DEBUG - This should always show up
+console.log('🚨 [FIREBASE DEBUG] Firebase service loading...');
+console.log('🚨 [FIREBASE DEBUG] Current storage bucket from env:', import.meta.env.VITE_FIREBASE_STORAGE_BUCKET);
+console.log('🚨 [FIREBASE DEBUG] All env vars:', Object.keys(import.meta.env).filter(key => key.includes('FIREBASE')));
+
 // Check if Firebase config is available
 const isFirebaseConfigured = () => {
   const requiredEnvVars = [
@@ -54,7 +59,9 @@ console.log('🔧 [Firebase Debug] Firebase config object created:', {
   hasApiKey: !!firebaseConfig.apiKey,
   hasAuthDomain: !!firebaseConfig.authDomain,
   hasProjectId: !!firebaseConfig.projectId,
-  projectId: firebaseConfig.projectId
+  projectId: firebaseConfig.projectId,
+  storageBucket: firebaseConfig.storageBucket,
+  hasStorageBucket: !!firebaseConfig.storageBucket
 });
 
 // Initialize Firebase only if properly configured
@@ -76,7 +83,9 @@ if (isFirebaseConfigured()) {
     console.log('✅ [Firebase Debug] Firestore initialized');
     
     storage = getStorage(app);
-    console.log('✅ [Firebase Debug] Firebase Storage initialized');
+    console.log('✅ [Firebase Debug] Firebase Storage initialized with bucket:', storage.app.options.storageBucket);
+    console.log('🚨 [FIREBASE DEBUG] Storage bucket from app options:', storage.app.options.storageBucket);
+    console.log('🚨 [FIREBASE DEBUG] Storage bucket from config:', firebaseConfig.storageBucket);
 
     // Production mode - no emulator connections
     console.log('🚀 [Firebase Debug] Using production Firebase services');
