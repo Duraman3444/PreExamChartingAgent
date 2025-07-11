@@ -25,6 +25,7 @@ import TranscriptUpload from '@/pages/TranscriptUpload';
 import TranscriptEditor from '@/pages/TranscriptEditor';
 import Transcripts from '@/pages/Transcripts';
 import Notes from '@/pages/Notes';
+import { Transcribe } from '@/pages/Transcribe';
 import { EvaluationDashboard } from '@/pages/EvaluationDashboard';
 import { useAuthStore } from '@/stores/authStore';
 import { useAppStore } from '@/stores/appStore';
@@ -968,6 +969,16 @@ const AppContent: React.FC = () => {
             <ProtectedRoute>
               <Layout>
                 <EvaluationDashboard />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.TRANSCRIBE}
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Transcribe />
               </Layout>
             </ProtectedRoute>
           }

@@ -10,6 +10,7 @@ export const ROUTES = {
   TRANSCRIPT_UPLOAD: '/visits/:id/transcript',
   TRANSCRIPT_EDITOR: '/visits/:id/transcript/edit',
   TRANSCRIPTS: '/transcripts',
+  TRANSCRIBE: '/transcribe',
   AI_ANALYSIS: '/ai-analysis',
   AI_ANALYSIS_DETAIL: '/ai-analysis/:id',
   AI_AGENT: '/ai-agent',

@@ -115,7 +115,7 @@ Create a sophisticated file upload interface for visit transcripts:
 
 1. Drag-and-drop file upload with progress tracking
 2. Support for multiple file types:
-   - Audio: MP3, WAV, M4A, MP4, AAC
+   - Audio: MP3, WAV, M4A, MP4, AAC, WEBM
    - Text: TXT, DOCX, PDF
 3. File validation (size, type, format)
 4. Preview functionality for uploaded files

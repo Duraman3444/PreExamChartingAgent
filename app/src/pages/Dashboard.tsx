@@ -45,7 +45,6 @@ import { mockVisits } from '@/data/mockData';
 import { Patient } from '@/types';
 import { format } from 'date-fns';
 import FileProcessingTest from '../components/common/FileProcessingTest';
-import RealTimeRecording from '../components/common/RealTimeRecording';
 
 interface QuickAction {
   title: string;
@@ -97,41 +96,13 @@ const quickActions: QuickAction[] = [
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { currentPatient, setCurrentPatient } = useAppStore();
+  const { currentPatient } = useAppStore();
   const theme = useTheme();
   const [showFileTest, setShowFileTest] = useState(false);
-  const [showRecording, setShowRecording] = useState(false);
   const [recordingStatus, setRecordingStatus] = useState<'idle' | 'recording' | 'completed'>('idle');
   const [lastRecordingResult, setLastRecordingResult] = useState<string | null>(null);
-  const [availablePatients, setAvailablePatients] = useState<Patient[]>([]);
 
-  // Mock available patients - in a real app, this would come from a database
-  useEffect(() => {
-    // Convert visits to mock patients for demonstration
-    const mockPatients: Patient[] = mockVisits.slice(0, 10).map((visit, index) => ({
-      id: visit.patientId,
-      demographics: {
-        firstName: visit.patientName.split(' ')[0],
-        lastName: visit.patientName.split(' ').slice(1).join(' ') || 'Unknown',
-        dateOfBirth: new Date(Date.now() - (visit.patientAge * 365.25 * 24 * 60 * 60 * 1000)),
-        gender: visit.patientGender,
-        phone: `555-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
-        preferredLanguage: undefined,
-      },
-      basicHistory: {
-        knownAllergies: ['No known allergies'],
-        currentMedications: ['No current medications'],
-        knownConditions: ['No known conditions'],
-        notes: `Patient from ${visit.department} department`,
-      },
-      photo: undefined,
-      isActive: true,
-      createdAt: new Date(visit.createdAt),
-      updatedAt: new Date(visit.updatedAt),
-      createdBy: 'system',
-    }));
-    setAvailablePatients(mockPatients);
-  }, []);
+
 
   // Helper functions defined first
   const getVisitStatusColor = (status: string, type: string) => {
@@ -196,39 +167,7 @@ export const Dashboard: React.FC = () => {
     setLastRecordingResult(`Error: ${error}`);
   };
 
-  const handlePatientCreated = (patient: Patient) => {
-    // Add the new patient to the available patients list
-    setAvailablePatients(prev => [patient, ...prev]);
-    
-    // Set as current patient
-    setCurrentPatient(patient);
-    
-    // Update status
-    setRecordingStatus('completed');
-    setLastRecordingResult(`New patient created: ${patient.demographics.firstName} ${patient.demographics.lastName}`);
-    
-    // Close the recording dialog
-    setShowRecording(false);
-  };
 
-  const handlePatientUpdated = (patient: Patient) => {
-    // Update the patient in the available patients list
-    setAvailablePatients(prev => 
-      prev.map(p => p.id === patient.id ? patient : p)
-    );
-    
-    // Update current patient if it's the same one
-    if (currentPatient && currentPatient.id === patient.id) {
-      setCurrentPatient(patient);
-    }
-    
-    // Update status
-    setRecordingStatus('completed');
-    setLastRecordingResult(`Patient updated: ${patient.demographics.firstName} ${patient.demographics.lastName}`);
-    
-    // Close the recording dialog
-    setShowRecording(false);
-  };
 
   // Calculate real-time statistics from actual data
   const totalPatients = new Set(mockVisits.map(visit => visit.patientId)).size;
@@ -387,7 +326,7 @@ export const Dashboard: React.FC = () => {
                 variant="contained"
                 size="large"
                 startIcon={<Mic />}
-                onClick={() => setShowRecording(true)}
+                onClick={() => navigate(ROUTES.TRANSCRIBE)}
                 sx={{
                   backgroundColor: 'white',
                   color: '#D32F2F',
@@ -491,7 +430,7 @@ export const Dashboard: React.FC = () => {
                       }}
                       onClick={() => {
                         if (action.action === 'recording') {
-                          setShowRecording(true);
+                          navigate(ROUTES.TRANSCRIBE);
                         } else if (action.action === 'fileTest') {
                           setShowFileTest(true);
                         } else if (action.route) {
@@ -634,41 +573,6 @@ export const Dashboard: React.FC = () => {
       {showFileTest && (
         <FileProcessingTest onClose={() => setShowFileTest(false)} />
       )}
-      
-      {/* Recording Modal */}
-      <Dialog
-        open={showRecording}
-        onClose={() => setShowRecording(false)}
-        maxWidth="lg"
-        fullWidth
-        PaperProps={{
-          sx: {
-            minHeight: '80vh',
-            maxHeight: '90vh',
-          },
-        }}
-      >
-        <DialogTitle>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="h6">Medical Recording Session</Typography>
-            <IconButton onClick={() => setShowRecording(false)}>
-              <Close />
-            </IconButton>
-          </Box>
-        </DialogTitle>
-        <DialogContent sx={{ p: 0 }}>
-          <RealTimeRecording
-            onRecordingComplete={handleRecordingComplete}
-            onError={handleRecordingError}
-            onPatientCreated={handlePatientCreated}
-            onPatientUpdated={handlePatientUpdated}
-            availablePatients={availablePatients}
-            maxDuration={3600}
-            autoTranscribe={false}
-            autoAnalyze={false}
-          />
-        </DialogContent>
-      </Dialog>
     </Box>
   );
 }; 

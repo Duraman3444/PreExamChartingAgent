@@ -44,7 +44,7 @@ import {
   Warning,
   FlashOn
 } from '@mui/icons-material';
-import { mockVisits } from '../data/mockData';
+import { MockDataStore } from '../data/mockData';
 import { O1AnalysisResult, ReasoningStep, ReasoningTrace } from '../services/openai';
 import { AIValidationResult, validateAIIntegration } from '../utils/aiTestUtils';
 import StreamingReasoningDisplay from '../components/common/StreamingReasoningDisplay';
@@ -194,7 +194,7 @@ const AIAgent: React.FC = () => {
     streamingStatus: 'connecting'
   });
 
-  const patients = mockVisits.map(visit => ({
+  const patients = MockDataStore.getVisits().map(visit => ({
     id: visit.patientId,
     name: visit.patientName,
     age: visit.patientAge,

@@ -40,7 +40,7 @@ import {
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { ROUTES } from '@/constants';
-import { mockVisits, Visit } from '@/data/mockData';
+import { MockDataStore, Visit } from '@/data/mockData';
 import { exportTranscript } from '@/services/fileUpload';
 import { globalEventStore } from '@/stores/globalEventStore';
 
@@ -254,9 +254,22 @@ export const Transcripts: React.FC = () => {
 
   useEffect(() => {
     // Use shared mock data for consistency across all pages
-    setVisits(mockVisits);
-    setFilteredVisits(mockVisits);
+    const currentVisits = MockDataStore.getVisits();
+    setVisits(currentVisits);
+    setFilteredVisits(currentVisits);
     setLoading(false);
+  }, []);
+
+  // Subscribe to MockDataStore updates
+  useEffect(() => {
+    const unsubscribe = MockDataStore.subscribe(() => {
+      console.log('📡 [Transcripts] MockDataStore updated, refreshing visits...');
+      const currentVisits = MockDataStore.getVisits();
+      setVisits(currentVisits);
+      setFilteredVisits(currentVisits);
+    });
+
+    return unsubscribe;
   }, []);
 
   // **NEW: Real-time transcript and visit update listeners using global store**

@@ -42,6 +42,15 @@ export const useKeyboardShortcuts = () => {
       preventDefault: true
     },
     {
+      key: 'r',
+      shiftKey: true,
+      description: 'Go to Record',
+      action: () => navigate(ROUTES.TRANSCRIBE),
+      category: 'navigation',
+      context: 'global',
+      preventDefault: true
+    },
+    {
       key: 'p',
       shiftKey: true,
       description: 'Go to Patients',

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -44,9 +45,11 @@ import {
   FileUpload,
   Clear,
   Download,
+  CloudUpload,
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { formatDistanceToNow, format } from 'date-fns';
+import { ROUTES } from '@/constants';
 import { TranscriptionResult, AnalysisResult } from '@/services/openai';
 import { openAIService } from '@/services/openai';
 import { medicalDataExtractionService, ExtractedMedicalData } from '@/services/medicalDataExtraction';
@@ -98,6 +101,7 @@ export const RealTimeRecording: React.FC<RealTimeRecordingProps> = ({
   availablePatients = [],
 }) => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const { currentPatient } = useAppStore();
   
   // Recording state
@@ -645,6 +649,78 @@ export const RealTimeRecording: React.FC<RealTimeRecordingProps> = ({
     link.click();
     document.body.removeChild(link);
   };
+
+  // Upload to cloud (navigate to Transcript Upload & Management page)
+  const uploadToCloud = () => {
+    console.log('🚀 [Cloud Upload] uploadToCloud called');
+    console.log('🚀 [Cloud Upload] currentSession:', {
+      id: currentSession?.id,
+      hasAudioBlob: !!currentSession?.audioBlob,
+      hasAudioUrl: !!currentSession?.audioUrl,
+      blobSize: currentSession?.audioBlob?.size,
+      blobType: currentSession?.audioBlob?.type,
+      status: currentSession?.status
+    });
+    
+    if (!currentSession?.audioBlob) {
+      console.error('❌ [Cloud Upload] No audio recording available to upload');
+      onError?.('No audio recording available to upload');
+      return;
+    }
+    
+    try {
+      // Create a file from the blob for upload
+      const mimeType = currentSession.mimeType || currentSession.audioBlob.type;
+      const fileExtension = mimeType.includes('mp4') ? 'm4a' : 'webm';
+      const fileName = `medical-recording-${format(currentSession.startTime, 'yyyy-MM-dd-HHmm')}.${fileExtension}`;
+      
+      console.log('📁 [Cloud Upload] Preparing file:', {
+        fileName,
+        mimeType,
+        fileExtension,
+        blobSize: currentSession.audioBlob.size
+      });
+      
+      // Create a File object from the blob
+      const file = new File([currentSession.audioBlob], fileName, { type: mimeType });
+      
+      // Store the file metadata in sessionStorage
+      const fileData = {
+        name: fileName,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified,
+        recordingSession: {
+          id: currentSession.id,
+          startTime: currentSession.startTime.toISOString(),
+          duration: currentSession.duration,
+        }
+      };
+      
+      sessionStorage.setItem('pendingAudioUpload', JSON.stringify(fileData));
+      console.log('📁 [Cloud Upload] Stored file metadata in sessionStorage');
+      
+      // Store the blob directly in a global variable that can be accessed by the upload page
+      // This avoids CSP issues with data URLs
+      if (typeof window !== 'undefined') {
+        (window as any).pendingAudioBlob = currentSession.audioBlob;
+        console.log('📁 [Cloud Upload] Stored audio blob in window.pendingAudioBlob for transfer');
+        console.log('📁 [Cloud Upload] Blob details:', {
+          size: currentSession.audioBlob.size,
+          type: currentSession.audioBlob.type,
+          constructor: currentSession.audioBlob.constructor.name
+        });
+      }
+      
+      // Navigate to transcript upload page
+      console.log('📁 [Cloud Upload] Navigating to transcript upload page');
+      navigate(ROUTES.TRANSCRIPT_UPLOAD);
+      
+    } catch (error) {
+      console.error('❌ [Cloud Upload] Error preparing audio for cloud upload:', error);
+      onError?.('Failed to prepare audio for cloud upload');
+    }
+  };
   
   return (
     <Box sx={{ p: 2 }}>
@@ -762,17 +838,7 @@ export const RealTimeRecording: React.FC<RealTimeRecordingProps> = ({
             </Box>
           )}
           
-          {/* Debug Section - Remove this after fixing */}
-          {currentSession && (
-            <Box sx={{ mt: 2, p: 1, backgroundColor: '#f0f0f0', borderRadius: 1, fontSize: '0.8rem' }}>
-              <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-                🐛 Debug - Session: {currentSession.id} | Status: {currentSession.status} | 
-                AudioBlob: {currentSession.audioBlob ? 'YES' : 'NO'} | 
-                AudioUrl: {currentSession.audioUrl ? 'YES' : 'NO'} | 
-                Duration: {currentSession.duration}s
-              </Typography>
-            </Box>
-          )}
+          {/* Debug Section removed for user-friendly UI */}
           
           {/* Session actions */}
           {currentSession && currentSession.audioBlob && currentSession.audioUrl && (
@@ -785,17 +851,26 @@ export const RealTimeRecording: React.FC<RealTimeRecordingProps> = ({
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                   Duration: {formatTime(currentSession.duration)} • Recorded: {format(currentSession.startTime, 'MMM dd, yyyy HH:mm')}
                 </Typography>
-                <Button
-                  variant="contained"
-                  startIcon={<Download />}
-                  onClick={downloadAudio}
-                  color="primary"
-                  sx={{ mr: 1 }}
-                >
-                  Download Audio File
-                </Button>
-                <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                  💡 Download to upload as transcript later
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  <Button
+                    variant="contained"
+                    startIcon={<Download />}
+                    onClick={downloadAudio}
+                    color="primary"
+                  >
+                    Download Audio File
+                  </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={<CloudUpload />}
+                    onClick={uploadToCloud}
+                    color="secondary"
+                  >
+                    Upload to Cloud
+                  </Button>
+                </Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                  💡 Download for local storage or upload to cloud for transcript processing
                 </Typography>
               </Box>
               

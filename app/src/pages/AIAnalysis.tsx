@@ -67,6 +67,7 @@ import {
 import { openAIService } from '@/services/openai';
 import { ROUTES } from '@/constants';
 import { mockVisits as visitData } from '@/data/mockData';
+import { MockDataStore } from '@/data/mockData';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -153,6 +154,69 @@ interface CustomPrescription {
 
 // Function to generate patient-specific analysis data
 const generatePatientAnalysisData = (visitId: string) => {
+  // First try to get the actual visit data from MockDataStore
+  const actualVisit = MockDataStore.getVisitById(visitId);
+  
+  if (actualVisit) {
+    // For new visits, use a simplified approach that just updates patient context
+    // while keeping the existing analysis structure for compatibility
+    const existingAnalysis = generatePatientAnalysisData_Original(visitId);
+    
+    // If we have existing analysis, use it but update patient context
+    if (existingAnalysis) {
+      return {
+        ...existingAnalysis,
+        patientContext: {
+          age: actualVisit.patientAge,
+          gender: actualVisit.patientGender,
+          primaryLanguage: 'English',
+          chiefComplaint: actualVisit.chiefComplaint || 'Not specified',
+        },
+      };
+    }
+    
+    // For completely new visits, return a basic analysis with real patient data
+    return {
+      id: `analysis-${visitId}`,
+      status: 'completed',
+      confidenceScore: 0.75,
+      processingTime: 2.5,
+      aiModel: 'GPT-4 Medical',
+      analysisDate: new Date(),
+      reviewStatus: 'pending',
+      patientContext: {
+        age: actualVisit.patientAge,
+        gender: actualVisit.patientGender,
+        primaryLanguage: 'English',
+        chiefComplaint: actualVisit.chiefComplaint || 'Not specified',
+      },
+      symptoms: [
+        { id: 'sym-1', name: 'Reported symptoms', severity: 'mild' as const, confidence: 0.80, duration: 'Recent', location: 'As reported', quality: 'Patient reported', associatedFactors: ['Clinical consultation'], sourceText: `Patient ${actualVisit.patientName} reported symptoms during visit: ${actualVisit.chiefComplaint || 'General consultation'}` },
+      ],
+      diagnoses: [
+        { id: 'dx-1', condition: 'Clinical Assessment', icd10Code: 'Z00.00', probability: 0.70, severity: 'low' as const, supportingEvidence: ['Patient history', 'Clinical presentation'], againstEvidence: [], additionalTestsNeeded: ['Clinical examination'], reasoning: 'Clinical assessment based on patient visit', urgency: 'routine' as const },
+      ],
+      treatments: [
+        { id: 'tx-1', category: 'monitoring' as const, recommendation: 'Follow-up as needed', priority: 'medium' as const, timeframe: 'as indicated', contraindications: [], alternatives: [], expectedOutcome: 'Continued care', evidenceLevel: 'B' as const },
+      ],
+      concerns: [],
+      metrics: {
+        totalSymptoms: 1,
+        highConfidenceFindings: 1,
+        criticalConcerns: 0,
+        recommendedTests: 1,
+        urgentActions: 0,
+      },
+    };
+  }
+  
+  // Fall back to original method for existing mock visits
+  return generatePatientAnalysisData_Original(visitId);
+};
+
+// Rename the original function to avoid conflicts
+const generatePatientAnalysisData_Original = (visitId: string) => {
+  // Original hardcoded logic for existing mock visits
   const visit = visitData.find(v => v.id === visitId);
   if (!visit) return null;
 
@@ -313,18 +377,18 @@ const generatePatientAnalysisData = (visitId: string) => {
         { id: 'sym-1', name: 'Depression', severity: 'moderate', confidence: 0.92, duration: '3 weeks', quality: 'persistent low mood', associatedFactors: ['anxiety', 'sleep disturbance'], sourceText: 'Patient reports persistent low mood and loss of interest for 3 weeks' },
         { id: 'sym-2', name: 'Anxiety', severity: 'moderate', confidence: 0.88, duration: '2 weeks', quality: 'excessive worry', associatedFactors: ['depression', 'physical symptoms'], sourceText: 'Patient describes excessive worry and physical symptoms of anxiety' },
         { id: 'sym-3', name: 'Sleep disturbance', severity: 'mild', confidence: 0.85, duration: '2 weeks', quality: 'insomnia', associatedFactors: ['depression', 'anxiety'], sourceText: 'Patient reports difficulty falling asleep and staying asleep' },
-      ],
+      ] as Symptom[],
       diagnoses: [
         { id: 'dx-1', condition: 'Major Depressive Disorder', icd10Code: 'F33.1', probability: 0.80, severity: 'high', supportingEvidence: ['persistent low mood', 'loss of interest', 'sleep disturbance', 'duration >2 weeks'], againstEvidence: ['no psychotic features', 'no suicidal ideation'], additionalTestsNeeded: ['PHQ-9', 'suicide risk assessment'], reasoning: 'Meets criteria for major depressive disorder with moderate severity', urgency: 'urgent' },
         { id: 'dx-2', condition: 'Generalized Anxiety Disorder', icd10Code: 'F41.1', probability: 0.70, severity: 'medium', supportingEvidence: ['excessive worry', 'physical symptoms', 'duration >2 weeks'], againstEvidence: ['no panic attacks'], additionalTestsNeeded: ['GAD-7', 'anxiety assessment'], reasoning: 'Comorbid anxiety disorder commonly occurs with depression', urgency: 'routine' },
-      ],
+      ] as Diagnosis[],
       treatments: [
         { id: 'tx-1', category: 'medication', recommendation: 'Sertraline 50mg daily', priority: 'high', timeframe: 'immediate', contraindications: ['MAOI use', 'severe liver disease'], alternatives: ['other SSRIs or SNRIs'], expectedOutcome: 'Improved mood and reduced anxiety', evidenceLevel: 'A' },
         { id: 'tx-2', category: 'referral', recommendation: 'Cognitive behavioral therapy', priority: 'high', timeframe: 'within 2 weeks', contraindications: [], alternatives: ['other psychotherapy modalities'], expectedOutcome: 'Improved coping skills and mood regulation', evidenceLevel: 'A' },
-      ],
+      ] as Treatment[],
       concerns: [
         { id: 'flag-1', type: 'urgent_referral', severity: 'high', message: 'Major depression requires immediate treatment and suicide risk assessment', recommendation: 'Immediate psychiatric evaluation and safety assessment', requiresImmediateAction: true },
-      ],
+      ] as ConcernFlag[],
       confidenceScore: 0.87,
     },
     'V010': { // Maria Gonzalez - Polyuria, polydipsia, and fatigue
@@ -332,18 +396,18 @@ const generatePatientAnalysisData = (visitId: string) => {
         { id: 'sym-1', name: 'Polyuria', severity: 'moderate', confidence: 0.95, duration: '2 weeks', quality: 'excessive urination', associatedFactors: ['polydipsia', 'fatigue'], sourceText: 'Patient reports urinating frequently, especially at night' },
         { id: 'sym-2', name: 'Polydipsia', severity: 'moderate', confidence: 0.90, duration: '2 weeks', quality: 'excessive thirst', associatedFactors: ['polyuria', 'dry mouth'], sourceText: 'Patient describes constant thirst and dry mouth' },
         { id: 'sym-3', name: 'Fatigue', severity: 'mild', confidence: 0.85, duration: '3 weeks', quality: 'tiredness', associatedFactors: ['polyuria', 'polydipsia'], sourceText: 'Patient reports feeling tired and weak' },
-      ],
+      ] as Symptom[],
       diagnoses: [
         { id: 'dx-1', condition: 'Type 2 Diabetes Mellitus', icd10Code: 'E11.9', probability: 0.90, severity: 'high', supportingEvidence: ['polyuria', 'polydipsia', 'fatigue', 'age >50', 'female'], againstEvidence: ['no weight loss', 'no ketosis'], additionalTestsNeeded: ['fasting glucose', 'HbA1c', 'urinalysis'], reasoning: 'Classic triad of diabetes symptoms in middle-aged patient', urgency: 'urgent' },
         { id: 'dx-2', condition: 'Diabetes Insipidus', icd10Code: 'E23.2', probability: 0.15, severity: 'medium', supportingEvidence: ['polyuria', 'polydipsia'], againstEvidence: ['no hypernatremia', 'age'], additionalTestsNeeded: ['urine specific gravity', 'serum osmolality'], reasoning: 'Less likely given age and presentation', urgency: 'routine' },
-      ],
+      ] as Diagnosis[],
       treatments: [
         { id: 'tx-1', category: 'medication', recommendation: 'Metformin 500mg twice daily', priority: 'high', timeframe: 'immediate', contraindications: ['kidney disease', 'liver disease'], alternatives: ['other antidiabetic agents'], expectedOutcome: 'Improved glycemic control', evidenceLevel: 'A' },
         { id: 'tx-2', category: 'lifestyle', recommendation: 'Diabetes education and lifestyle modifications', priority: 'high', timeframe: 'within 1 week', contraindications: [], alternatives: ['intensive diabetes management program'], expectedOutcome: 'Better diabetes self-management', evidenceLevel: 'A' },
-      ],
+      ] as Treatment[],
       concerns: [
         { id: 'flag-1', type: 'urgent_referral', severity: 'high', message: 'New diagnosis of diabetes requires immediate management and education', recommendation: 'Endocrinology consultation and diabetes education within 1 week', requiresImmediateAction: true },
-      ],
+      ] as ConcernFlag[],
       confidenceScore: 0.93,
     },
     'V011': { // Christopher White - Generalized rash and itching
@@ -351,18 +415,18 @@ const generatePatientAnalysisData = (visitId: string) => {
         { id: 'sym-1', name: 'Generalized rash', severity: 'moderate', confidence: 0.90, duration: '3 days', location: 'widespread', quality: 'erythematous', associatedFactors: ['itching', 'new detergent exposure'], sourceText: 'Patient has widespread red rash over trunk and extremities' },
         { id: 'sym-2', name: 'Itching', severity: 'moderate', confidence: 0.85, duration: '3 days', quality: 'pruritus', associatedFactors: ['rash', 'worse at night'], sourceText: 'Patient reports intense itching, especially at night' },
         { id: 'sym-3', name: 'Skin irritation', severity: 'mild', confidence: 0.78, duration: '2 days', quality: 'inflamed skin', associatedFactors: ['rash', 'itching'], sourceText: 'Skin appears inflamed and irritated' },
-      ],
+      ] as Symptom[],
       diagnoses: [
         { id: 'dx-1', condition: 'Contact Dermatitis', icd10Code: 'L25.9', probability: 0.85, severity: 'low', supportingEvidence: ['new detergent exposure', 'widespread rash', 'itching'], againstEvidence: ['no blisters', 'no fever'], additionalTestsNeeded: ['patch testing if recurrent'], reasoning: 'Clear temporal relationship with new detergent exposure', urgency: 'routine' },
         { id: 'dx-2', condition: 'Allergic reaction', icd10Code: 'T78.40', probability: 0.20, severity: 'medium', supportingEvidence: ['widespread rash', 'itching'], againstEvidence: ['no respiratory symptoms', 'no angioedema'], additionalTestsNeeded: ['allergy testing'], reasoning: 'Possible allergic reaction but less likely without systemic symptoms', urgency: 'routine' },
-      ],
+      ] as Diagnosis[],
       treatments: [
         { id: 'tx-1', category: 'medication', recommendation: 'Topical corticosteroid (hydrocortisone 1%)', priority: 'high', timeframe: 'immediate', contraindications: ['skin infection'], alternatives: ['calamine lotion'], expectedOutcome: 'Reduced inflammation and itching', evidenceLevel: 'A' },
         { id: 'tx-2', category: 'lifestyle', recommendation: 'Avoid suspected allergen (new detergent)', priority: 'high', timeframe: 'immediate', contraindications: [], alternatives: ['hypoallergenic products'], expectedOutcome: 'Prevention of recurrence', evidenceLevel: 'A' },
-      ],
+      ] as Treatment[],
       concerns: [
         { id: 'flag-1', type: 'urgent_referral', severity: 'low', message: 'Monitor for signs of secondary infection', recommendation: 'Return if rash worsens or develops signs of infection', requiresImmediateAction: false },
-      ],
+      ] as ConcernFlag[],
       confidenceScore: 0.76,
     },
     'V012': { // Amanda Thompson - Persistent cough with hemoptysis and weight loss
@@ -370,18 +434,18 @@ const generatePatientAnalysisData = (visitId: string) => {
         { id: 'sym-1', name: 'Persistent cough', severity: 'moderate', confidence: 0.95, duration: '6 weeks', quality: 'productive', associatedFactors: ['hemoptysis', 'weight loss'], sourceText: 'Patient reports productive cough persisting for 6 weeks' },
         { id: 'sym-2', name: 'Hemoptysis', severity: 'moderate', confidence: 0.90, duration: '2 weeks', quality: 'blood-streaked sputum', associatedFactors: ['cough', 'weight loss'], sourceText: 'Patient notices blood-streaked sputum for 2 weeks' },
         { id: 'sym-3', name: 'Weight loss', severity: 'moderate', confidence: 0.88, duration: '2 months', quality: 'unintentional', associatedFactors: ['cough', 'poor appetite'], sourceText: 'Patient reports unintentional weight loss of 15 pounds over 2 months' },
-      ],
+      ] as Symptom[],
       diagnoses: [
         { id: 'dx-1', condition: 'Lung Adenocarcinoma', icd10Code: 'C78.00', probability: 0.75, severity: 'critical', supportingEvidence: ['hemoptysis', 'weight loss', 'persistent cough', 'age >45', 'female'], againstEvidence: ['no smoking history documented'], additionalTestsNeeded: ['chest CT', 'bronchoscopy with biopsy', 'PET scan'], reasoning: 'Classic presentation of lung cancer with hemoptysis and weight loss', urgency: 'emergent' },
         { id: 'dx-2', condition: 'Pulmonary tuberculosis', icd10Code: 'A15.9', probability: 0.25, severity: 'high', supportingEvidence: ['persistent cough', 'hemoptysis', 'weight loss'], againstEvidence: ['no night sweats', 'no fever'], additionalTestsNeeded: ['sputum AFB', 'chest X-ray', 'tuberculin skin test'], reasoning: 'TB can present with similar symptoms', urgency: 'urgent' },
-      ],
+      ] as Diagnosis[],
       treatments: [
         { id: 'tx-1', category: 'procedure', recommendation: 'Urgent chest CT and bronchoscopy', priority: 'urgent', timeframe: 'within 48 hours', contraindications: ['severe coagulopathy'], alternatives: ['sputum cytology'], expectedOutcome: 'Tissue diagnosis and staging', evidenceLevel: 'A' },
         { id: 'tx-2', category: 'referral', recommendation: 'Immediate oncology consultation', priority: 'urgent', timeframe: 'within 24 hours', contraindications: [], alternatives: ['multidisciplinary tumor board'], expectedOutcome: 'Comprehensive cancer treatment planning', evidenceLevel: 'A' },
-      ],
+      ] as Treatment[],
       concerns: [
         { id: 'flag-1', type: 'red_flag', severity: 'critical', message: 'Hemoptysis with weight loss highly suspicious for lung malignancy', recommendation: 'Immediate workup with chest CT and bronchoscopy', requiresImmediateAction: true },
-      ],
+      ] as ConcernFlag[],
       confidenceScore: 0.96,
     },
   };

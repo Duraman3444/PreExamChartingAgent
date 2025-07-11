@@ -49,8 +49,8 @@ export interface Visit {
   };
 }
 
-// Comprehensive mock data with all 12 patients - used across all pages for consistency
-export const mockVisits: Visit[] = [
+// Original mock data
+const initialMockVisits: Visit[] = [
   {
     id: 'V001',
     patientId: 'P001',
@@ -405,3 +405,68 @@ export const mockVisits: Visit[] = [
     lastAnalysisDate: new Date('2024-01-19T12:45:00'),
   },
 ]; 
+
+// **NEW: Functions to manage the data store**
+export class MockDataStore {
+  private static visits: Visit[] = [...initialMockVisits];
+  private static listeners: (() => void)[] = [];
+
+  static addVisit(visit: Visit) {
+    console.log('📝 [MockDataStore] Adding new visit:', visit.id, visit.patientName);
+    this.visits.unshift(visit); // Add to beginning of array
+    this.notifyListeners();
+  }
+
+  static getVisits(): Visit[] {
+    return [...this.visits]; // Return copy to prevent direct mutation
+  }
+
+  static getVisitById(id: string): Visit | undefined {
+    return this.visits.find(visit => visit.id === id);
+  }
+
+  static getVisitsByPatientId(patientId: string): Visit[] {
+    return this.visits.filter(visit => visit.patientId === patientId);
+  }
+
+  static updateVisit(id: string, updates: Partial<Visit>) {
+    const index = this.visits.findIndex(visit => visit.id === id);
+    if (index !== -1) {
+      this.visits[index] = { ...this.visits[index], ...updates };
+      this.notifyListeners();
+    }
+  }
+
+  static subscribe(listener: () => void) {
+    this.listeners.push(listener);
+    return () => {
+      this.listeners = this.listeners.filter(l => l !== listener);
+    };
+  }
+
+  private static notifyListeners() {
+    console.log('📡 [MockDataStore] Notifying', this.listeners.length, 'listeners of data change');
+    this.listeners.forEach(listener => listener());
+  }
+
+  // Debug function
+  static getDebugInfo() {
+    return {
+      totalVisits: this.visits.length,
+      totalListeners: this.listeners.length,
+      latestVisit: this.visits[0]?.patientName || 'None'
+    };
+  }
+}
+
+// Add to window for debugging
+if (typeof window !== 'undefined') {
+  (window as any).mockDataStore = MockDataStore;
+  console.log('🧪 [MockDataStore] Added to window for debugging');
+}
+
+// Backwards compatibility - getter function that always returns current data
+export const getMockVisits = () => MockDataStore.getVisits();
+
+// Legacy export for existing code - this will be a snapshot but should be replaced with getMockVisits()
+export const mockVisits = initialMockVisits; 

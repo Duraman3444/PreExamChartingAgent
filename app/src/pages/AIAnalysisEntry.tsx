@@ -29,7 +29,7 @@ import {
   Assessment as AnalysisIcon,
 } from '@mui/icons-material';
 import { ROUTES } from '@/constants';
-import { mockVisits, Visit } from '@/data/mockData';
+import { MockDataStore, Visit } from '@/data/mockData';
 
 export const AIAnalysisEntry: React.FC = () => {
   const navigate = useNavigate();
@@ -42,9 +42,22 @@ export const AIAnalysisEntry: React.FC = () => {
 
   useEffect(() => {
     // Use shared mock data for consistency across all pages
-    setVisits(mockVisits);
-    setFilteredVisits(mockVisits);
+    const currentVisits = MockDataStore.getVisits();
+    setVisits(currentVisits);
+    setFilteredVisits(currentVisits);
     setLoading(false);
+  }, []);
+
+  // Subscribe to MockDataStore updates
+  useEffect(() => {
+    const unsubscribe = MockDataStore.subscribe(() => {
+      console.log('📡 [AIAnalysisEntry] MockDataStore updated, refreshing visits...');
+      const currentVisits = MockDataStore.getVisits();
+      setVisits(currentVisits);
+      setFilteredVisits(currentVisits);
+    });
+
+    return unsubscribe;
   }, []);
 
   useEffect(() => {

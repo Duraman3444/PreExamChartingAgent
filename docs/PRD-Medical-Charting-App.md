@@ -109,7 +109,7 @@ To provide healthcare professionals with an intelligent, secure, and focused dig
 ### 3.4 Transcript Management
 
 #### 3.4.1 Transcript Upload
-- **Audio Files**: Support for MP3, WAV, M4A, MP4, AAC formats
+- **Audio Files**: Support for MP3, WAV, M4A, MP4, AAC, WEBM formats
 - **Text Files**: Support for TXT, DOCX, PDF formats
 - **File Validation**: Size limits (50MB audio, 5MB text)
 - **Upload Progress**: Real-time upload status and progress

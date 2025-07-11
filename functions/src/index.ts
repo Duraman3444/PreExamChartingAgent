@@ -300,7 +300,8 @@ export const analyzeTranscript = functions.runWith({
       }
 
       // Determine if the input is a question or a transcript
-      const isQuestion = transcript.trim().endsWith('?') || transcript.trim().split(' ').length < 20;
+      // Only treat as question if it explicitly ends with '?' - don't use word count
+      const isQuestion = transcript.trim().endsWith('?') && !transcript.toLowerCase().includes('patient') && !transcript.toLowerCase().includes('provider');
       const prompt = isQuestion ? GENERAL_MEDICAL_QUESTION_PROMPT : MEDICAL_ANALYSIS_PROMPT;
       const userContent = isQuestion ? `Question: ${transcript}` : `Transcript: ${transcript}`;
 

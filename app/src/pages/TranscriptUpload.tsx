@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -56,6 +56,7 @@ import { useDropzone } from 'react-dropzone';
 import { format } from 'date-fns';
 import { useAuthStore } from '@/stores/authStore';
 import { globalEventStore } from '@/stores/globalEventStore';
+import { MockDataStore } from '@/data/mockData';
 import { APP_SETTINGS, ROUTES } from '@/constants';
 import { FileUpload, TranscriptSegment } from '@/types';
 import {
@@ -253,10 +254,10 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
         hasTranscript: true,
         hasAiAnalysis: false,
         hasVisitNotes: false,
-        transcriptStatus: 'completed',
+        transcriptStatus: 'completed' as const,
         notesCount: 0,
-        notesStatus: 'none',
-        analysisStatus: 'none',
+        notesStatus: 'none' as const,
+        analysisStatus: 'none' as const,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -278,6 +279,10 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
       };
 
       await saveTranscript(visitId, transcriptData, user.id);
+      
+      // **IMPORTANT: Add the visit to the central data store**
+      MockDataStore.addVisit(visitRecord);
+      console.log('✅ [Save Debug] Visit added to MockDataStore');
       
       // Update visit status in real-time by triggering a global state update
       updateVisitTranscriptStatus(visitId, 'completed');
@@ -396,16 +401,25 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
 
   // **NEW: Handle patient dialog submission**
   const handlePatientDialogSubmit = async () => {
-    if (!pendingTranscriptData) return;
+    console.log('🔍 [UI Debug] Patient dialog submit clicked...');
+    console.log('🔍 [UI Debug] Pending data exists:', !!pendingTranscriptData);
+    console.log('🔍 [UI Debug] Patient info:', patientDoctorInfo);
+    
+    if (!pendingTranscriptData) {
+      console.log('❌ [UI Debug] No pending transcript data!');
+      return;
+    }
     
     // Validate required fields
     if (!patientDoctorInfo.patientFirstName || !patientDoctorInfo.patientLastName || !patientDoctorInfo.doctorName) {
+      console.log('❌ [UI Debug] Missing required fields');
       showNotification('Please fill in all required fields (Patient Name and Doctor)', 'error');
       return;
     }
 
     try {
       setIsProcessing(true);
+      console.log('🔍 [UI Debug] Starting saveTranscriptToPatientRecord...');
       
       // Save transcript with patient and visit information
       await saveTranscriptToPatientRecord(
@@ -414,6 +428,8 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
         patientDoctorInfo,
         patientDoctorInfo
       );
+      
+      console.log('✅ [UI Debug] saveTranscriptToPatientRecord completed successfully!');
       
       // Reset states
       setShowPatientDialog(false);
@@ -568,6 +584,10 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
       setShowPatientDialog(true);
       
       console.log('✅ [UI Debug] Transcription completed, showing patient dialog...');
+      console.log('🔍 [UI Debug] Patient dialog state:', {
+        showPatientDialog: true,
+        pendingTranscriptDataExists: !!(transcriptionResult && fileData)
+      });
       showNotification('Audio transcription completed! Please enter patient and doctor information.', 'info');
 
     } catch (error) {
@@ -732,6 +752,134 @@ const TranscriptUpload: React.FC<TranscriptUploadProps> = ({ visitId }) => {
       default: return <InfoIcon />;
     }
   };
+
+  // **NEW: Test function to manually trigger global event store test**
+  const testGlobalEventStore = () => {
+    console.log('🧪 [UI Debug] Testing global event store...');
+    if (globalEventStore) {
+      globalEventStore.runTest();
+    } else {
+      console.log('❌ [UI Debug] Global event store not available!');
+    }
+  };
+
+  // Add debug info to window
+  useEffect(() => {
+    (window as any).testGlobalEventStore = testGlobalEventStore;
+    (window as any).testMockDataStore = () => {
+      console.log('🧪 [MockDataStore Test] Current visits:', MockDataStore.getDebugInfo());
+      console.log('🧪 [MockDataStore Test] All visits:', MockDataStore.getVisits().map(v => `${v.id}: ${v.patientName}`));
+    };
+    console.log('🧪 [UI Debug] Added test functions to window for debugging');
+    console.log('🧪 [UI Debug] Run window.testMockDataStore() to see current data');
+  }, []);
+
+  // **NEW: Handle pending audio upload from recording session**
+  useEffect(() => {
+    const handlePendingAudioUpload = async () => {
+      console.log('🔍 [Cloud Upload] handlePendingAudioUpload called');
+      
+      try {
+        const pendingUploadData = sessionStorage.getItem('pendingAudioUpload');
+        const pendingBlob = (window as any).pendingAudioBlob;
+        
+        console.log('🔍 [Cloud Upload] Checking for pending data:', {
+          hasPendingUploadData: !!pendingUploadData,
+          hasPendingBlob: !!pendingBlob,
+          pendingBlobType: pendingBlob?.constructor?.name,
+          pendingBlobSize: pendingBlob?.size,
+          uploadData: pendingUploadData ? JSON.parse(pendingUploadData) : null
+        });
+        
+        if (pendingUploadData) {
+          console.log('📁 [Cloud Upload] Found pending audio upload from recording session');
+          const uploadData = JSON.parse(pendingUploadData);
+          
+          if (pendingBlob && pendingBlob instanceof Blob) {
+            console.log('📁 [Cloud Upload] Found audio blob in window.pendingAudioBlob');
+            console.log('📁 [Cloud Upload] Blob details:', {
+              size: pendingBlob.size,
+              type: pendingBlob.type,
+              fileName: uploadData.name,
+              expectedType: uploadData.type
+            });
+            
+            // Create a File object from the blob
+            const file = new File([pendingBlob], uploadData.name, { type: uploadData.type });
+            
+            // Create UploadedFile structure
+            const isAudioType = ACCEPTED_AUDIO_TYPES.includes(uploadData.type);
+            console.log('📁 [Cloud Upload] Audio type check:', {
+              uploadDataType: uploadData.type,
+              acceptedTypes: ACCEPTED_AUDIO_TYPES,
+              isAudioType: isAudioType
+            });
+            
+            const uploadedFile: UploadedFile = {
+              id: `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              file,
+              name: uploadData.name,
+              size: uploadData.size,
+              type: uploadData.type,
+              isAudio: isAudioType,
+              progress: 0,
+              status: 'pending',
+              processing: false,
+            };
+            
+            console.log('📁 [Cloud Upload] Created uploadedFile:', {
+              id: uploadedFile.id,
+              name: uploadedFile.name,
+              size: uploadedFile.size,
+              type: uploadedFile.type,
+              isAudio: uploadedFile.isAudio
+            });
+            
+            // Add to files list
+            setFiles(prev => [uploadedFile, ...prev]);
+            
+            // Auto-upload the file
+            console.log('📁 [Cloud Upload] Starting file upload...');
+            await uploadFile(uploadedFile);
+            
+            // Show notification
+            showNotification(`Audio recording uploaded from session: ${uploadData.recordingSession.id}`, 'success');
+            
+            console.log('✅ [Cloud Upload] Successfully processed audio from recording session');
+          } else {
+            // If no blob data, just show a message that the file needs to be uploaded manually
+            showNotification('Please select the audio file from your recording session to upload', 'info');
+            console.log('⚠️ [Cloud Upload] No blob found in window.pendingAudioBlob');
+            console.log('⚠️ [Cloud Upload] Debug info:', {
+              pendingBlob,
+              typeof: typeof pendingBlob,
+              instanceof: pendingBlob instanceof Blob,
+              constructor: pendingBlob?.constructor?.name
+            });
+          }
+          
+          // Clean up sessionStorage and global variable
+          sessionStorage.removeItem('pendingAudioUpload');
+          if (typeof window !== 'undefined') {
+            delete (window as any).pendingAudioBlob;
+          }
+        } else {
+          console.log('ℹ️ [Cloud Upload] No pending audio upload found');
+        }
+      } catch (error) {
+        console.error('❌ [Cloud Upload] Error processing pending audio upload:', error);
+        showNotification('Error processing uploaded audio from recording session', 'error');
+        
+        // Clean up sessionStorage and global variable even on error
+        sessionStorage.removeItem('pendingAudioUpload');
+        if (typeof window !== 'undefined') {
+          delete (window as any).pendingAudioBlob;
+        }
+      }
+    };
+
+    handlePendingAudioUpload();
+  }, []);
 
   return (
     <Box sx={{ p: 3 }}>

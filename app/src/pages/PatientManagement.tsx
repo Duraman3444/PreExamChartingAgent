@@ -55,7 +55,7 @@ import {
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { exportTranscript } from '@/services/fileUpload';
-import { mockVisits, Visit } from '@/data/mockData';
+import { MockDataStore, Visit } from '@/data/mockData';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { globalEventStore } from '@/stores/globalEventStore';
 
@@ -137,7 +137,7 @@ const convertVisitsToPatients = (visits: Visit[]): PatientRecord[] => {
 };
 
 // Use shared mock data - converted to PatientRecord format
-const mockPatientData: PatientRecord[] = convertVisitsToPatients(mockVisits);
+const getPatientData = (): PatientRecord[] => convertVisitsToPatients(MockDataStore.getVisits());
 
 
 // Mock document content data
@@ -2701,7 +2701,17 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ open, onClose, patient 
 };
 
 export const PatientManagement: React.FC = () => {
-  const [patients, setPatients] = useState<PatientRecord[]>(mockPatientData);
+  const [patients, setPatients] = useState<PatientRecord[]>(getPatientData());
+
+  // Subscribe to MockDataStore updates
+  useEffect(() => {
+    const unsubscribe = MockDataStore.subscribe(() => {
+      console.log('📡 [PatientManagement] MockDataStore updated, refreshing patients...');
+      setPatients(getPatientData());
+    });
+
+    return unsubscribe;
+  }, []);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterAnchorEl, setFilterAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');

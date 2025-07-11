@@ -25,6 +25,7 @@ import {
   SmartToy,
   Assessment,
   Help as HelpIcon,
+  Mic,
 } from '@mui/icons-material';
 import { ROUTES } from '@/constants';
 import { useAuthStore } from '@/stores/authStore';
@@ -43,6 +44,12 @@ const navigationItems = [
     icon: <Dashboard />,
     path: ROUTES.DASHBOARD,
     shortcut: `⇧ + D`,
+  },
+  {
+    text: 'Record',
+    icon: <Mic />,
+    path: ROUTES.TRANSCRIBE,
+    shortcut: `⇧ + R`,
   },
   {
     text: 'Patients',

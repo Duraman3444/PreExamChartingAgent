@@ -46,7 +46,7 @@ flowchart TD
 ## Workflow Steps
 
 ### Step 1: Upload Transcript
-- **Input Types**: Audio files (MP3, WAV, M4A, MP4, AAC) or text files (TXT, DOCX, PDF)
+- **Input Types**: Audio files (MP3, WAV, M4A, MP4, AAC, WEBM) or text files (TXT, DOCX, PDF)
 - **Validation**: File size limits (50MB audio, 5MB text), format verification
 - **Processing**: Audio-to-text conversion using medical-trained speech recognition
 - **Security**: Encrypted upload and storage with audit logging
