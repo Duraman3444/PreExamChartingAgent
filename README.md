@@ -114,22 +114,24 @@
 
 ## 🆚 **AI Scribe Market Comparison**
 
-| Evaluation Area | **PreExamChartingAgent** (self-host) | **DeepScribe.ai** | **Abridge.com** | **Freed.ai** |
-|-----------------|---------------------------------------|--------------------|------------------|---------------|
-| Core focus | Pre-exam chart with visible AI reasoning | Ambient capture → finished SOAP note | Encounter summary + EHR hooks | Quick SOAP draft for individual clinicians |
-| Reasoning transparency | Full GPT-4o/O1 step-by-step thoughts, confidence & citations | Black-box draft only | Black-box | Limited template edits |
-| Deployment model | Self-host on your Firebase / on-prem | Vendor multi-tenant cloud | Vendor cloud | Vendor cloud |
-| Data residency | PHI stays in your project | Data leaves org (BAA) | Data leaves org | Data leaves org |
-| Pricing (indicative) | OSS core + pay-as-you-go OpenAI | ~US$1.5k/provider/mo + setup (report) | Enterprise licence | From ~US$99/mo per clinician |
-| Contract & cancellation | No lock-in, MIT licence | Reddit reports 1-year lock-in & legal dispute¹ | Enterprise agreement | Month-to-month |
-| Crowd feedback | Positive dev & clinician testers | Mixed: “just transcribes conversation”, steep cost | Generally positive in large systems | Favoured by small practices |
-| Note quality | Differential Dx, ICD-10, treatment suggestions | AI draft + human scribes, limited ICD-10 | Summary bullets, med list | Solid draft, no reasoning |
-| Customisation | Editable prompts & n8n workflows | Closed prompts | Closed prompts | Basic template settings |
-| Ideal for | Clinics wanting control & extensibility | Practices wanting hands-off EHR notes | Large health-systems | Solo / small-practice providers |
+| Evaluation Area | **PreExamChartingAgent** (self-host) | **Epic DAX Copilot** | **DeepScribe.ai** | **Abridge.com** | **Freed.ai** |
+|-----------------|---------------------------------------|----------------------|--------------------|------------------|---------------|
+| Core focus | Pre-exam chart with visible AI reasoning | Ambient capture → Epic integration | Ambient capture → finished SOAP note | Encounter summary + EHR hooks | Quick SOAP draft for individual clinicians |
+| Reasoning transparency | Full GPT-4o/O1 step-by-step thoughts, confidence & citations | Limited visibility into AI reasoning | Black-box draft only | Black-box | Limited template edits |
+| Deployment model | Self-host on your Firebase / on-prem | Microsoft Cloud (Azure) | Vendor multi-tenant cloud | Vendor cloud | Vendor cloud |
+| Data residency | PHI stays in your project | Microsoft Azure (configurable regions) | Data leaves org (BAA) | Data leaves org | Data leaves org |
+| EHR Integration | Universal (API-based) | Native Epic integration via "Write My Note" | Multiple EHR integrations | EHR-agnostic with hooks | Basic EHR integration |
+| Pricing (indicative) | OSS core + pay-as-you-go OpenAI | ~US$360/provider/year (US$30/mo) | ~US$1.5k/provider/mo + setup (report) | Enterprise licence | From ~US$99/mo per clinician |
+| Contract & cancellation | No lock-in, MIT licence | Microsoft enterprise agreement | Reddit reports 1-year lock-in & legal dispute¹ | Enterprise agreement | Month-to-month |
+| Crowd feedback | Positive dev & clinician testers | Strong Epic user adoption, enterprise focus | Mixed: "just transcribes conversation", steep cost | Generally positive in large systems | Favoured by small practices |
+| Note quality | Differential Dx, ICD-10, treatment suggestions | Specialty-specific notes, Epic SmartSections | AI draft + human scribes, limited ICD-10 | Summary bullets, med list | Solid draft, no reasoning |
+| Customisation | Editable prompts & n8n workflows | Epic templates + DAX style preferences | Closed prompts | Closed prompts | Basic template settings |
+| Prerequisites | None (self-hosted) | Epic EHR + M365 E3/E5 license required | EHR integration setup | Enterprise EHR system | Basic EHR integration |
+| Ideal for | Clinics wanting control & extensibility | Epic customers seeking native integration | Practices wanting hands-off EHR notes | Large health-systems | Solo / small-practice providers |
 
-> ¹ Source: [Reddit r/Psychiatry post, office manager experience with DeepScribe](#) — described “shady business”, restrictive cancellation window, and impending legal action.
+> ¹ Source: [Reddit r/Psychiatry post, office manager experience with DeepScribe](#) — described "shady business", restrictive cancellation window, and impending legal action.
 
-**For a comprehensive, nine-vendor, feature-by-feature matrix see:** [`docs/AI-Scribe-Comparison.md`](docs/AI-Scribe-Comparison.md)
+**For a comprehensive, ten-vendor, feature-by-feature matrix see:** [`docs/AI-Scribe-Comparison.md`](docs/AI-Scribe-Comparison.md)
 
 ---
 

@@ -2,7 +2,7 @@
 
 *Last updated: July 2025*
 
-This document provides a detailed, feature-by-feature comparison between **PreExamChartingAgent** and eight high-profile ambient/AI scribe platforms.  Sources include product documentation, vendor demos, published pricing, conference talks, Reddit/HCP feedback, and direct clinician interviews.
+This document provides a detailed, feature-by-feature comparison between **PreExamChartingAgent** and nine high-profile ambient/AI scribe platforms.  Sources include product documentation, vendor demos, published pricing, conference talks, Reddit/HCP feedback, and direct clinician interviews.
 
 > ⚠️  **Disclaimer:** Information about closed-source vendors can change rapidly.  All third-party details below reflect publicly available data as of the date above and should be independently verified for procurement.
 
@@ -13,14 +13,15 @@ This document provides a detailed, feature-by-feature comparison between **PreEx
 | # | Vendor | Reasoning Transparency | Deployment / Data Residency | Primary Output | Typical Turn-around | Pricing (indicative) | Contract Flexibility | Human QA In Loop | EHR Integration Depth |
 |---|--------|------------------------|-----------------------------|----------------|--------------------|----------------------|----------------------|------------------|------------------------|
 | 1 | **PreExamChartingAgent** | 🟢 **Full:** GPT-4o/O1 visible "thought process", confidence, citations | Self-host (your Firebase / on-prem). PHI never leaves org | Structured pre-exam chart, differential Dx, treatment plan | Seconds (real-time) | OSS core + pay-per-use OpenAI; <$50/mo typical | MIT licence – no lock-in | Optional (n8n QA workflows) | FHIR webhooks, customise via n8n |
-| 2 | DeepScribe.ai | 🔴 None | Vendor multi-tenant cloud (BAA) | SOAP note draft | 3–8 h (human QA) | ~US$1.5k/provider/mo + setup¹ | 12-mo auto-renew; Reddit reports difficult cancellation¹ | ✅ Offshore scribes | Epic/Athena built-in |
-| 3 | Abridge.com | 🔴 None | Vendor cloud (enterprise) | Visit summary bullets, med list | Minutes | Enterprise licence (undisclosed) | Enterprise MSA | 🔶 Supervisor QA | Deep Epic App Orchard |
-| 4 | Freed.ai | 🟠 Limited (generated note only) | Vendor cloud | SOAP note draft | <5 min | From US$99/provider/mo | Month-to-month | ❌ (AI only) | Paste / limited APIs |
-| 5 | Ambience Healthcare | 🔴 None | Vendor cloud | Real-time note + orders | Seconds | Enterprise (undisclosed) | Enterprise MSA | 🔶 Spot QA | Epic, Cerner pilots |
-| 6 | Suki AI | 🟠 Some (voice commands visible) | Vendor cloud | Voice-driven note | Seconds | US$199–299/mo | Annual contract | ❌ | Epic, Cerner, Athena |
-| 7 | Nabla Copilot | 🟠 Limited | Vendor cloud (EU options) | Structured summary | Minutes | Freemium → €79+/mo | Cancel anytime | ❌ | FHIR export (beta) |
-| 8 | Nuance DAX | 🔴 None | Microsoft Azure cloud | Auto note via physician audio | 4–24 h | Enterprise >US$1k/mo | Enterprise MSA | ✅ US-based scribes | Deep Epic/Cerner |
-| 9 | AWS HealthScribe | 🟢 Model outputs + timestamps | AWS HIPAA accounts | JSON medical conversation, transcript, summary | <1 min (no UI) | Pay-per-second (API) | No lock-in | ❌ | API-level |
+| 2 | **Epic DAX Copilot** | 🟠 Limited visibility into AI reasoning | Microsoft Azure cloud (configurable regions) | Specialty-specific notes via Epic SmartSections | Seconds (real-time) | US$360/provider/year (US$30/mo) | Microsoft enterprise agreement | ❌ (AI only) | Native Epic "Write My Note" integration |
+| 3 | DeepScribe.ai | 🔴 None | Vendor multi-tenant cloud (BAA) | SOAP note draft | 3–8 h (human QA) | ~US$1.5k/provider/mo + setup¹ | 12-mo auto-renew; Reddit reports difficult cancellation¹ | ✅ Offshore scribes | Epic/Athena built-in |
+| 4 | Abridge.com | 🔴 None | Vendor cloud (enterprise) | Visit summary bullets, med list | Minutes | Enterprise licence (undisclosed) | Enterprise MSA | 🔶 Supervisor QA | Deep Epic App Orchard |
+| 5 | Freed.ai | 🟠 Limited (generated note only) | Vendor cloud | SOAP note draft | <5 min | From US$99/provider/mo | Month-to-month | ❌ (AI only) | Paste / limited APIs |
+| 6 | Ambience Healthcare | 🔴 None | Vendor cloud | Real-time note + orders | Seconds | Enterprise (undisclosed) | Enterprise MSA | 🔶 Spot QA | Epic, Cerner pilots |
+| 7 | Suki AI | 🟠 Some (voice commands visible) | Vendor cloud | Voice-driven note | Seconds | US$199–299/mo | Annual contract | ❌ | Epic, Cerner, Athena |
+| 8 | Nabla Copilot | 🟠 Limited | Vendor cloud (EU options) | Structured summary | Minutes | Freemium → €79+/mo | Cancel anytime | ❌ | FHIR export (beta) |
+| 9 | Nuance DAX | 🔴 None | Microsoft Azure cloud | Auto note via physician audio | 4–24 h | Enterprise >US$1k/mo | Enterprise MSA | ✅ US-based scribes | Deep Epic/Cerner |
+| 10 | AWS HealthScribe | 🟢 Model outputs + timestamps | AWS HIPAA accounts | JSON medical conversation, transcript, summary | <1 min (no UI) | Pay-per-second (API) | No lock-in | ❌ | API-level |
 
 ¹ *Reddit r/Psychiatry report from office manager: contract auto-renews exactly at 12-month mark; legal dispute over cancellation.*
 
@@ -33,6 +34,7 @@ This document provides a detailed, feature-by-feature comparison between **PreEx
 | Vendor | Visible Reasoning | Confidence Scores | Source Citation | Editable Prompts |
 |--------|------------------|-------------------|-----------------|------------------|
 | PreExamChartingAgent | ✅ Full chain-of-thought displayed | ✅ | ✅ | ✅ |
+| Epic DAX Copilot | 🟠 Limited (style preferences only) | ❌ | ❌ | 🟠 Style templates only |
 | DeepScribe | ❌ | ❌ | ❌ | ❌ |
 | Abridge | ❌ | ❌ | ❌ | ❌ |
 | Freed | ❌ | ❌ | ❌ | ❌ |
@@ -47,6 +49,7 @@ This document provides a detailed, feature-by-feature comparison between **PreEx
 | Vendor | Built-in Workflow Engine | Custom Actions (eg. order labs) | API / SDK | On-prem Option |
 |--------|-------------------------|-------------------------------|-----------|---------------|
 | PreExamChartingAgent | ✅ n8n embedded | ✅ Unlimited via n8n nodes | REST / FHIR webhooks | ✅ Firebase on-prem or self-host GCP |
+| Epic DAX Copilot | 🔶 Epic workflow integration | ✅ Orders via Epic modules | Epic API integration | ❌ |
 | DeepScribe | ❌ | ❌ | ❌ | ❌ |
 | Abridge | 🔶 Limited (EHR hooks) | 🔶 | Enterprise API | ❌ |
 | Freed | ❌ | ❌ | Basic export | ❌ |
@@ -63,6 +66,7 @@ This document provides a detailed, feature-by-feature comparison between **PreEx
 | Vendor | ICD-10 Coding | Differential Diagnosis | Treatment Suggestions | Red-Flag Detection |
 |--------|--------------|-----------------------|----------------------|---------------------|
 | PreExamChartingAgent | ✅ | ✅ | ✅ | ✅ |
+| Epic DAX Copilot | 🔶 Epic SmartSections | ❌ | ❌ | 🔶 (coaching suggestions) |
 | DeepScribe | 🔶 (basic) | ❌ | ❌ | ❌ |
 | Abridge | 🔶 (med list) | ❌ | ❌ | 🔶 (keywords) |
 | Freed | ❌ | ❌ | ❌ | ❌ |
@@ -77,6 +81,7 @@ This document provides a detailed, feature-by-feature comparison between **PreEx
 | Vendor | HIPAA BAA | PHI Encryption At Rest | Geography Controls | Audit Trail Access |
 |--------|-----------|------------------------|--------------------|--------------------|
 | PreExamChartingAgent | ✅ (self-host) | ✅ | ✅ (choose region) | ✅ full logs |
+| Epic DAX Copilot | ✅ Microsoft BAA | ✅ | 🔶 Azure regions | 🔶 limited |
 | DeepScribe | ✅ | ✅ | ❌ | 🔶 limited |
 | Abridge | ✅ | ✅ | ❌ | 🔶 |
 | Freed | ✅ | ✅ | ❌ | ❌ |
@@ -100,7 +105,8 @@ This document provides a detailed, feature-by-feature comparison between **PreEx
 
 ## 4  References & Sources
 
-* DeepScribe pricing/cancellation: Reddit r/Psychiatry (link), Becker’s Health IT (2023)  
+* Epic DAX Copilot: Microsoft/Nuance official documentation, pricing via Azure Marketplace (2025)
+* DeepScribe pricing/cancellation: Reddit r/Psychiatry (link), Becker's Health IT (2023)  
 * Abridge Epic integration: HLTH Presentation 2024  
 * Freed pricing: Freed.ai pricing page (accessed July 2025)  
 * Ambience demo: ViVE 2025 booth video  
