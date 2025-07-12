@@ -775,7 +775,7 @@ Return the data in valid JSON format following the ExtractedMedicalData interfac
         procedures: analysisResult?.treatments.filter(t => t.category === 'procedure').map(t => ({
           name: t.recommendation,
           indication: t.recommendation,
-          urgency: t.priority === 'urgent' ? 'urgent' : 'routine',
+          urgency: t.priority === 'urgent' ? 'urgent' : 'elective',
           confidence: 0.7,
         })) || [],
         referrals: analysisResult?.treatments.filter(t => t.category === 'referral').map(t => ({

@@ -348,7 +348,7 @@ const generatePatientAnalysisData_Original = (visitId: string) => {
       treatments: [
         { id: 'tx-1', category: 'procedure', recommendation: 'Emergency appendectomy', priority: 'urgent', timeframe: 'within 6 hours', contraindications: ['severe comorbidities precluding surgery'], alternatives: ['antibiotics if surgery contraindicated'], expectedOutcome: 'Removal of inflamed appendix, prevent rupture', evidenceLevel: 'A' },
         { id: 'tx-2', category: 'medication', recommendation: 'IV antibiotics perioperatively', priority: 'high', timeframe: 'immediate', contraindications: ['severe antibiotic allergy'], alternatives: ['alternative antibiotic regimen'], expectedOutcome: 'Prevent postoperative infection', evidenceLevel: 'A' },
-      ],
+      ] as Treatment[],
       concerns: [
         { id: 'flag-1', type: 'red_flag', severity: 'critical', message: 'Acute appendicitis requires immediate surgical intervention', recommendation: 'Emergency surgery within 6 hours to prevent rupture', requiresImmediateAction: true },
       ],
@@ -366,7 +366,7 @@ const generatePatientAnalysisData_Original = (visitId: string) => {
       treatments: [
         { id: 'tx-1', category: 'monitoring', recommendation: 'Fetal monitoring and biophysical profile', priority: 'high', timeframe: 'immediate', contraindications: [], alternatives: ['kick count instructions'], expectedOutcome: 'Reassurance of fetal wellbeing', evidenceLevel: 'A' },
         { id: 'tx-2', category: 'lifestyle', recommendation: 'Kick count monitoring instructions', priority: 'medium', timeframe: 'ongoing', contraindications: [], alternatives: ['more frequent monitoring'], expectedOutcome: 'Early detection of fetal compromise', evidenceLevel: 'B' },
-      ],
+      ] as Treatment[],
       concerns: [
         { id: 'flag-1', type: 'urgent_referral', severity: 'medium', message: 'Decreased fetal movement requires immediate assessment', recommendation: 'Immediate fetal monitoring and obstetric evaluation', requiresImmediateAction: true },
       ],

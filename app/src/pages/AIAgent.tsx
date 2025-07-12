@@ -40,7 +40,7 @@ import {
   Timeline,
   AutoAwesome,
   CheckCircle,
-  Error,
+  Error as ErrorIcon,
   Warning,
   FlashOn
 } from '@mui/icons-material';
@@ -1741,7 +1741,7 @@ const AIAgent: React.FC = () => {
                                       {diagnosis.againstEvidence.map((evidence, evidenceIndex) => (
                                         <ListItem key={evidenceIndex} sx={{ py: 0.5 }}>
                                           <ListItemIcon sx={{ minWidth: 30 }}>
-                                            <Error color="error" fontSize="small" />
+                                            <ErrorIcon color="error" fontSize="small" />
                                           </ListItemIcon>
                                           <ListItemText primary={evidence} />
                                         </ListItem>
