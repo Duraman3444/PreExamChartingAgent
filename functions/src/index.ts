@@ -232,9 +232,12 @@ REQUIREMENTS:
 9. Make reasoning clinically sound and educational
 
 Focus on creating a realistic medical scenario with comprehensive differential diagnosis.
+
+SPECIAL INSTRUCTIONS FOR MEDICAL QUESTIONS:
+If the input is a medical question rather than a patient transcript, analyze the medical topic mentioned in the question and create a comprehensive clinical analysis as if evaluating a patient presenting with the described condition or symptoms. Extract relevant symptoms, provide differential diagnoses, and suggest appropriate treatments based on the medical topic discussed in the question.
 `;
 
-const GENERAL_MEDICAL_QUESTION_PROMPT = `
+export const GENERAL_MEDICAL_QUESTION_PROMPT = `
 You are an expert medical AI assistant. The user has asked a general medical question. Provide a clear, structured, and informative answer in JSON format. Do not attempt to diagnose or treat.
 
 CRITICAL: Return ONLY valid JSON in the following exact structure - no markdown, no code blocks, no explanations:
@@ -299,11 +302,9 @@ export const analyzeTranscript = functions.runWith({
         return;
       }
 
-      // Determine if the input is a question or a transcript
-      // Only treat as question if it explicitly ends with '?' - don't use word count
-      const isQuestion = transcript.trim().endsWith('?') && !transcript.toLowerCase().includes('patient') && !transcript.toLowerCase().includes('provider');
-      const prompt = isQuestion ? GENERAL_MEDICAL_QUESTION_PROMPT : MEDICAL_ANALYSIS_PROMPT;
-      const userContent = isQuestion ? `Question: ${transcript}` : `Transcript: ${transcript}`;
+      // Always use medical analysis prompt to ensure comprehensive clinical data extraction
+      const prompt = MEDICAL_ANALYSIS_PROMPT;
+      const userContent = `Medical Scenario: ${transcript}`;
 
       // Call OpenAI API
       const completion = await openai.chat.completions.create({
